@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay Workspaces</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body class="settings-page">
+    <div class="shell shell-narrow settings-shell">
+      <header class="settings-hero">
+        <div class="settings-hero-copy">
+          <div class="hero-badge-row">
+            <p class="eyebrow">LeadRelay Admin</p>
+            <span class="hero-badge">Workspaces</span>
+          </div>
+          <h1 class="gradient-text">Workspace Command Center</h1>
+          <p class="subhead">Manage onboarding, credentials, pilot status, notes, and funnel visibility for every client workspace.</p>
+        </div>
+        <div class="settings-hero-actions">
+          <a href="/review" class="ghost-link compact-link">Back to Review</a>
+          <a href="/logout" class="ghost-link compact-link">Log Out</a>
+        </div>
+      </header>
+
+      <div id="statusMsg" class="inline-alert hidden"></div>
+
+      <div id="workspaceList" class="workspace-grid"></div>
+      <div id="emptyState" class="empty-state hidden">
+        <div>
+          <h2>No workspaces yet</h2>
+          <p>Workspaces will appear here once clients register or are provisioned.</p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function showMsg(text, ok) {
+        const el = document.getElementById('statusMsg');
+        el.textContent = text;
+        el.className = `inline-alert ${ok ? 'success' : 'error'}`;
+        setTimeout(() => { el.className = 'inline-alert hidden'; }, 4000);
+      }
+
+      async function saveWorkspace(workspaceKey) {
+        const notes = document.getElementById(`notes-${workspaceKey}`).value;
+        const checklist = document.getElementById(`checklist-${workspaceKey}`).value;
+        const status = document.getElementById(`status-${workspaceKey}`).value;
+        try {
+          const response = await fetch(`/admin/workspaces/${workspaceKey}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes, onboarding_checklist: checklist, pilot_status: status })
+          });
+          if (!response.ok) throw new Error('Failed to save');
+          showMsg('Workspace updated successfully.', true);
+        } catch {
+          showMsg('Failed to save workspace.', false);
+        }
+      }
+
+      function statusBadgeClass(status) {
+        if (status === 'active') return 'workspace-status-active';
+        if (status === 'archived') return 'workspace-status-archived';
+        return 'workspace-status-provisioned';
+      }
+
+      async function loadWorkspaces() {
+        const container = document.getElementById('workspaceList');
+        const emptyEl = document.getElementById('emptyState');
+
+        try {
+          const response = await fetch('/admin/workspaces');
+          if (!response.ok) {
+            showMsg('Failed to load workspaces.', false);
+            return;
+          }
+          const items = await response.json();
+
+          if (!items.length) {
+            container.classList.add('hidden');
+            emptyEl.classList.remove('hidden');
+            return;
+          }
+
+          emptyEl.classList.add('hidden');
+          container.classList.remove('hidden');
+
+          container.innerHTML = items.map((item) => `
+            <div class="workspace-card settings-card card editorial-card">
+              <div class="workspace-card-header">
+                <div>
+                  <div class="hero-badge-row">
+                    <h2 class="workspace-title">${item.workspace_name}</h2>
+                    <span class="hero-badge ${statusBadgeClass(item.pilot_status)}">${item.pilot_status || 'provisioned'}</span>
+                  </div>
+                  <p class="muted" style="margin-top:6px;">Workspace: <strong>${item.workspace_key}</strong></p>
+                </div>
+              </div>
+
+              <div class="workspace-meta-grid">
+                <div class="workspace-meta-item">
+                  <span class="field-label">Login</span>
+                  <span>${item.login_username}</span>
+                </div>
+                <div class="workspace-meta-item">
+                  <span class="field-label">Contact</span>
+                  <span>${item.contact_email || '\u2014'}</span>
+                </div>
+                <div class="workspace-meta-item">
+                  <span class="field-label">Created</span>
+                  <span>${item.created_at ? new Date(item.created_at).toLocaleDateString() : '\u2014'}</span>
+                </div>
+              </div>
+
+              <div class="workspace-funnel-strip">
+                <div class="workspace-funnel-item">
+                  <span class="funnel-stat-value">${item.funnel.new}</span>
+                  <span class="funnel-stat-label">New</span>
+                </div>
+                <div class="workspace-funnel-item">
+                  <span class="funnel-stat-value">${item.funnel.contacted}</span>
+                  <span class="funnel-stat-label">Contacted</span>
+                </div>
+                <div class="workspace-funnel-item">
+                  <span class="funnel-stat-value">${item.funnel.booked}</span>
+                  <span class="funnel-stat-label">Booked</span>
+                </div>
+                <div class="workspace-funnel-item">
+                  <span class="funnel-stat-value">${item.funnel.lost}</span>
+                  <span class="funnel-stat-label">Lost</span>
+                </div>
+                <div class="workspace-funnel-item workspace-funnel-revenue">
+                  <span class="funnel-stat-value">$${Number(item.funnel.booked_revenue || 0).toLocaleString()}</span>
+                  <span class="funnel-stat-label">Revenue</span>
+                </div>
+              </div>
+
+              <div class="editorial-form section-fields">
+                <label class="form-field">
+                  <span class="field-label">Pilot Status</span>
+                  <select id="status-${item.workspace_key}" class="filter-select">
+                    <option value="provisioned" ${item.pilot_status === 'provisioned' ? 'selected' : ''}>Provisioned</option>
+                    <option value="active" ${item.pilot_status === 'active' ? 'selected' : ''}>Active</option>
+                    <option value="archived" ${item.pilot_status === 'archived' ? 'selected' : ''}>Archived</option>
+                  </select>
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Workspace Notes</span>
+                  <textarea id="notes-${item.workspace_key}" class="reply-editor" rows="3">${item.notes || ''}</textarea>
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Onboarding Checklist</span>
+                  <textarea id="checklist-${item.workspace_key}" class="reply-editor" rows="3">${item.onboarding_checklist || 'Confirm intake source\nConfirm urgent-job criteria\nConfirm reply style\nConfirm portal access\nGo live test'}</textarea>
+                </label>
+              </div>
+
+              <details class="workspace-credentials">
+                <summary class="ghost-btn workspace-credentials-toggle">Credential actions</summary>
+                <div class="workspace-credentials-body">
+                  <div class="workspace-meta-item">
+                    <span class="field-label">Password</span>
+                    <code class="api-key-display">${item.login_password}</code>
+                  </div>
+                  <a class="ghost-link compact-link" href="/admin/workspaces/${item.workspace_key}/reset-password">Reset Password</a>
+                </div>
+              </details>
+
+              <div class="workspace-actions">
+                <div class="workspace-actions-left">
+                  <a class="ghost-link compact-link" href="/admin/portal/${item.workspace_key}">View Portal</a>
+                  <a class="ghost-link compact-link" href="/admin/workspaces/${item.workspace_key}/activate">Mark Active</a>
+                  <a class="ghost-link compact-link" href="/admin/workspaces/${item.workspace_key}/archive">Archive</a>
+                </div>
+                <button class="primary-btn primary-btn-strong" onclick="saveWorkspace('${item.workspace_key}')">Save Workspace</button>
+              </div>
+            </div>
+          `).join('');
+        } catch {
+          showMsg('Failed to load workspaces.', false);
+        }
+      }
+
+      loadWorkspaces();
+    </script>
+  </body>
+</html>

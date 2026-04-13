@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay Client Portal</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body class="portal-page">
+    <div class="shell">
+      <header class="topbar topbar-editorial">
+        <div>
+          <div class="hero-badge-row">
+            <p class="eyebrow">LeadRelay</p>
+            <span class="hero-badge">Client portal</span>
+          </div>
+          <h1>Your Lead Dashboard</h1>
+          <p class="subhead">Review incoming leads, send personalized replies, track outcomes, and keep follow-ups moving.</p>
+        </div>
+        <div class="topbar-actions">
+          <a href="/logout" class="ghost-link compact-link">Log Out</a>
+          <button id="refreshBtn" class="ghost-btn compact-link">Refresh</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="list-panel">
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><span class="stat-label">Open</span><strong id="statOpen">0</strong></div>
+            <div class="stat-card"><span class="stat-label">Drafted</span><strong id="statDrafted">0</strong></div>
+            <div class="stat-card"><span class="stat-label">Urgent</span><strong id="statUrgent">0</strong></div>
+            <div class="stat-card"><span class="stat-label">Pipeline</span><strong id="statPipeline">$0</strong></div>
+            <div class="stat-card"><span class="stat-label">Overdue F/U</span><strong id="statOverdue">0</strong></div>
+            <div class="stat-card"><span class="stat-label">Callbacks</span><strong id="statCallbacks">0</strong></div>
+            <div class="stat-card"><span class="stat-label">Booked Jobs</span><strong id="statBookedJobs">0</strong></div>
+            <div class="stat-card"><span class="stat-label">Booked Revenue</span><strong id="statBookedRevenue">$0</strong></div>
+            <div class="stat-card"><span class="stat-label">Median Response</span><strong id="statResponseMinutes">0m</strong></div>
+          </div>
+
+          <div class="filters-card">
+            <div id="reportingSnapshot" class="muted">Loading reporting snapshot...</div>
+            <input id="searchInput" class="filter-input" type="search" placeholder="Search your leads..." />
+            <div class="filters-row">
+              <select id="statusFilter" class="filter-select">
+                <option value="">All statuses</option>
+                <option value="drafted">Drafted</option>
+                <option value="sent">Sent</option>
+                <option value="send_failed">Send failed</option>
+              </select>
+              <select id="categoryFilter" class="filter-select">
+                <option value="">All categories</option>
+                <option value="urgent_request">Urgent</option>
+                <option value="quote_request">Quote</option>
+                <option value="general_inquiry">General</option>
+                <option value="existing_customer">Existing customer</option>
+              </select>
+            </div>
+            <label class="filter-check"><input id="callbacksOnly" type="checkbox" /> Callbacks only</label>
+          </div>
+
+          <div class="panel-header">
+            <div>
+              <p class="section-kicker">Your leads</p>
+              <h2>Queue</h2>
+            </div>
+            <span id="leadCount" class="muted">0 leads</span>
+          </div>
+          <div id="leadList" class="lead-list"></div>
+        </section>
+
+        <section class="detail-panel">
+          <div id="emptyState" class="empty-state">
+            <div class="empty-state-content">
+              <div class="empty-state-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </div>
+              <h2>Select a lead</h2>
+              <p>Pick a lead from the queue to review details, see the AI-drafted reply, and decide the next step.</p>
+            </div>
+          </div>
+
+          <div id="loadingState" class="empty-state hidden">
+            <div class="empty-state-content">
+              <div class="loading-spinner"></div>
+              <h2>Loading queue</h2>
+              <p>Pulling your latest leads now...</p>
+            </div>
+          </div>
+
+          <div id="leadDetail" class="lead-detail hidden">
+            <div class="panel-header detail-header">
+              <div>
+                <div class="detail-topline">
+                  <p id="detailCategory" class="pill"></p>
+                  <span id="detailStatusBadge" class="status-chip">Drafted</span>
+                </div>
+                <h2 id="detailSubject">Lead subject</h2>
+                <p id="detailMeta" class="muted"></p>
+              </div>
+              <div class="actions">
+                <button id="markDraftBtn" class="ghost-btn">Mark Drafted</button>
+                <button id="sendBtn" class="primary-btn">Send Draft Reply</button>
+              </div>
+            </div>
+
+            <div id="sendStatus" class="send-status hidden"></div>
+
+            <div class="detail-grid">
+              <article class="card">
+                <h3>Lead Info</h3>
+                <dl class="info-list">
+                  <div><dt>Name</dt><dd id="detailName">&mdash;</dd></div>
+                  <div><dt>Email</dt><dd id="detailEmail">&mdash;</dd></div>
+                  <div><dt>Phone</dt><dd id="detailPhone">&mdash;</dd></div>
+                  <div><dt>Location</dt><dd id="detailLocation">&mdash;</dd></div>
+                  <div><dt>Urgency</dt><dd id="detailUrgency">&mdash;</dd></div>
+                  <div><dt>Status</dt><dd id="detailStatus">&mdash;</dd></div>
+                  <div><dt>Est. Value</dt><dd id="detailEstimatedValue">&mdash;</dd></div>
+                  <div><dt>Booked Value</dt><dd id="detailBookedValue">&mdash;</dd></div>
+                  <div><dt>Outcome</dt><dd id="detailOutcome">&mdash;</dd></div>
+                  <div><dt>Callback</dt><dd id="detailCallback">&mdash;</dd></div>
+                  <div><dt>Created</dt><dd id="detailCreated">&mdash;</dd></div>
+                </dl>
+              </article>
+
+              <article class="card wide">
+                <h3>Summary</h3>
+                <p id="detailSummary" class="prewrap"></p>
+              </article>
+
+              <article class="card wide">
+                <h3>Original Message</h3>
+                <p id="detailBody" class="prewrap"></p>
+              </article>
+
+              <article class="card wide">
+                <h3>Recommended Reply</h3>
+                <textarea id="detailReplyEditor" class="reply-editor" rows="8"></textarea>
+                <div class="actions actions-inline">
+                  <button id="saveReplyBtn" class="ghost-btn">Save Reply</button>
+                </div>
+              </article>
+
+              <article class="card wide">
+                <h3>Lead Outcome</h3>
+                <div class="outcome-controls">
+                  <button class="outcome-btn outcome-won" data-outcome="won">Won</button>
+                  <button class="outcome-btn outcome-lost" data-outcome="lost">Lost</button>
+                  <button class="outcome-btn outcome-no-response" data-outcome="no_response">No Response</button>
+                </div>
+                <div id="outcomeStatus" class="muted" style="margin-top:0.75rem"></div>
+                <textarea id="outcomeNotes" class="reply-editor" rows="2" placeholder="Optional notes (e.g. job value, reason lost)"></textarea>
+              </article>
+
+              <article class="card wide">
+                <h3>Activity</h3>
+                <div id="activityList" class="activity-list"></div>
+              </article>
+
+              <article class="card wide">
+                <h3>Customer Timeline</h3>
+                <div id="customerTimelineList" class="activity-list"></div>
+              </article>
+
+              <article class="card wide">
+                <h3>Overdue Follow-ups</h3>
+                <div id="followupList" class="activity-list"></div>
+              </article>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/ui/app.js"></script>
+  </body>
+</html>

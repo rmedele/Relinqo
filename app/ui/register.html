@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay — Create Account</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body class="auth-page">
+    <div class="auth-shell">
+      <div class="auth-grid auth-grid-register">
+        <section class="auth-hero">
+          <div class="hero-badge-row">
+            <p class="eyebrow">LeadRelay</p>
+            <span class="hero-badge">New workspace</span>
+          </div>
+          <h1 class="gradient-text">Set up the kind of business portal people actually trust.</h1>
+          <p class="subhead">A sharper first-run experience for serious operators: clean setup, confident branding, and enough structure to make the product feel premium.</p>
+
+          <div class="hero-story-grid">
+            <article class="hero-story-card accent-orange">
+              <span class="story-label">Onboarding</span>
+              <strong>Business profile, reply tone, and intake config all start from one place.</strong>
+            </article>
+            <article class="hero-story-card accent-blue">
+              <span class="story-label">Fast launch</span>
+              <strong>Create the owner account now. Invite teammates once the workspace is live.</strong>
+            </article>
+          </div>
+
+          <div class="hero-proof-list">
+            <div>
+              <span class="proof-kicker">Looks like</span>
+              <p>Linear / Notion-style product restraint with a more editorial, high-contrast edge.</p>
+            </div>
+            <div>
+              <span class="proof-kicker">Built for</span>
+              <p>Service businesses that want fast response automation without looking cheap or templatey.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="auth-card">
+          <div class="auth-card-header">
+            <div>
+              <p class="eyebrow">Register</p>
+              <h2>Create your owner account</h2>
+            </div>
+            <a href="/login" class="ghost-link compact-link">Already have an account?</a>
+          </div>
+
+          <div id="regError" class="inline-alert error hidden"></div>
+
+          <form id="registerForm" class="editorial-form auth-form">
+            <div class="field-group field-group-double">
+              <label class="form-field">
+                <span class="field-label">Business / organization</span>
+                <input name="org_name" class="filter-input" placeholder="Northstar Plumbing" required />
+              </label>
+              <label class="form-field">
+                <span class="field-label">Owner name</span>
+                <input name="display_name" class="filter-input" placeholder="Reese" />
+              </label>
+            </div>
+
+            <label class="form-field">
+              <span class="field-label">Email address</span>
+              <input name="email" type="email" class="filter-input" placeholder="owner@business.com" autocomplete="email" required />
+            </label>
+
+            <label class="form-field">
+              <span class="field-label">Password</span>
+              <input name="password" type="password" class="filter-input" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8" />
+            </label>
+
+            <div class="auth-form-footer">
+              <div class="micro-note">You'll land in the review queue after signup and can finish the rest of the business setup there.</div>
+              <button type="submit" class="primary-btn primary-btn-strong">Create workspace</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+    <script>
+      document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const errEl = document.getElementById('regError');
+        const btn = form.querySelector('button[type="submit"]');
+        errEl.classList.add('hidden');
+        btn.disabled = true;
+        btn.textContent = 'Creating workspace...';
+
+        try {
+          const res = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              org_name: form.org_name.value,
+              display_name: form.display_name.value || null,
+              email: form.email.value,
+              password: form.password.value,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errEl.textContent = data.detail || 'Registration failed';
+            errEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Create workspace';
+            return;
+          }
+          window.location.href = '/setup';
+        } catch (err) {
+          errEl.textContent = 'Network error. Please try again.';
+          errEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Create workspace';
+        }
+      });
+    </script>
+  </body>
+</html>

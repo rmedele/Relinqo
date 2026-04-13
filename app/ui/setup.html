@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay — Setup Wizard</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body class="settings-page">
+    <div class="shell shell-narrow settings-shell">
+      <header class="settings-hero">
+        <div class="settings-hero-copy">
+          <div class="hero-badge-row">
+            <p class="eyebrow">LeadRelay</p>
+            <span class="hero-badge">Setup wizard</span>
+          </div>
+          <h1 class="gradient-text">Get your workspace running in 3 steps.</h1>
+          <p class="subhead">Fill in your business profile, connect your email, and fire a test lead to make sure everything works.</p>
+        </div>
+      </header>
+
+      <div class="setup-progress">
+        <div class="setup-step active" data-step="1"><span class="step-num">1</span><span class="step-label">Business profile</span></div>
+        <div class="setup-step" data-step="2"><span class="step-num">2</span><span class="step-label">Connect email</span></div>
+        <div class="setup-step" data-step="3"><span class="step-num">3</span><span class="step-label">Test lead</span></div>
+      </div>
+
+      <div id="statusMsg" class="inline-alert hidden"></div>
+
+      <!-- Step 1: Business Profile -->
+      <section id="step1" class="setup-panel">
+        <div class="settings-card card editorial-card">
+          <div class="section-heading-row">
+            <div>
+              <p class="section-kicker">Step 1</p>
+              <h2>Tell us about your business</h2>
+            </div>
+          </div>
+          <form id="step1Form" class="editorial-form section-fields">
+            <div class="field-group field-group-double">
+              <label class="form-field">
+                <span class="field-label">Business name</span>
+                <input name="business_name" class="filter-input" placeholder="Northstar Plumbing" required />
+              </label>
+              <label class="form-field">
+                <span class="field-label">Phone</span>
+                <input name="business_phone" class="filter-input" placeholder="(780) 555-0148" />
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="field-label">Services you offer</span>
+              <textarea name="business_services" class="filter-input" rows="3" placeholder="Emergency plumbing, hot water tanks, drain cleaning, inspections" required></textarea>
+            </label>
+            <div class="field-group field-group-double">
+              <label class="form-field">
+                <span class="field-label">Service area</span>
+                <input name="business_area" class="filter-input" placeholder="Edmonton and surrounding area" required />
+              </label>
+              <label class="form-field">
+                <span class="field-label">Business hours</span>
+                <input name="business_hours" class="filter-input" placeholder="Mon-Fri 8am-5pm" />
+              </label>
+            </div>
+            <label class="form-field">
+              <span class="field-label">Reply tone</span>
+              <input name="business_tone" class="filter-input" placeholder="Friendly and professional" />
+            </label>
+            <div class="settings-submit-row">
+              <button type="submit" class="primary-btn primary-btn-strong">Save & Continue</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- Step 2: Connect Email -->
+      <section id="step2" class="setup-panel hidden">
+        <div class="settings-card card editorial-card">
+          <div class="section-heading-row">
+            <div>
+              <p class="section-kicker">Step 2</p>
+              <h2>Connect your email</h2>
+            </div>
+          </div>
+
+          <!-- Gmail OAuth (primary path) -->
+          <div id="gmailConnect" style="text-align:center; padding:1.5rem 0;">
+            <p class="subhead" style="margin-bottom:1.25rem;">Connect your Gmail account with one click. LeadRelay will read incoming leads and send replies on your behalf.</p>
+            <a id="gmailBtn" href="/auth/google/connect?from=setup" class="primary-btn primary-btn-strong" style="display:inline-flex; align-items:center; gap:0.5rem; font-size:1.05rem; padding:0.75rem 2rem;">
+              <svg width="18" height="18" viewBox="0 0 48 48" style="flex-shrink:0;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+              Connect with Gmail
+            </a>
+            <div id="gmailConnected" class="inline-alert success hidden" style="margin-top:1rem;"></div>
+          </div>
+
+          <!-- Manual SMTP (collapsible fallback) -->
+          <details id="manualEmailDetails" style="margin-top:1rem;">
+            <summary class="ghost-btn" style="cursor:pointer; display:inline-block;">Or configure email manually (SMTP)</summary>
+            <form id="step2Form" class="editorial-form section-fields" style="margin-top:1rem;">
+              <div class="field-group field-group-double">
+                <label class="form-field">
+                  <span class="field-label">SMTP host</span>
+                  <input name="smtp_host" class="filter-input" placeholder="smtp.gmail.com" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">SMTP port</span>
+                  <input name="smtp_port" type="number" class="filter-input" placeholder="587" value="587" />
+                </label>
+              </div>
+              <div class="field-group field-group-double">
+                <label class="form-field">
+                  <span class="field-label">Email / username</span>
+                  <input name="smtp_username" class="filter-input" placeholder="you@gmail.com" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">From email</span>
+                  <input name="smtp_from_email" type="email" class="filter-input" placeholder="you@gmail.com" />
+                </label>
+              </div>
+              <label class="form-field">
+                <span class="field-label">Password / App Password</span>
+                <input name="smtp_password" type="password" class="filter-input" placeholder="Your email password or app password" />
+              </label>
+              <label class="form-field">
+                <span class="field-label">Owner alert email</span>
+                <input name="owner_alert_email" type="email" class="filter-input" placeholder="you@gmail.com — where you get notified" />
+              </label>
+              <div class="settings-submit-row" style="gap:0.75rem;">
+                <button type="submit" class="primary-btn primary-btn-strong">Save & Continue</button>
+              </div>
+            </form>
+          </details>
+
+          <div class="settings-submit-row" style="gap:0.75rem; margin-top:1.5rem;">
+            <button type="button" class="ghost-btn" onclick="goToStep(1)">Back</button>
+            <button type="button" class="ghost-btn" id="step2SkipBtn" onclick="goToStep(3)" style="display:none;">Continue to Test</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Step 3: Test Lead -->
+      <section id="step3" class="setup-panel hidden">
+        <div class="settings-card card editorial-card">
+          <div class="section-heading-row">
+            <div>
+              <p class="section-kicker">Step 3</p>
+              <h2>Send a test lead</h2>
+            </div>
+          </div>
+          <p class="subhead" style="margin-bottom:1.5rem;">We'll create a sample lead and try to send the AI-generated reply through your email. This verifies your connection is working.</p>
+          <form id="step3Form" class="editorial-form section-fields">
+            <label class="form-field">
+              <span class="field-label">Send test reply to</span>
+              <input id="testEmail" name="test_email" type="email" class="filter-input" placeholder="your-email@gmail.com" required />
+            </label>
+            <div id="testResult" class="inline-alert hidden" style="margin-top:0.5rem;"></div>
+            <div class="settings-submit-row" style="gap:0.75rem;">
+              <button type="button" class="ghost-btn" onclick="goToStep(2)">Back</button>
+              <button type="submit" class="primary-btn primary-btn-strong" id="testBtn">Send Test Lead</button>
+              <button type="button" class="ghost-btn" id="skipBtn" onclick="finishSetup()">Skip for now</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="successPanel" class="settings-card card editorial-card hidden" style="text-align:center; padding:2rem;">
+          <h2>You're all set!</h2>
+          <p class="subhead" style="margin:1rem 0;">Your workspace is configured and ready to receive leads.</p>
+          <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+            <a href="/review" class="primary-btn primary-btn-strong">Go to Dashboard</a>
+            <a href="/settings" class="ghost-btn">Full Settings</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      let currentStep = 1;
+
+      function goToStep(step) {
+        currentStep = step;
+        document.querySelectorAll('.setup-panel').forEach(p => p.classList.add('hidden'));
+        document.getElementById(`step${step}`).classList.remove('hidden');
+        document.querySelectorAll('.setup-step').forEach(s => {
+          const n = parseInt(s.dataset.step);
+          s.classList.toggle('active', n === step);
+          s.classList.toggle('done', n < step);
+        });
+      }
+
+      function showMsg(text, ok) {
+        const el = document.getElementById('statusMsg');
+        el.textContent = text;
+        el.className = `inline-alert ${ok ? 'success' : 'error'}`;
+      }
+
+      async function saveSettings(fields) {
+        const res = await fetch('/api/settings', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fields),
+        });
+        if (!res.ok) {
+          const d = await res.json();
+          throw new Error(d.detail || 'Failed to save');
+        }
+        return res.json();
+      }
+
+      // Step 1: Business profile
+      document.getElementById('step1Form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const f = e.target;
+        try {
+          await saveSettings({
+            business_name: f.business_name.value,
+            business_phone: f.business_phone.value,
+            business_services: f.business_services.value,
+            business_area: f.business_area.value,
+            business_hours: f.business_hours.value || 'Mon-Fri 8am-5pm',
+            business_tone: f.business_tone.value || 'friendly and professional',
+          });
+          goToStep(2);
+        } catch (err) {
+          showMsg(err.message, false);
+        }
+      });
+
+      // Step 2: Manual SMTP email
+      const step2Form = document.getElementById('step2Form');
+      if (step2Form) {
+        step2Form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const f = e.target;
+          try {
+            await saveSettings({
+              smtp_host: f.smtp_host.value,
+              smtp_port: parseInt(f.smtp_port.value) || 587,
+              smtp_username: f.smtp_username.value,
+              smtp_from_email: f.smtp_from_email.value,
+              smtp_password: f.smtp_password.value,
+              smtp_use_tls: true,
+              owner_alert_email: f.owner_alert_email.value,
+              digest_to_email: f.owner_alert_email.value,
+            });
+            document.getElementById('testEmail').value = f.smtp_from_email.value;
+            goToStep(3);
+          } catch (err) {
+            showMsg(err.message, false);
+          }
+        });
+      }
+
+      // Handle Gmail OAuth callback
+      function checkGmailStatus() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('gmail') === 'connected') {
+          // Show connected state in step 2
+          goToStep(2);
+          const connectedEl = document.getElementById('gmailConnected');
+          const gmailBtn = document.getElementById('gmailBtn');
+          const skipBtn = document.getElementById('step2SkipBtn');
+          // Fetch settings to get the connected email
+          fetch('/api/settings').then(r => r.json()).then(data => {
+            connectedEl.textContent = 'Gmail connected: ' + (data.google_oauth_email || 'your account');
+            connectedEl.classList.remove('hidden');
+            gmailBtn.style.display = 'none';
+            skipBtn.style.display = '';
+            document.getElementById('manualEmailDetails').style.display = 'none';
+            // Pre-fill test email
+            if (data.google_oauth_email) {
+              document.getElementById('testEmail').value = data.google_oauth_email;
+            }
+            // Auto-advance after a brief moment
+            setTimeout(() => goToStep(3), 1500);
+          });
+          // Clean URL
+          window.history.replaceState({}, '', '/setup');
+        } else if (params.get('gmail') === 'error') {
+          goToStep(2);
+          showMsg('Gmail connection failed: ' + (params.get('reason') || 'unknown error'), false);
+          window.history.replaceState({}, '', '/setup');
+        }
+      }
+
+      // Also check if Gmail is already connected on load
+      async function checkExistingGmail() {
+        try {
+          const res = await fetch('/api/settings');
+          if (!res.ok) return;
+          const data = await res.json();
+          if (data.google_oauth_email) {
+            const connectedEl = document.getElementById('gmailConnected');
+            const gmailBtn = document.getElementById('gmailBtn');
+            const skipBtn = document.getElementById('step2SkipBtn');
+            connectedEl.textContent = 'Gmail connected: ' + data.google_oauth_email;
+            connectedEl.classList.remove('hidden');
+            gmailBtn.style.display = 'none';
+            skipBtn.style.display = '';
+            document.getElementById('manualEmailDetails').style.display = 'none';
+          }
+        } catch {}
+      }
+
+      // Step 3: Test lead
+      document.getElementById('step3Form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('testBtn');
+        const resultEl = document.getElementById('testResult');
+        const email = document.getElementById('testEmail').value;
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        resultEl.classList.add('hidden');
+
+        try {
+          // Create a test lead
+          const ingestRes = await fetch('/ingest-lead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source: 'setup_wizard',
+              sender_name: 'Mike Reynolds',
+              sender_email: email,
+              subject: 'Need a quote for hot water tank replacement',
+              body: 'Hi there, my hot water tank is leaking and I think it needs to be replaced. It\'s about 15 years old. I\'m located in the south side. Could you send someone out this week to take a look and give me a quote? My number is 780-555-0173. Thanks, Mike',
+            }),
+          });
+          if (!ingestRes.ok) throw new Error('Failed to create test lead');
+          const lead = await ingestRes.json();
+
+          // Send the reply
+          const sendRes = await fetch(`/leads/${lead.id}/review/send`, { method: 'POST' });
+          const sendData = await sendRes.json();
+
+          if (sendData.sent) {
+            resultEl.textContent = `Test reply sent to ${email}! Check your inbox.`;
+            resultEl.className = 'inline-alert success';
+            document.getElementById('successPanel').classList.remove('hidden');
+            e.target.classList.add('hidden');
+          } else {
+            resultEl.textContent = `Send failed: ${sendData.message || sendData.detail || 'Unknown error'}. Check your email settings.`;
+            resultEl.className = 'inline-alert error';
+          }
+        } catch (err) {
+          resultEl.textContent = err.message;
+          resultEl.className = 'inline-alert error';
+        }
+        btn.disabled = false;
+        btn.textContent = 'Send Test Lead';
+      });
+
+      function finishSetup() {
+        window.location.href = '/review';
+      }
+
+      // Auth check, then Gmail status
+      (async () => {
+        const res = await fetch('/auth/me');
+        if (!res.ok) { window.location.href = '/login'; return; }
+        checkGmailStatus();
+        checkExistingGmail();
+      })();
+    </script>
+  </body>
+</html>

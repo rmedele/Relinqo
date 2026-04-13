@@ -1,0 +1,33 @@
+services:
+  leadrelay:
+    build: .
+    container_name: leadrelay
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    volumes:
+      - leadrelay-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  inbox-poller:
+    build: .
+    container_name: leadrelay-inbox-poller
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - leadrelay-data:/app/data
+    entrypoint: ["python", "scripts/poll_inbox_loop.py"]
+    depends_on:
+      leadrelay:
+        condition: service_healthy
+
+volumes:
+  leadrelay-data:

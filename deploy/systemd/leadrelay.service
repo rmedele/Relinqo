@@ -1,0 +1,16 @@
+[Unit]
+Description=LeadRelay FastAPI service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/reese/Documents/code/lead-recovery-v1
+EnvironmentFile=/home/reese/Documents/code/lead-recovery-v1/.env
+ExecStart=/home/reese/Documents/code/lead-recovery-v1/.venv/bin/uvicorn app.main:app --host $APP_HOST --port $APP_PORT --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=always
+RestartSec=5
+User=reese
+Group=reese
+
+[Install]
+WantedBy=multi-user.target

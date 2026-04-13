@@ -1,0 +1,43 @@
+LEADRELAY — TODO
+=================
+
+BEFORE LAUNCH
+- [x] Setup wizard after registration (connect email, business profile, send test lead)
+- [ ] Mobile-friendly responsive layout for the dashboard
+- [x] Password reset flow (forgot password email)
+- [x] Email invite flow (currently invite just sets a password, no email sent)
+- [x] Rate limiting on /auth/login and /auth/register (brute force protection)
+- [x] Input validation on registration (password strength, org name length)
+- [x] HTTPS / production deployment config (reverse proxy, CORS origins)
+- [ ] Strip legacy per-org env vars from config.py (Step 7 of multi-tenant plan)
+
+PRODUCT
+- [x] "Reply YES to approve" SMS flow for on-the-go approvals
+- [x] Weekly summary report email ("here's what we sent on your behalf")
+- [x] Lead outcome tracking (won/lost/no-response) for close rate analytics
+- [ ] Response time analytics ("avg reply time this month vs last month")
+- [x] Dashboard charts (leads over time, category breakdown, conversion funnel)
+- [ ] Lead notes / internal comments (owner can add context for team)
+- [ ] Customer CRM view (all leads from one sender grouped, history)
+- [ ] Notification preferences (which alerts, how often, email vs SMS)
+
+INTEGRATIONS
+- [ ] Webhook support (notify external systems when lead is ingested/sent)
+- [ ] Zapier / Make integration guide
+- [ ] Google Forms / Typeform / Jotform direct integration
+- [ ] QuickBooks / invoice linking for existing customer detection
+
+INFRASTRUCTURE
+- [ ] Migrate from SQLite to PostgreSQL for production
+- [ ] Background job queue (Celery or arq) instead of in-process scheduler loop
+- [ ] File/image attachments on leads
+- [ ] Audit log (who changed what, when)
+- [ ] Automated DB backups
+- [ ] Health check endpoint that verifies DB + SMTP connectivity
+
+GROWTH
+- [ ] Billing / Stripe subscription integration
+- [ ] Usage metering (leads per month per org)
+- [ ] Admin panel (cross-org view for you as the operator)
+- [ ] Custom domain / white-label support
+- [ ] Landing page A/B testing for /book-demo conversion

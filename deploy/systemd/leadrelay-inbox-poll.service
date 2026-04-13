@@ -1,0 +1,11 @@
+[Unit]
+Description=LeadRelay inbox poll run
+After=network.target leadrelay.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/reese/Documents/code/lead-recovery-v1
+EnvironmentFile=/home/reese/Documents/code/lead-recovery-v1/.env
+ExecStart=/home/reese/Documents/code/lead-recovery-v1/.venv/bin/python /home/reese/Documents/code/lead-recovery-v1/scripts/poll_inbox.py
+User=reese
+Group=reese

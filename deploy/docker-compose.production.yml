@@ -1,0 +1,58 @@
+services:
+  leadrelay:
+    build: ..
+    container_name: leadrelay
+    restart: unless-stopped
+    expose:
+      - "8081"
+    env_file:
+      - ../.env
+    environment:
+      - APP_ENV=production
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8081
+      - FORWARDED_ALLOW_IPS=*
+    volumes:
+      - leadrelay-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: leadrelay-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      leadrelay:
+        condition: service_healthy
+
+  inbox-poller:
+    build: ..
+    container_name: leadrelay-inbox-poller
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      - APP_ENV=production
+    volumes:
+      - leadrelay-data:/app/data
+    entrypoint: ["python", "scripts/poll_inbox_loop.py"]
+    depends_on:
+      leadrelay:
+        condition: service_healthy
+
+volumes:
+  leadrelay-data:
+  caddy-data:
+  caddy-config:

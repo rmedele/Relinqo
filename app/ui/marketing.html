@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay — Your AI Employee for Lead Response</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+    <style>
+      /* Marketing-specific overrides */
+      body { overflow-x: hidden; }
+
+      .mk-nav {
+        position: sticky; top: 0; z-index: 50;
+        background: rgba(3, 3, 6, 0.7);
+        backdrop-filter: blur(24px) saturate(1.4);
+        -webkit-backdrop-filter: blur(24px) saturate(1.4);
+        border-bottom: 1px solid var(--border);
+        animation: fadeInDown 0.6s var(--ease-out);
+      }
+      .mk-nav::after {
+        content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cyan), transparent);
+        opacity: 0.4;
+      }
+      .mk-nav-inner {
+        max-width: 1200px; margin: 0 auto;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 24px;
+      }
+      .mk-logo {
+        font-size: 1.2rem; font-weight: 700; letter-spacing: -0.03em;
+        color: var(--text); text-decoration: none;
+        background: linear-gradient(135deg, var(--text), var(--accent-cyan));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .mk-nav-links {
+        display: flex; align-items: center; gap: 32px;
+        list-style: none; margin: 0; padding: 0;
+      }
+      .mk-nav-links a {
+        font-size: 0.85rem; font-weight: 500; color: var(--text-secondary);
+        text-decoration: none; transition: color 0.2s;
+      }
+      .mk-nav-links a:hover { color: var(--text); }
+      .mk-nav-actions { display: flex; align-items: center; gap: 12px; }
+      .mk-btn-login {
+        font-size: 0.85rem; font-weight: 500; color: var(--accent-cyan);
+        text-decoration: none; padding: 8px 16px;
+        border: 1px solid rgba(34, 211, 238, 0.2); border-radius: var(--radius-full);
+        transition: all 0.25s var(--ease-out);
+      }
+      .mk-btn-login:hover {
+        background: rgba(34, 211, 238, 0.08); border-color: rgba(34, 211, 238, 0.4);
+        color: var(--accent-cyan); box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
+      }
+      .mk-btn-cta {
+        font-size: 0.85rem; font-weight: 600; color: #000;
+        text-decoration: none; padding: 10px 22px;
+        background: linear-gradient(135deg, var(--accent-cyan), var(--primary));
+        border-radius: var(--radius-full); border: none;
+        transition: all 0.25s var(--ease-out);
+        box-shadow: 0 4px 20px rgba(34, 211, 238, 0.2);
+      }
+      .mk-btn-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(34, 211, 238, 0.3), 0 0 60px rgba(167, 139, 250, 0.15);
+        color: #000;
+      }
+
+      /* Hero */
+      .mk-hero {
+        position: relative; overflow: hidden;
+        padding: 80px 24px 60px; text-align: center;
+      }
+      .mk-hero::before {
+        content: ''; position: absolute; inset: 0; z-index: -1;
+        background:
+          radial-gradient(ellipse 70% 50% at 50% -10%, rgba(167, 139, 250, 0.25), transparent 55%),
+          radial-gradient(ellipse 50% 40% at 20% 70%, rgba(34, 211, 238, 0.12), transparent 50%),
+          radial-gradient(ellipse 40% 30% at 80% 60%, rgba(244, 114, 182, 0.08), transparent 45%);
+        animation: auroraShift 15s ease infinite alternate;
+      }
+      .mk-hero-inner { max-width: 800px; margin: 0 auto; }
+      .mk-hero-badge {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.18em; color: var(--accent-cyan);
+        background: var(--glass); backdrop-filter: blur(16px);
+        border: 1px solid rgba(34, 211, 238, 0.15);
+        border-radius: var(--radius-full); padding: 8px 20px;
+        animation: fadeInDown 0.6s 0.1s var(--ease-out) both;
+      }
+      .mk-hero-badge::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: var(--accent-cyan);
+        box-shadow: 0 0 8px var(--accent-cyan);
+        animation: glowPulse 2s ease infinite;
+      }
+      .mk-hero h1 {
+        font-size: clamp(2.5rem, 6vw, 4rem);
+        font-weight: 800; letter-spacing: -0.04em;
+        line-height: 1.1; margin-top: 28px;
+        background: linear-gradient(135deg, #fff 0%, var(--accent-cyan) 40%, var(--primary) 80%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text; background-size: 200% auto;
+        animation: fadeInUp 0.7s 0.2s var(--ease-out) both, shimmer 8s 1s ease-in-out infinite;
+      }
+      .mk-hero-sub {
+        font-size: 1.15rem; line-height: 1.7; color: var(--text-secondary);
+        margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto;
+        animation: fadeInUp 0.7s 0.3s var(--ease-out) both;
+      }
+      .mk-hero-actions {
+        display: flex; gap: 14px; justify-content: center; margin-top: 36px;
+        flex-wrap: wrap;
+        animation: fadeInUp 0.7s 0.4s var(--ease-out) both;
+      }
+      .mk-btn-hero-primary {
+        font-size: 0.95rem; font-weight: 600; color: #000;
+        text-decoration: none; padding: 14px 32px;
+        background: linear-gradient(135deg, var(--accent-cyan), var(--primary));
+        border-radius: var(--radius-full); border: none;
+        transition: all 0.3s var(--ease-out);
+        box-shadow: 0 4px 30px rgba(34, 211, 238, 0.25);
+      }
+      .mk-btn-hero-primary:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 12px 40px rgba(34, 211, 238, 0.35), 0 0 80px rgba(167, 139, 250, 0.2);
+        color: #000;
+      }
+      .mk-btn-hero-secondary {
+        font-size: 0.95rem; font-weight: 500; color: var(--text);
+        text-decoration: none; padding: 14px 32px;
+        background: var(--glass); backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-full);
+        transition: all 0.3s var(--ease-out);
+      }
+      .mk-btn-hero-secondary:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text);
+      }
+      .mk-hero-pills {
+        display: flex; gap: 10px; justify-content: center; margin-top: 28px;
+        flex-wrap: wrap;
+        animation: fadeInUp 0.7s 0.5s var(--ease-out) both;
+      }
+      .mk-hero-pill {
+        font-size: 0.8rem; color: var(--muted); padding: 8px 18px;
+        background: var(--glass); border: 1px solid var(--border);
+        border-radius: var(--radius-full);
+      }
+
+      /* Demo Cards */
+      .mk-demo-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px; max-width: 1100px; margin: 0 auto;
+        padding: 0 24px 60px;
+      }
+      .mk-demo-card {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(24px) saturate(1.3);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg); padding: 28px;
+        transition: all 0.35s var(--ease-out);
+        animation: fadeInUp 0.6s var(--ease-out) both;
+      }
+      .mk-demo-card:nth-child(1) { animation-delay: 0.2s; }
+      .mk-demo-card:nth-child(2) { animation-delay: 0.35s; }
+      .mk-demo-card:nth-child(3) { animation-delay: 0.5s; }
+      .mk-demo-card::before {
+        content: ''; position: absolute; inset: 0;
+        border-radius: var(--radius-lg);
+        background: var(--glass-shine); pointer-events: none;
+      }
+      .mk-demo-card:hover {
+        border-color: rgba(167, 139, 250, 0.2);
+        box-shadow: var(--shadow-glow-hover);
+        transform: translateY(-4px);
+      }
+      .mk-demo-head {
+        display: flex; align-items: center; justify-content: space-between;
+        font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.15em; color: var(--muted);
+      }
+      .mk-demo-tag {
+        font-size: 0.7rem; font-weight: 600; padding: 4px 12px;
+        border-radius: var(--radius-full);
+      }
+      .mk-demo-tag.green {
+        background: var(--success-bg); color: var(--success-text);
+        border: 1px solid var(--success-border);
+      }
+      .mk-demo-tag.red {
+        background: var(--error-bg); color: var(--error-text);
+        border: 1px solid var(--error-border);
+      }
+      .mk-demo-card h3 {
+        font-size: 1.1rem; font-weight: 650; color: var(--text);
+        margin-top: 14px; margin-bottom: 10px;
+      }
+      .mk-demo-card p {
+        font-size: 0.88rem; line-height: 1.7; color: var(--text-secondary);
+      }
+      .mk-demo-card p strong {
+        color: var(--text); font-weight: 600;
+      }
+
+      /* Section shared */
+      .mk-section {
+        position: relative; padding: 80px 24px;
+        border-top: 1px solid var(--border);
+      }
+      .mk-section::after {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cyan), transparent);
+        opacity: 0.2;
+      }
+      .mk-section-inner { max-width: 1100px; margin: 0 auto; }
+      .mk-section-kicker {
+        font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.2em; color: var(--accent-cyan);
+      }
+      .mk-section-title {
+        font-size: clamp(1.6rem, 3vw, 2.2rem);
+        font-weight: 700; letter-spacing: -0.03em; color: var(--text);
+        margin-top: 12px; max-width: 700px;
+      }
+
+      /* How it works */
+      .mk-steps-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 18px; margin-top: 48px;
+      }
+      .mk-step {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg); padding: 28px;
+        transition: all 0.35s var(--ease-out);
+      }
+      .mk-step::before {
+        content: ''; position: absolute; inset: 0;
+        border-radius: var(--radius-lg);
+        background: var(--glass-shine); pointer-events: none;
+      }
+      .mk-step:hover {
+        border-color: rgba(34, 211, 238, 0.2);
+        box-shadow: var(--shadow-glow);
+        transform: translateY(-3px);
+      }
+      .mk-step-num {
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; border-radius: 50%;
+        background: linear-gradient(135deg, rgba(34, 211, 238, 0.15), rgba(167, 139, 250, 0.15));
+        border: 1px solid rgba(34, 211, 238, 0.2);
+        font-size: 0.85rem; font-weight: 700; color: var(--accent-cyan);
+      }
+      .mk-step h3 {
+        font-size: 1.05rem; font-weight: 650; color: var(--text);
+        margin-top: 16px; margin-bottom: 10px;
+      }
+      .mk-step p { font-size: 0.85rem; line-height: 1.7; color: var(--muted); }
+
+      /* Benefits */
+      .mk-benefits-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 18px; margin-top: 48px;
+      }
+      .mk-benefit {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg); padding: 28px;
+        transition: all 0.35s var(--ease-out);
+      }
+      .mk-benefit::before {
+        content: ''; position: absolute; inset: 0;
+        border-radius: var(--radius-lg);
+        background: var(--glass-shine); pointer-events: none;
+      }
+      .mk-benefit:hover {
+        border-color: rgba(167, 139, 250, 0.2);
+        box-shadow: var(--shadow-glow);
+        transform: translateY(-3px);
+      }
+      .mk-benefit-icon {
+        width: 44px; height: 44px; border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, rgba(167, 139, 250, 0.12), rgba(34, 211, 238, 0.08));
+        border: 1px solid rgba(167, 139, 250, 0.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; margin-bottom: 16px;
+      }
+      .mk-benefit h3 {
+        font-size: 1.05rem; font-weight: 650; color: var(--text);
+        margin-bottom: 10px;
+      }
+      .mk-benefit p { font-size: 0.85rem; line-height: 1.7; color: var(--muted); }
+
+      /* Pricing */
+      .mk-pricing-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px; margin-top: 48px; max-width: 750px;
+      }
+      .mk-price-card {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(24px) saturate(1.3);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-xl); padding: 36px;
+        transition: all 0.4s var(--ease-out);
+      }
+      .mk-price-card::before {
+        content: ''; position: absolute; inset: 0;
+        border-radius: var(--radius-xl);
+        background: var(--glass-shine); pointer-events: none;
+      }
+      .mk-price-card:hover {
+        border-color: rgba(167, 139, 250, 0.2);
+        box-shadow: var(--shadow-glow-hover);
+        transform: translateY(-4px);
+      }
+      .mk-price-card.featured {
+        border-color: rgba(167, 139, 250, 0.3);
+        box-shadow: var(--shadow-glow);
+      }
+      .mk-price-card.featured::after {
+        content: 'Most popular'; position: absolute; top: -12px; right: 24px;
+        font-size: 0.72rem; font-weight: 700; color: #000;
+        background: linear-gradient(135deg, var(--accent-cyan), var(--primary));
+        padding: 4px 16px; border-radius: var(--radius-full);
+      }
+      .mk-price-tier {
+        font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+        letter-spacing: 0.18em; color: var(--muted);
+      }
+      .mk-price-amount {
+        display: flex; align-items: baseline; gap: 6px; margin-top: 14px;
+      }
+      .mk-price-amount strong {
+        font-size: 3rem; font-weight: 800;
+        background: linear-gradient(135deg, var(--text), var(--accent-cyan));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .mk-price-amount span { font-size: 0.9rem; color: var(--muted); }
+      .mk-price-desc {
+        font-size: 0.85rem; color: var(--muted); line-height: 1.7;
+        margin-top: 12px;
+      }
+      .mk-price-features {
+        list-style: none; padding: 0; margin: 24px 0 0;
+        display: flex; flex-direction: column; gap: 10px;
+      }
+      .mk-price-features li {
+        font-size: 0.85rem; color: var(--text-secondary);
+        display: flex; align-items: center; gap: 10px;
+      }
+      .mk-price-features li::before {
+        content: ''; width: 18px; height: 18px; flex-shrink: 0;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.15), rgba(34, 211, 238, 0.1));
+        border: 1px solid rgba(52, 211, 153, 0.2);
+        display: flex; align-items: center; justify-content: center;
+        /* checkmark via bg image */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2334d399'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: center; background-size: 12px;
+      }
+      .mk-price-btn {
+        display: block; width: 100%; margin-top: 28px;
+        font-size: 0.9rem; font-weight: 600;
+        text-decoration: none; text-align: center;
+        padding: 14px; border-radius: var(--radius-full);
+        transition: all 0.3s var(--ease-out);
+      }
+      .mk-price-btn.outline {
+        color: var(--text); background: transparent;
+        border: 1px solid var(--border);
+      }
+      .mk-price-btn.outline:hover {
+        background: rgba(255, 255, 255, 0.05); border-color: var(--border-hover);
+        color: var(--text);
+      }
+      .mk-price-btn.solid {
+        color: #000; background: linear-gradient(135deg, var(--accent-cyan), var(--primary));
+        border: none;
+        box-shadow: 0 4px 20px rgba(34, 211, 238, 0.2);
+      }
+      .mk-price-btn.solid:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(34, 211, 238, 0.3);
+        color: #000;
+      }
+
+      /* FAQ */
+      .mk-faq-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 18px; margin-top: 48px;
+      }
+      .mk-faq {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg); padding: 28px;
+        transition: all 0.3s var(--ease-out);
+      }
+      .mk-faq::before {
+        content: ''; position: absolute; inset: 0;
+        border-radius: var(--radius-lg);
+        background: var(--glass-shine); pointer-events: none;
+      }
+      .mk-faq:hover {
+        border-color: rgba(34, 211, 238, 0.15);
+        box-shadow: var(--shadow-glow);
+      }
+      .mk-faq h3 {
+        font-size: 1rem; font-weight: 650; color: var(--text);
+        margin-bottom: 10px;
+      }
+      .mk-faq p { font-size: 0.85rem; line-height: 1.7; color: var(--muted); }
+
+      /* CTA */
+      .mk-cta-box {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(24px) saturate(1.3);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-xl); padding: 48px;
+        overflow: hidden;
+      }
+      .mk-cta-box::before {
+        content: ''; position: absolute; inset: 0;
+        background:
+          radial-gradient(ellipse 50% 60% at 10% 100%, rgba(167, 139, 250, 0.12), transparent 50%),
+          radial-gradient(ellipse 40% 50% at 90% 0%, rgba(34, 211, 238, 0.1), transparent 45%);
+        pointer-events: none;
+      }
+      .mk-cta-box::after {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--accent-cyan), var(--primary), transparent);
+        opacity: 0.5;
+      }
+      .mk-cta-inner {
+        position: relative; z-index: 1;
+        display: flex; flex-wrap: wrap; gap: 32px;
+        align-items: flex-end; justify-content: space-between;
+      }
+
+      /* Footer */
+      .mk-footer {
+        padding: 32px 24px; text-align: center;
+        font-size: 0.8rem; color: var(--muted);
+        border-top: 1px solid var(--border);
+      }
+      .mk-footer a { color: var(--text-secondary); }
+
+      /* Mobile */
+      @media (max-width: 768px) {
+        .mk-nav-links { display: none; }
+        .mk-hero { padding: 60px 20px 40px; }
+        .mk-hero-actions { flex-direction: column; align-items: center; }
+        .mk-cta-inner { flex-direction: column; align-items: flex-start; }
+        .mk-cta-box { padding: 32px 24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="mk-nav">
+      <div class="mk-nav-inner">
+        <a href="/" class="mk-logo">LeadRelay</a>
+        <ul class="mk-nav-links">
+          <li><a href="#how-it-works">How It Works</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+        <div class="mk-nav-actions">
+          <a href="/login" class="mk-btn-login">Sign In</a>
+          <a href="/book-demo" class="mk-btn-cta">Book a Demo</a>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <!-- Hero -->
+      <section class="mk-hero">
+        <div class="mk-hero-inner">
+          <div class="mk-hero-badge">AI lead response for home service businesses</div>
+          <h1>An AI employee that handles your leads while you sleep.</h1>
+          <p class="mk-hero-sub">LeadRelay reads every incoming inquiry, understands what the customer needs, sends a personalized reply, and alerts you only when it matters. Your leads never go cold again.</p>
+          <div class="mk-hero-actions">
+            <a href="#pricing" class="mk-btn-hero-primary">See Pricing</a>
+            <a href="#how-it-works" class="mk-btn-hero-secondary">How It Works</a>
+          </div>
+          <div class="mk-hero-pills">
+            <span class="mk-hero-pill">Set up in 48 hours</span>
+            <span class="mk-hero-pill">AI reads and replies 24/7</span>
+            <span class="mk-hero-pill">You stay in control</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Demo Cards -->
+      <section style="padding-bottom: 40px;">
+        <div class="mk-demo-grid">
+          <div class="mk-demo-card">
+            <div class="mk-demo-head">
+              <span>2:14 AM — AI handled</span>
+              <span class="mk-demo-tag green">Auto-replied</span>
+            </div>
+            <h3>Quote for hot water tank replacement</h3>
+            <p><strong>AI reply sent:</strong> "Hi Daniel, thanks for reaching out about the hot water tank. We'd be happy to take a look — could you share your address and a photo of the current unit? We'll get a quote over to you."</p>
+          </div>
+
+          <div class="mk-demo-card">
+            <div class="mk-demo-head">
+              <span>2:47 AM — Owner alerted</span>
+              <span class="mk-demo-tag red">Urgent</span>
+            </div>
+            <h3>Burst pipe flooding basement</h3>
+            <p><strong>AI action:</strong> Texted owner immediately. Replied to customer confirming urgency and asking for address.</p>
+          </div>
+
+          <div class="mk-demo-card">
+            <div class="mk-demo-head">
+              <span>7:00 AM — Morning digest</span>
+            </div>
+            <h3>Good morning — here's your overnight summary.</h3>
+            <p>4 new leads. 2 auto-replied. 1 urgent (you were alerted). 1 spam filtered.<br><span style="color: var(--muted);">0 leads waiting for your review.</span></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- How It Works -->
+      <section id="how-it-works" class="mk-section">
+        <div class="mk-section-inner">
+          <p class="mk-section-kicker">How it works</p>
+          <h2 class="mk-section-title">You forward your leads. AI does the rest.</h2>
+          <div class="mk-steps-grid">
+            <div class="mk-step">
+              <div class="mk-step-num">1</div>
+              <h3>Connect your leads</h3>
+              <p>Forward your business email, connect your web forms, or send leads via webhook. We set this up for you.</p>
+            </div>
+            <div class="mk-step">
+              <div class="mk-step-num">2</div>
+              <h3>AI reads and classifies</h3>
+              <p>The AI understands what the customer needs — quote request, emergency, general question, or spam — and extracts their details.</p>
+            </div>
+            <div class="mk-step">
+              <div class="mk-step-num">3</div>
+              <h3>AI replies instantly</h3>
+              <p>A personalized, professional reply goes out in minutes — not hours. The customer knows you're on it.</p>
+            </div>
+            <div class="mk-step">
+              <div class="mk-step-num">4</div>
+              <h3>You get the summary</h3>
+              <p>Wake up to a morning digest: what was handled, what's urgent, and what needs your attention. That's it.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Benefits -->
+      <section class="mk-section" style="background: rgba(8, 8, 16, 0.5);">
+        <div class="mk-section-inner">
+          <p class="mk-section-kicker">Why it matters</p>
+          <h2 class="mk-section-title">Every hour a lead sits unanswered, the chance of winning that job drops.</h2>
+          <div class="mk-benefits-grid">
+            <div class="mk-benefit">
+              <div class="mk-benefit-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <h3>Replies in minutes, not hours</h3>
+              <p>Your AI employee responds to leads 24/7 — weekends, holidays, 2am. The customer hears back fast.</p>
+            </div>
+            <div class="mk-benefit">
+              <div class="mk-benefit-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--error-text)" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <h3>Emergencies get flagged</h3>
+              <p>Burst pipe at midnight? You get alerted immediately. The AI knows the difference between urgent and routine.</p>
+            </div>
+            <div class="mk-benefit">
+              <div class="mk-benefit-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+              </div>
+              <h3>Spam disappears</h3>
+              <p>SEO pitches, marketing spam, and junk get filtered automatically. You only see real customers.</p>
+            </div>
+            <div class="mk-benefit">
+              <div class="mk-benefit-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success-text)" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </div>
+              <h3>Nothing falls through</h3>
+              <p>Every lead is tracked, replied to, and followed up on. No more "sorry I missed your email."</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pricing -->
+      <section id="pricing" class="mk-section">
+        <div class="mk-section-inner">
+          <p class="mk-section-kicker">Pricing</p>
+          <h2 class="mk-section-title">One missed job pays for a year of LeadRelay.</h2>
+          <div class="mk-pricing-grid">
+            <div class="mk-price-card">
+              <p class="mk-price-tier">Starter</p>
+              <div class="mk-price-amount">
+                <strong>$49</strong>
+                <span>/month</span>
+              </div>
+              <p class="mk-price-desc">For solo operators and small crews who want leads handled automatically.</p>
+              <ul class="mk-price-features">
+                <li>AI lead classification and reply</li>
+                <li>Email and web form intake</li>
+                <li>Urgent job alerts</li>
+                <li>Morning digest summary</li>
+                <li>Spam filtering</li>
+                <li>Up to 50 leads/month</li>
+              </ul>
+              <a href="#" class="mk-price-btn outline">Get Started</a>
+            </div>
+
+            <div class="mk-price-card featured">
+              <p class="mk-price-tier">Pro</p>
+              <div class="mk-price-amount">
+                <strong>$99</strong>
+                <span>/month</span>
+              </div>
+              <p class="mk-price-desc">For growing teams with higher volume and multiple lead sources.</p>
+              <ul class="mk-price-features">
+                <li>Everything in Starter</li>
+                <li>Unlimited leads</li>
+                <li>Multiple intake sources</li>
+                <li>Follow-up scheduling</li>
+                <li>Review dashboard</li>
+                <li>Priority setup support</li>
+              </ul>
+              <a href="#" class="mk-price-btn solid">Get Started</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAQ -->
+      <section id="faq" class="mk-section" style="background: rgba(8, 8, 16, 0.5);">
+        <div class="mk-section-inner">
+          <p class="mk-section-kicker">FAQ</p>
+          <h2 class="mk-section-title">Common questions.</h2>
+          <div class="mk-faq-grid">
+            <div class="mk-faq">
+              <h3>Will the AI reply without my approval?</h3>
+              <p>Only for routine leads it's confident about. Urgent or unusual leads get flagged for your review. You can also turn on manual review for everything.</p>
+            </div>
+            <div class="mk-faq">
+              <h3>What if the AI gets something wrong?</h3>
+              <p>The AI never promises pricing, schedules appointments, or commits to timelines. It sends a professional first response and gathers info. You handle the actual business decisions.</p>
+            </div>
+            <div class="mk-faq">
+              <h3>Do I need to give you my email password?</h3>
+              <p>No. You can forward leads to LeadRelay, or we connect to your forms and ad platforms directly. IMAP polling is available but optional.</p>
+            </div>
+            <div class="mk-faq">
+              <h3>Who is this for?</h3>
+              <p>Plumbing, HVAC, electrical, roofing, garage doors, restoration, and similar local service businesses that get leads by email, web form, or ad platforms.</p>
+            </div>
+            <div class="mk-faq">
+              <h3>How long does setup take?</h3>
+              <p>We handle everything. Most businesses are live within 48 hours — we configure your intake sources, tune the AI to your services, and test it before going live.</p>
+            </div>
+            <div class="mk-faq">
+              <h3>Can I cancel anytime?</h3>
+              <p>Yes. No contracts, no setup fees. Cancel anytime from your billing page.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <section class="mk-section">
+        <div class="mk-section-inner">
+          <div class="mk-cta-box">
+            <div class="mk-cta-inner">
+              <div style="max-width: 550px;">
+                <p class="mk-section-kicker">Ready to try it</p>
+                <h2 class="mk-section-title" style="margin-top: 10px;">See LeadRelay handle your actual leads.</h2>
+                <p style="font-size: 0.9rem; color: var(--muted); margin-top: 12px; line-height: 1.7;">Book a 15-minute demo. We'll show you the AI in action with real lead scenarios from your trade.</p>
+              </div>
+              <a href="/book-demo" class="mk-btn-hero-primary">Book a Demo</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mk-footer">
+      <p>&copy; 2026 LeadRelay. <a href="/login">Sign in</a> &middot; <a href="/book-demo">Book a demo</a></p>
+    </footer>
+  </body>
+</html>

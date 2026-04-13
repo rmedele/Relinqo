@@ -1,0 +1,10 @@
+[Unit]
+Description=Run LeadRelay inbox polling every minute
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec=60s
+Unit=leadrelay-inbox-poll.service
+
+[Install]
+WantedBy=timers.target

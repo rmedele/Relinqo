@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay Sign In</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body class="auth-page">
+    <div class="auth-shell">
+      <div class="auth-grid">
+        <section class="auth-hero">
+          <div class="hero-badge-row">
+            <p class="eyebrow">LeadRelay</p>
+            <span class="hero-badge">Client access</span>
+          </div>
+          <h1 class="gradient-text">Your leads are waiting. Sign in to take action.</h1>
+          <p class="subhead">Built for managed lead-response pilots in the trades. Review leads, send replies, and stay on top of callbacks and follow-ups.</p>
+
+          <div class="hero-story-grid">
+            <article class="hero-story-card accent-orange">
+              <span class="story-label">Existing clients</span>
+              <strong>Use your provisioned workspace login to access your portal and lead queue.</strong>
+            </article>
+            <article class="hero-story-card accent-blue">
+              <span class="story-label">Admin access</span>
+              <strong>Access the full review queue, reporting, and workspace management tools.</strong>
+            </article>
+          </div>
+
+          <div class="hero-proof-list">
+            <div>
+              <span class="proof-kicker">New here?</span>
+              <p>Book a demo first. Once your pilot is provisioned, you'll receive workspace credentials.</p>
+              <div style="margin-top:14px;"><a href="/book-demo" class="ghost-link compact-link">Book a Demo</a></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="auth-card">
+          <div class="auth-card-header">
+            <div>
+              <p class="eyebrow">Sign In</p>
+              <h2>Welcome back</h2>
+            </div>
+            <a href="/register" class="ghost-link compact-link">Create Account</a>
+          </div>
+
+          <div id="loginError" class="inline-alert error hidden"></div>
+
+          <form id="loginForm" class="editorial-form auth-form">
+            <label class="form-field">
+              <span class="field-label">Email address</span>
+              <input name="email" type="email" class="filter-input" placeholder="owner@business.com" autocomplete="email" required />
+            </label>
+
+            <label class="form-field">
+              <span class="field-label">Password</span>
+              <input name="password" type="password" class="filter-input" placeholder="Your password" autocomplete="current-password" required />
+            </label>
+
+            <div class="auth-form-footer">
+              <div class="auth-links-row">
+                <a href="/" class="ghost-link compact-link">Back to Site</a>
+                <a href="/forgot-password" class="ghost-link compact-link">Forgot Password?</a>
+              </div>
+              <button type="submit" class="primary-btn primary-btn-strong">Sign In</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const errEl = document.getElementById('loginError');
+        const btn = form.querySelector('button[type="submit"]');
+        errEl.classList.add('hidden');
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+
+        try {
+          const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: form.email.value,
+              password: form.password.value,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errEl.textContent = data.detail || 'Login failed';
+            errEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+            return;
+          }
+          window.location.href = '/review';
+        } catch (err) {
+          errEl.textContent = 'Network error. Please try again.';
+          errEl.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Sign In';
+        }
+      });
+    </script>
+  </body>
+</html>

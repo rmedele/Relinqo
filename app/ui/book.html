@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book an Appointment</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+    <style>
+      body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 2rem 1rem; }
+
+      .book-shell { max-width: 720px; width: 100%; }
+      .book-header { text-align: center; margin-bottom: 2rem; }
+      .book-header h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+      .book-header .muted { color: var(--muted); }
+
+      .book-card { padding: 2rem; }
+
+      /* Day columns */
+      .slots-container { display: flex; flex-direction: column; gap: 1.5rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem; }
+      .day-group h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 0.5rem; }
+      .day-slots { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .slot-btn {
+        padding: 0.45rem 0.9rem; border-radius: 6px; font-size: 0.8rem;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+        color: var(--text); cursor: pointer; transition: all 0.15s;
+      }
+      .slot-btn:hover { border-color: var(--primary); background: rgba(99,102,241,0.1); }
+      .slot-btn.selected { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+      /* Booking form */
+      .book-form { display: none; flex-direction: column; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+      .book-form.active { display: flex; }
+      .book-form label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--muted); }
+      .book-form input, .book-form textarea {
+        padding: 0.6rem 0.75rem; border-radius: 6px; font-size: 0.9rem;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+        color: var(--text); font-family: inherit;
+      }
+      .book-form input:focus, .book-form textarea:focus { outline: none; border-color: var(--primary); }
+      .book-form textarea { resize: vertical; min-height: 60px; }
+      .selected-slot { font-size: 0.9rem; color: var(--primary); font-weight: 600; }
+
+      /* States */
+      .state-loading, .state-empty, .state-success, .state-error { text-align: center; padding: 2rem 0; }
+      .state-success h2 { color: var(--success, #22c55e); }
+      .state-error h2 { color: var(--danger, #ef4444); }
+      .hidden { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <div class="book-shell">
+      <div class="book-header">
+        <h1 id="businessName">Book an Appointment</h1>
+        <p class="muted" id="bookSubtext">Pick a time that works for you</p>
+      </div>
+
+      <div class="card book-card">
+        <!-- Loading -->
+        <div id="stateLoading" class="state-loading">
+          <div class="loading-spinner"></div>
+          <p class="muted" style="margin-top:1rem">Loading available times...</p>
+        </div>
+
+        <!-- No slots -->
+        <div id="stateEmpty" class="state-empty hidden">
+          <h2>No availability right now</h2>
+          <p class="muted">Please call us directly to schedule.</p>
+          <p id="emptyPhone" class="muted"></p>
+        </div>
+
+        <!-- Slot picker -->
+        <div id="statePicker" class="hidden">
+          <div id="slotsContainer" class="slots-container"></div>
+
+          <form id="bookForm" class="book-form" onsubmit="return submitBooking(event)">
+            <p class="selected-slot">Selected: <span id="selectedSlotText"></span></p>
+            <label>
+              Name *
+              <input type="text" id="custName" required placeholder="Your full name" />
+            </label>
+            <label>
+              Email *
+              <input type="email" id="custEmail" required placeholder="you@example.com" />
+            </label>
+            <label>
+              Phone
+              <input type="tel" id="custPhone" placeholder="(780) 555-0100" />
+            </label>
+            <label>
+              Notes
+              <textarea id="custNotes" placeholder="Anything we should know before the appointment?"></textarea>
+            </label>
+            <button type="submit" class="primary-btn" id="submitBtn">Confirm Booking</button>
+          </form>
+        </div>
+
+        <!-- Success -->
+        <div id="stateSuccess" class="state-success hidden">
+          <h2>Booking Confirmed</h2>
+          <p id="successDetails" class="muted"></p>
+          <p class="muted" style="margin-top:1rem">We've sent a confirmation to your email. See you then!</p>
+        </div>
+
+        <!-- Error -->
+        <div id="stateError" class="state-error hidden">
+          <h2>Something went wrong</h2>
+          <p id="errorMessage" class="muted"></p>
+          <button class="ghost-btn" onclick="location.reload()" style="margin-top:1rem">Try Again</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const token = window.location.pathname.split('/book/')[1];
+      let selectedSlot = null;
+
+      async function init() {
+        try {
+          // Fetch business info + slots in parallel
+          const [infoRes, slotsRes] = await Promise.all([
+            fetch(`/api/public/book/${token}/info`),
+            fetch(`/api/public/book/${token}/slots`),
+          ]);
+
+          if (!infoRes.ok || !slotsRes.ok) {
+            showError('This booking link is no longer valid.');
+            return;
+          }
+
+          const info = await infoRes.json();
+          const slots = await slotsRes.json();
+
+          document.getElementById('businessName').textContent = `Book with ${info.business_name}`;
+          if (info.lead_sender_name) {
+            document.getElementById('bookSubtext').textContent = `Hi ${info.lead_sender_name} \u2014 pick a time that works for you`;
+          }
+
+          if (!slots.length) {
+            document.getElementById('stateLoading').classList.add('hidden');
+            document.getElementById('stateEmpty').classList.remove('hidden');
+            if (info.business_phone) {
+              document.getElementById('emptyPhone').textContent = `Call: ${info.business_phone}`;
+            }
+            return;
+          }
+
+          renderSlots(slots);
+          document.getElementById('stateLoading').classList.add('hidden');
+          document.getElementById('statePicker').classList.remove('hidden');
+
+          // Pre-fill name/email if available
+          if (info.lead_sender_name) {
+            document.getElementById('custName').value = info.lead_sender_name;
+          }
+        } catch {
+          showError('Failed to load booking information. Please try again.');
+        }
+      }
+
+      function renderSlots(slots) {
+        // Group by date
+        const byDay = {};
+        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        for (const slot of slots) {
+          const d = new Date(slot.slot_start);
+          const key = d.toISOString().slice(0, 10);
+          if (!byDay[key]) {
+            byDay[key] = { label: `${dayNames[d.getDay()]}, ${monthNames[d.getMonth()]} ${d.getDate()}`, slots: [] };
+          }
+          byDay[key].slots.push(slot);
+        }
+
+        const container = document.getElementById('slotsContainer');
+        container.innerHTML = '';
+
+        for (const [dateKey, group] of Object.entries(byDay)) {
+          const dayDiv = document.createElement('div');
+          dayDiv.className = 'day-group';
+          dayDiv.innerHTML = `<h3>${group.label}</h3><div class="day-slots"></div>`;
+          const slotsDiv = dayDiv.querySelector('.day-slots');
+
+          for (const slot of group.slots) {
+            const d = new Date(slot.slot_start);
+            const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'slot-btn';
+            btn.textContent = timeStr;
+            btn.addEventListener('click', () => selectSlot(slot, btn, group.label, timeStr));
+            slotsDiv.appendChild(btn);
+          }
+
+          container.appendChild(dayDiv);
+        }
+      }
+
+      function selectSlot(slot, btn, dayLabel, timeStr) {
+        selectedSlot = slot;
+        document.querySelectorAll('.slot-btn.selected').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        document.getElementById('selectedSlotText').textContent = `${dayLabel} at ${timeStr}`;
+        document.getElementById('bookForm').classList.add('active');
+      }
+
+      async function submitBooking(e) {
+        e.preventDefault();
+        if (!selectedSlot) return;
+
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Booking...';
+
+        try {
+          const res = await fetch(`/api/public/book/${token}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              slot_start: selectedSlot.slot_start,
+              customer_name: document.getElementById('custName').value.trim(),
+              customer_email: document.getElementById('custEmail').value.trim(),
+              customer_phone: document.getElementById('custPhone').value.trim() || null,
+              customer_notes: document.getElementById('custNotes').value.trim() || null,
+            }),
+          });
+
+          if (res.ok) {
+            const booking = await res.json();
+            const d = new Date(booking.slot_start);
+            document.getElementById('successDetails').textContent =
+              `${d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+            document.getElementById('statePicker').classList.add('hidden');
+            document.getElementById('stateSuccess').classList.remove('hidden');
+          } else {
+            const err = await res.json();
+            showError(err.detail || 'Booking failed. Please try again.');
+          }
+        } catch {
+          showError('Network error. Please check your connection and try again.');
+        }
+      }
+
+      function showError(msg) {
+        document.getElementById('stateLoading').classList.add('hidden');
+        document.getElementById('statePicker').classList.add('hidden');
+        document.getElementById('stateError').classList.remove('hidden');
+        document.getElementById('errorMessage').textContent = msg;
+      }
+
+      init();
+    </script>
+  </body>
+</html>

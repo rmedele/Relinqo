@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay Analytics</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+    <style>
+      .analytics-shell {
+        max-width: 1280px; margin: 0 auto; padding: 28px 24px 80px;
+        animation: fadeIn 0.4s var(--ease-out);
+      }
+      .analytics-header {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 32px;
+        animation: fadeInDown 0.5s var(--ease-out);
+      }
+      .analytics-header h1 {
+        font-size: 1.75rem; font-weight: 750; letter-spacing: -0.035em;
+        background: linear-gradient(135deg, var(--text) 0%, var(--accent-cyan) 50%, var(--primary) 100%);
+        background-size: 200% auto;
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .analytics-nav { display: flex; gap: 10px; align-items: center; }
+      .analytics-nav a {
+        color: var(--text-secondary); text-decoration: none; font-size: 0.82rem;
+        font-weight: 500; padding: 8px 16px;
+        border: 1px solid var(--border); border-radius: var(--radius-full);
+        transition: all 0.25s var(--ease-out);
+      }
+      .analytics-nav a:hover {
+        color: var(--text); border-color: var(--border-hover);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      /* KPIs */
+      .kpi-row {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+        gap: 14px; margin-bottom: 28px;
+      }
+      .kpi-card {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(24px) saturate(1.3);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md); padding: 22px;
+        transition: all 0.3s var(--ease-out);
+        animation: fadeInUp 0.5s var(--ease-out) both;
+      }
+      .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+      .kpi-card:nth-child(2) { animation-delay: 0.1s; }
+      .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+      .kpi-card:nth-child(4) { animation-delay: 0.2s; }
+      .kpi-card:nth-child(5) { animation-delay: 0.25s; }
+      .kpi-card:nth-child(6) { animation-delay: 0.3s; }
+      .kpi-card::before {
+        content: ''; position: absolute; inset: 0;
+        border-radius: var(--radius-md);
+        background: var(--glass-shine); pointer-events: none;
+      }
+      .kpi-card:hover {
+        border-color: rgba(167, 139, 250, 0.2);
+        box-shadow: var(--shadow-glow);
+        transform: translateY(-3px);
+      }
+      .kpi-label {
+        font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+        letter-spacing: 0.12em; font-weight: 600; margin-bottom: 6px;
+      }
+      .kpi-value {
+        font-size: 1.6rem; font-weight: 750;
+        background: linear-gradient(135deg, var(--text), var(--accent-cyan));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .kpi-sub { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+
+      /* Charts grid */
+      .charts-row {
+        display: grid; grid-template-columns: 1fr 1fr;
+        gap: 18px; margin-bottom: 18px;
+      }
+      .charts-row.full { grid-template-columns: 1fr; }
+      .chart-box {
+        position: relative;
+        background: var(--glass); backdrop-filter: blur(24px) saturate(1.3);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg); padding: 28px;
+        transition: all 0.3s var(--ease-out);
+        animation: fadeInUp 0.5s 0.2s var(--ease-out) both;
+      }
+      .chart-box::before {
+        content: ''; position: absolute; inset: 0;
+        border-radius: var(--radius-lg);
+        background: var(--glass-shine); pointer-events: none;
+      }
+      .chart-box:hover {
+        border-color: rgba(34, 211, 238, 0.15);
+        box-shadow: var(--shadow-glow);
+      }
+      .chart-box h3 {
+        font-size: 0.92rem; font-weight: 650; margin-bottom: 18px;
+        color: var(--text); position: relative;
+      }
+
+      /* Response time chart */
+      .rt-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; position: relative; }
+      .rt-bar {
+        flex: 1; min-width: 4px; border-radius: 3px 3px 0 0;
+        background: linear-gradient(180deg, var(--accent-blue), rgba(96, 165, 250, 0.3));
+        transition: all 0.2s;
+      }
+      .rt-bar:hover {
+        background: linear-gradient(180deg, var(--primary), rgba(167, 139, 250, 0.4));
+        box-shadow: 0 0 8px rgba(167, 139, 250, 0.2);
+      }
+      .rt-bar-empty { background: rgba(255, 255, 255, 0.03); }
+
+      /* Hourly chart */
+      .hourly-chart { display: flex; align-items: flex-end; gap: 2px; height: 100px; position: relative; }
+      .hourly-bar {
+        flex: 1; min-width: 4px; border-radius: 3px 3px 0 0;
+        background: linear-gradient(180deg, var(--accent-orange), rgba(251, 146, 60, 0.3));
+        transition: all 0.2s;
+      }
+      .hourly-bar:hover {
+        background: linear-gradient(180deg, var(--accent-cyan), rgba(34, 211, 238, 0.4));
+        box-shadow: 0 0 8px rgba(34, 211, 238, 0.15);
+      }
+      .hourly-labels {
+        display: flex; justify-content: space-between;
+        font-size: 0.65rem; color: var(--muted); margin-top: 8px;
+      }
+
+      /* Weekday chart */
+      .weekday-chart { display: flex; flex-direction: column; gap: 8px; }
+      .wd-row { display: flex; align-items: center; gap: 12px; }
+      .wd-label { width: 80px; font-size: 0.82rem; color: var(--text-secondary); text-align: right; font-weight: 500; }
+      .wd-track {
+        flex: 1; height: 28px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px; overflow: hidden;
+        border: 1px solid var(--border);
+      }
+      .wd-fill {
+        height: 100%; border-radius: 8px;
+        transition: width 0.4s var(--ease-out);
+      }
+      .wd-count { width: 32px; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+
+      /* Source performance table */
+      .perf-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; position: relative; }
+      .perf-table th {
+        text-align: left; color: var(--muted); font-weight: 600; font-size: 0.72rem;
+        text-transform: uppercase; letter-spacing: 0.08em;
+        padding: 10px 14px; border-bottom: 1px solid var(--border);
+      }
+      .perf-table td {
+        padding: 12px 14px; border-bottom: 1px solid var(--border);
+        color: var(--text-secondary); transition: background 0.15s;
+      }
+      .perf-table tr:hover td { background: rgba(167, 139, 250, 0.04); }
+      .perf-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+      .perf-rate {
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* Top senders */
+      .sender-list { display: flex; flex-direction: column; gap: 4px; position: relative; }
+      .sender-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 0; border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+      }
+      .sender-row:last-child { border-bottom: none; }
+      .sender-row:hover { background: rgba(167, 139, 250, 0.03); }
+      .sender-name { font-size: 0.88rem; color: var(--text); font-weight: 500; }
+      .sender-email { font-size: 0.75rem; color: var(--muted); }
+      .sender-count {
+        font-size: 0.88rem; font-weight: 700;
+        background: linear-gradient(135deg, var(--accent-cyan), var(--primary));
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      /* Category trend */
+      .cat-trend { display: flex; align-items: flex-end; gap: 2px; height: 120px; position: relative; }
+      .cat-stack { flex: 1; display: flex; flex-direction: column-reverse; min-width: 4px; }
+      .cat-seg { min-height: 1px; border-radius: 1px; }
+      .cat-legend { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
+      .cat-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--muted); }
+      .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+      /* Period select */
+      .period-select {
+        background: var(--glass); color: var(--text);
+        border: 1px solid var(--border); border-radius: var(--radius-full);
+        padding: 8px 16px; font-size: 0.82rem; cursor: pointer;
+        backdrop-filter: blur(16px);
+        transition: border-color 0.2s;
+      }
+      .period-select:hover { border-color: var(--border-hover); }
+      .period-select:focus { outline: none; border-color: var(--border-active); }
+
+      @media (max-width: 768px) {
+        .charts-row { grid-template-columns: 1fr; }
+        .kpi-row { grid-template-columns: repeat(2, 1fr); }
+        .analytics-header { flex-direction: column; gap: 16px; }
+        .analytics-shell { padding: 20px 16px 60px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="analytics-shell">
+      <div class="analytics-header">
+        <div>
+          <p class="eyebrow" style="color: var(--accent-cyan);">LeadRelay</p>
+          <h1>Analytics</h1>
+        </div>
+        <div class="analytics-nav">
+          <select id="periodSelect" class="period-select">
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30" selected>Last 30 days</option>
+            <option value="60">Last 60 days</option>
+            <option value="90">Last 90 days</option>
+          </select>
+          <a href="/review">Review Queue</a>
+          <a href="/settings">Settings</a>
+        </div>
+      </div>
+
+      <!-- KPI Row -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Leads</div>
+          <div class="kpi-value" id="kpiTotal">--</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Win Rate</div>
+          <div class="kpi-value" id="kpiWinRate">--</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Response</div>
+          <div class="kpi-value" id="kpiAvgResponse">--</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">AI Confidence</div>
+          <div class="kpi-value" id="kpiConfidence">--</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Busiest Day</div>
+          <div class="kpi-value" id="kpiBusiestDay">--</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Top Source</div>
+          <div class="kpi-value" id="kpiTopSource">--</div>
+        </div>
+      </div>
+
+      <!-- Response Time Trend + Hourly -->
+      <div class="charts-row">
+        <div class="chart-box">
+          <h3>Response Time Trend <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">(avg minutes)</span></h3>
+          <div id="responseTimeChart" class="rt-chart"></div>
+        </div>
+        <div class="chart-box">
+          <h3>Leads by Hour of Day</h3>
+          <div id="hourlyChart" class="hourly-chart"></div>
+          <div class="hourly-labels">
+            <span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>11pm</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekday + Category Trend -->
+      <div class="charts-row">
+        <div class="chart-box">
+          <h3>Leads by Day of Week</h3>
+          <div id="weekdayChart" class="weekday-chart"></div>
+        </div>
+        <div class="chart-box">
+          <h3>Category Trend</h3>
+          <div id="categoryTrendChart" class="cat-trend"></div>
+          <div id="categoryTrendLegend" class="cat-legend"></div>
+        </div>
+      </div>
+
+      <!-- Source Performance -->
+      <div class="charts-row full">
+        <div class="chart-box">
+          <h3>Source Performance</h3>
+          <table class="perf-table">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th class="num">Leads</th>
+                <th class="num">Replied</th>
+                <th class="num">Won</th>
+                <th class="num">Lost</th>
+                <th class="num">Conv. Rate</th>
+              </tr>
+            </thead>
+            <tbody id="sourceTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Top Senders -->
+      <div class="charts-row full">
+        <div class="chart-box">
+          <h3>Top Senders</h3>
+          <div id="topSenders" class="sender-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const periodSelect = document.getElementById('periodSelect');
+
+      function titleCase(s) {
+        return (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      }
+
+      const catColors = {
+        urgent_request: 'var(--error-text)',
+        quote_request: 'var(--accent-orange)',
+        general_inquiry: 'var(--accent-blue)',
+        existing_customer: 'var(--accent-lilac)',
+      };
+
+      const wdColors = [
+        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
+        'linear-gradient(135deg, var(--accent-orange), var(--accent-pink))',
+        'linear-gradient(135deg, var(--accent-orange), var(--accent-pink))',
+      ];
+
+      async function loadAnalytics() {
+        const days = periodSelect.value;
+        try {
+          const [statsRes, analyticsRes] = await Promise.all([
+            fetch('/stats'),
+            fetch(`/stats/analytics?days=${days}`),
+          ]);
+          if (!statsRes.ok || !analyticsRes.ok) return;
+          const stats = await statsRes.json();
+          const data = await analyticsRes.json();
+          renderKPIs(stats, data);
+          renderResponseTimeChart(data.response_time_trend);
+          renderHourlyChart(data.hourly_distribution);
+          renderWeekdayChart(data.weekday_distribution);
+          renderCategoryTrend(data.category_trend);
+          renderSourceTable(data.source_performance);
+          renderTopSenders(data.top_senders);
+        } catch (e) {
+          console.error('Failed to load analytics', e);
+        }
+      }
+
+      function renderKPIs(stats, data) {
+        document.getElementById('kpiTotal').textContent = stats.total_leads;
+        document.getElementById('kpiWinRate').textContent = stats.close_rate != null ? `${stats.close_rate}%` : '--';
+        document.getElementById('kpiAvgResponse').textContent = stats.avg_response_minutes != null ? `${stats.avg_response_minutes}m` : '--';
+        document.getElementById('kpiConfidence').textContent = data.avg_confidence != null ? `${Math.round(data.avg_confidence * 100)}%` : '--';
+
+        const wd = data.weekday_distribution;
+        const busiestDay = Object.entries(wd).sort((a, b) => b[1] - a[1])[0];
+        document.getElementById('kpiBusiestDay').textContent = busiestDay ? busiestDay[0].slice(0, 3) : '--';
+
+        const topSource = data.source_performance.sort((a, b) => b.count - a.count)[0];
+        document.getElementById('kpiTopSource').textContent = topSource ? titleCase(topSource.source) : '--';
+      }
+
+      function renderResponseTimeChart(trend) {
+        const container = document.getElementById('responseTimeChart');
+        const values = trend.map(d => d.avg_minutes || 0);
+        const maxVal = Math.max(1, ...values);
+
+        container.innerHTML = trend.map(d => {
+          const val = d.avg_minutes || 0;
+          const h = Math.max(1, Math.round((val / maxVal) * 100));
+          const cls = val === 0 ? 'rt-bar rt-bar-empty' : 'rt-bar';
+          return `<div class="${cls}" style="height:${h}%" title="${d.date}: ${val ? val + ' min' : 'no data'}"></div>`;
+        }).join('');
+      }
+
+      function renderHourlyChart(hourly) {
+        const container = document.getElementById('hourlyChart');
+        const maxVal = Math.max(1, ...hourly);
+
+        container.innerHTML = hourly.map((count, hour) => {
+          const h = Math.max(1, Math.round((count / maxVal) * 100));
+          return `<div class="hourly-bar" style="height:${h}%" title="${hour}:00 - ${count} leads"></div>`;
+        }).join('');
+      }
+
+      function renderWeekdayChart(weekday) {
+        const container = document.getElementById('weekdayChart');
+        const entries = Object.entries(weekday);
+        const maxVal = Math.max(1, ...entries.map(e => e[1]));
+
+        container.innerHTML = entries.map(([day, count], i) => {
+          const pct = Math.round((count / maxVal) * 100);
+          return `<div class="wd-row">
+            <span class="wd-label">${day.slice(0, 3)}</span>
+            <div class="wd-track"><div class="wd-fill" style="width:${pct}%;background:${wdColors[i]}"></div></div>
+            <span class="wd-count">${count}</span>
+          </div>`;
+        }).join('');
+      }
+
+      function renderCategoryTrend(trend) {
+        const container = document.getElementById('categoryTrendChart');
+        const legendEl = document.getElementById('categoryTrendLegend');
+
+        const cats = new Set();
+        trend.forEach(d => Object.keys(d).forEach(k => { if (k !== 'date') cats.add(k); }));
+        const catList = [...cats];
+
+        const maxVal = Math.max(1, ...trend.map(d => catList.reduce((sum, c) => sum + (d[c] || 0), 0)));
+
+        container.innerHTML = trend.map(d => {
+          const segments = catList.map(c => {
+            const val = d[c] || 0;
+            const h = Math.round((val / maxVal) * 100);
+            const color = catColors[c] || 'var(--muted)';
+            return `<div class="cat-seg" style="height:${h}%;background:${color}" title="${d.date}: ${titleCase(c)} ${val}"></div>`;
+          }).join('');
+          return `<div class="cat-stack">${segments}</div>`;
+        }).join('');
+
+        legendEl.innerHTML = catList.map(c => {
+          const color = catColors[c] || 'var(--muted)';
+          return `<span class="cat-legend-item"><span class="cat-dot" style="background:${color}"></span>${titleCase(c)}</span>`;
+        }).join('');
+      }
+
+      function renderSourceTable(sources) {
+        const tbody = document.getElementById('sourceTable');
+        const sorted = [...sources].sort((a, b) => b.count - a.count);
+
+        tbody.innerHTML = sorted.map(s => `<tr>
+          <td>${titleCase(s.source)}</td>
+          <td class="num">${s.count}</td>
+          <td class="num">${s.sent}</td>
+          <td class="num">${s.won}</td>
+          <td class="num">${s.lost}</td>
+          <td class="num perf-rate">${s.conversion_rate}%</td>
+        </tr>`).join('');
+      }
+
+      function renderTopSenders(senders) {
+        const container = document.getElementById('topSenders');
+        if (!senders.length) {
+          container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">No data yet.</p>';
+          return;
+        }
+        container.innerHTML = senders.map(s => `<div class="sender-row">
+          <div>
+            <div class="sender-name">${s.name || 'Unknown'}</div>
+            <div class="sender-email">${s.email}</div>
+          </div>
+          <span class="sender-count">${s.count} lead${s.count !== 1 ? 's' : ''}</span>
+        </div>`).join('');
+      }
+
+      // Auth check
+      fetch('/auth/me').then(r => { if (!r.ok) window.location.href = '/login'; });
+
+      periodSelect.addEventListener('change', loadAnalytics);
+      loadAnalytics();
+    </script>
+  </body>
+</html>

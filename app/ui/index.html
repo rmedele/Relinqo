@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LeadRelay Review Queue</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar topbar-editorial">
+        <div>
+          <div class="hero-badge-row">
+            <p class="eyebrow">LeadRelay</p>
+            <span class="hero-badge" id="orgBadge">Review queue</span>
+          </div>
+          <h1>Review Queue</h1>
+          <p class="subhead">Review inbound trade leads, check urgency, and send drafted replies.</p>
+        </div>
+        <div class="topbar-actions">
+          <span id="orgName" class="muted"></span>
+          <a href="/analytics" class="ghost-link compact-link">Analytics</a>
+          <a href="/settings" class="ghost-link compact-link">Settings</a>
+          <a href="/" class="ghost-link compact-link">View Site</a>
+          <button id="refreshBtn" class="ghost-btn compact-link">Refresh</button>
+          <label class="ghost-btn compact-link poll-toggle">
+            <input type="checkbox" id="autoPollToggle" checked />
+            Live
+          </label>
+          <button id="logoutBtn" class="ghost-btn compact-link">Logout</button>
+        </div>
+      </header>
+
+      <!-- Stats Bar -->
+      <section id="statsBar" class="stats-bar">
+        <div class="stat-card">
+          <span class="stat-label">Total Leads</span>
+          <strong id="statTotal">&mdash;</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Today</span>
+          <strong id="statToday">&mdash;</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Sent</span>
+          <strong id="statSent">&mdash;</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Response Rate</span>
+          <strong id="statRate">&mdash;</strong>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Avg Response</span>
+          <strong id="statAvgTime">&mdash;</strong>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <section class="charts-section">
+        <div class="charts-header">
+          <div>
+            <p class="section-kicker">Analytics</p>
+            <h2>Dashboard</h2>
+          </div>
+          <button id="toggleChartsBtn" class="ghost-btn compact-link">Hide Charts</button>
+        </div>
+        <div id="chartsGrid" class="charts-grid">
+          <article class="card chart-card chart-card-wide">
+            <h3>Leads Over Time <span class="muted" style="font-weight:400; font-size:0.8rem;">(last 30 days)</span></h3>
+            <div id="dailyChart" class="bar-chart"></div>
+            <div class="chart-legend">
+              <span class="legend-item"><span class="legend-dot" style="background:var(--accent-blue);"></span> Total</span>
+              <span class="legend-item"><span class="legend-dot" style="background:var(--success-text);"></span> Sent</span>
+              <span class="legend-item"><span class="legend-dot" style="background:var(--muted);"></span> Spam</span>
+            </div>
+          </article>
+          <article class="card chart-card">
+            <h3>By Category</h3>
+            <div id="categoryChart" class="horiz-chart"></div>
+          </article>
+          <article class="card chart-card">
+            <h3>By Source</h3>
+            <div id="sourceChart" class="horiz-chart"></div>
+          </article>
+          <article class="card chart-card chart-card-wide">
+            <h3>Conversion Funnel</h3>
+            <div id="funnelChart" class="funnel-chart"></div>
+          </article>
+        </div>
+      </section>
+
+      <main class="layout">
+        <section class="list-panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-kicker">Inbound leads</p>
+              <h2>Queue</h2>
+            </div>
+            <div class="view-toggle">
+              <button id="viewLeads" class="toggle-btn active">Leads</button>
+              <button id="viewThreads" class="toggle-btn">Threads</button>
+            </div>
+            <span id="leadCount" class="muted">0 leads</span>
+          </div>
+
+          <!-- Filters -->
+          <div class="filter-bar">
+            <input type="text" id="searchInput" class="filter-input" placeholder="Search name, email, subject..." />
+            <select id="filterCategory" class="filter-select">
+              <option value="">All Categories</option>
+              <option value="urgent_request">Urgent</option>
+              <option value="quote_request">Quote</option>
+              <option value="general_inquiry">General</option>
+              <option value="existing_customer">Existing</option>
+              <option value="spam">Spam</option>
+            </select>
+            <select id="filterStatus" class="filter-select">
+              <option value="">All Status</option>
+              <option value="drafted">Drafted</option>
+              <option value="pending_send">Pending Send</option>
+              <option value="sent">Sent</option>
+              <option value="send_failed">Failed</option>
+              <option value="spam">Spam</option>
+              <option value="ready_to_send">Ready</option>
+            </select>
+            <select id="filterUrgency" class="filter-select">
+              <option value="">All Urgency</option>
+              <option value="high">High (5)</option>
+              <option value="medium">Medium (3-4)</option>
+              <option value="low">Low (1-2)</option>
+            </select>
+          </div>
+
+          <div id="leadList" class="lead-list"></div>
+          <div id="threadList" class="lead-list hidden"></div>
+        </section>
+
+        <section class="detail-panel">
+          <div id="emptyState" class="empty-state">
+            <div class="empty-state-content">
+              <div class="empty-state-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                </svg>
+              </div>
+              <h2>Select a lead</h2>
+              <p>Pick a lead from the queue to review details, see the draft, and decide the next step.</p>
+            </div>
+          </div>
+
+          <div id="loadingState" class="empty-state hidden">
+            <div class="empty-state-content">
+              <div class="loading-spinner"></div>
+              <h2>Loading queue</h2>
+              <p>Pulling the latest leads now...</p>
+            </div>
+          </div>
+
+          <div id="leadDetail" class="lead-detail hidden">
+            <div class="panel-header detail-header">
+              <div>
+                <div class="detail-topline">
+                  <p id="detailCategory" class="pill"></p>
+                  <span id="detailStatusBadge" class="status-chip">Drafted</span>
+                </div>
+                <h2 id="detailSubject">Lead subject</h2>
+                <p id="detailMeta" class="muted"></p>
+              </div>
+              <div class="actions">
+                <button id="cancelSendBtn" class="ghost-btn cancel-btn hidden">Cancel Send</button>
+                <button id="markDraftBtn" class="ghost-btn">Mark Drafted</button>
+                <button id="deleteBtn" class="ghost-btn">Delete Lead</button>
+                <button id="sendBtn" class="primary-btn">Send Draft Reply</button>
+              </div>
+            </div>
+
+            <!-- Undo send countdown -->
+            <div id="undoBar" class="undo-bar hidden">
+              <span>Auto-sending in <strong id="undoCountdown">60</strong>s</span>
+              <button id="undoCancelBtn" class="ghost-btn">Cancel Auto-Send</button>
+            </div>
+
+            <div id="sendStatus" class="send-status hidden"></div>
+
+            <!-- Thread indicator -->
+            <div id="threadInfo" class="thread-info hidden">
+              <span id="threadCount">0</span> messages in this conversation
+              <button id="showThreadBtn" class="ghost-btn compact-link">View Thread</button>
+            </div>
+
+            <div class="detail-grid">
+              <article class="card">
+                <h3>Lead Info</h3>
+                <dl class="info-list">
+                  <div><dt>Name</dt><dd id="detailName">&mdash;</dd></div>
+                  <div><dt>Email</dt><dd id="detailEmail">&mdash;</dd></div>
+                  <div><dt>Phone</dt><dd id="detailPhone">&mdash;</dd></div>
+                  <div><dt>Location</dt><dd id="detailLocation">&mdash;</dd></div>
+                  <div><dt>Urgency</dt><dd id="detailUrgency">&mdash;</dd></div>
+                  <div><dt>Confidence</dt><dd id="detailConfidence">&mdash;</dd></div>
+                  <div><dt>Status</dt><dd id="detailStatus">&mdash;</dd></div>
+                  <div><dt>Owner Alert</dt><dd id="detailAlert">&mdash;</dd></div>
+                  <div><dt>Created</dt><dd id="detailCreated">&mdash;</dd></div>
+                </dl>
+              </article>
+
+              <article class="card">
+                <h3>Operator Snapshot</h3>
+                <div class="snapshot-grid">
+                  <div class="snapshot-item">
+                    <span class="snapshot-label">Priority</span>
+                    <strong id="detailPriority">&mdash;</strong>
+                  </div>
+                  <div class="snapshot-item">
+                    <span class="snapshot-label">Category</span>
+                    <strong id="detailCategoryText">&mdash;</strong>
+                  </div>
+                  <div class="snapshot-item">
+                    <span class="snapshot-label">Source</span>
+                    <strong id="detailSource">&mdash;</strong>
+                  </div>
+                  <div class="snapshot-item">
+                    <span class="snapshot-label">Next step</span>
+                    <strong id="detailNextStep">&mdash;</strong>
+                  </div>
+                </div>
+              </article>
+
+              <article class="card wide">
+                <h3>Summary</h3>
+                <p id="detailSummary" class="prewrap"></p>
+              </article>
+
+              <article id="photoCard" class="card wide hidden">
+                <h3>Photos <span id="photoCountBadge" class="badge muted"></span></h3>
+                <div id="photoGallery" class="photo-gallery"></div>
+              </article>
+
+              <article class="card wide">
+                <h3>Original Message</h3>
+                <p id="detailBody" class="prewrap"></p>
+              </article>
+
+              <article class="card wide">
+                <h3>Recommended Reply</h3>
+                <textarea id="detailReplyEditor" class="reply-editor" rows="8"></textarea>
+                <div class="actions actions-inline">
+                  <button id="saveReplyBtn" class="ghost-btn">Save Reply</button>
+                </div>
+              </article>
+
+              <article class="card wide">
+                <h3>Delivery Status</h3>
+                <p id="detailDeliveryStatus" class="prewrap muted-strong">Not sent yet.</p>
+              </article>
+
+              <!-- Conversation Thread -->
+              <article id="threadHistoryCard" class="card wide hidden">
+                <h3>Conversation Thread</h3>
+                <div id="threadHistory" class="thread-history"></div>
+              </article>
+
+              <article class="card wide">
+                <h3>Activity</h3>
+                <div id="activityList" class="activity-list"></div>
+              </article>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Photo lightbox -->
+    <div id="photoLightbox" class="lightbox hidden" onclick="closeLightbox()">
+      <div class="lightbox-content" onclick="event.stopPropagation()">
+        <img id="lightboxImage" src="" alt="Full size photo" />
+        <p id="lightboxAnalysis" class="lightbox-analysis"></p>
+        <button class="ghost-btn lightbox-close" onclick="closeLightbox()">Close</button>
+      </div>
+    </div>
+
+    <script src="/ui/app.js"></script>
+  </body>
+</html>

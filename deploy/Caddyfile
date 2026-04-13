@@ -1,0 +1,20 @@
+# Replace yourdomain.com with your actual domain.
+# Caddy automatically provisions and renews TLS certificates via Let's Encrypt.
+
+yourdomain.com {
+    reverse_proxy leadrelay:8081
+
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}
