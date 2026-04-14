@@ -537,6 +537,13 @@ function selectLead(id) {
   selectedLeadId = id;
   renderLeadList();
   renderLeadDetail();
+  // On mobile (stacked layout), scroll the detail panel into view so the user
+  // doesn't have to scroll past the entire lead list after tapping.
+  if (window.matchMedia('(max-width: 1180px)').matches) {
+    requestAnimationFrame(() => {
+      leadDetailEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 // --- Data Loading ---

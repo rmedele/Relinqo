@@ -1921,23 +1921,36 @@ select:focus-visible {
   .topbar,
   .detail-header,
   .panel-header,
-  .topbar-actions,
   .lead-item-top,
   .lead-item-bottom,
-  .detail-topline,
-  .actions {
+  .detail-topline {
     flex-direction: column;
     align-items: flex-start;
   }
 
+  /* Detail action buttons: stack full-width for easy tapping */
+  .detail-header .actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  .detail-header .actions > .primary-btn,
+  .detail-header .actions > .ghost-btn,
+  .detail-header .actions > .ghost-link { width: 100%; }
+
+  /* Topbar actions: horizontal scroll row instead of vertical tower */
+  .topbar-actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .topbar-actions::-webkit-scrollbar { display: none; }
+  .topbar-actions > * { flex-shrink: 0; }
+
   .detail-grid,
   .snapshot-grid { grid-template-columns: 1fr; }
-
-  .topbar-actions,
-  .primary-btn,
-  .ghost-btn,
-  .ghost-link,
-  .actions { width: 100%; }
 
   .stats-bar { grid-template-columns: repeat(2, 1fr); }
   .filter-bar { grid-template-columns: 1fr; }
@@ -1965,6 +1978,63 @@ select:focus-visible {
   .workspace-funnel-strip { flex-direction: column; }
   .workspace-actions { flex-direction: column; align-items: flex-start; }
   .filters-row { grid-template-columns: 1fr; }
+}
+
+/* Phone breakpoint — plumber on a 390px screen */
+@media (max-width: 560px) {
+  .shell { padding: 12px; }
+
+  h1 { font-size: 1.45rem; }
+  h2 { font-size: 1.1rem; }
+  .subhead { font-size: 0.9rem; margin-top: 8px; }
+
+  .topbar-editorial { padding: 16px 18px; margin-bottom: 14px; border-radius: var(--radius-lg); }
+  .hero-badge-row { margin-bottom: 10px; }
+
+  /* Tight stats: 2 col, reduced chrome */
+  .stats-bar { gap: 8px; margin-bottom: 14px; }
+  .stat-card { padding: 12px 14px; border-radius: var(--radius-md); }
+  .stat-card strong { font-size: 1.25rem; }
+
+  /* Charts: hide by default on phone — user can tap "Show Charts" */
+  .charts-section { margin-bottom: 14px; }
+  .charts-grid { gap: 10px; }
+  .chart-card { padding: 1rem; min-height: auto; }
+  .bar-chart { height: 100px; padding-bottom: 1rem; }
+
+  /* Lead list: tighter cards */
+  .lead-item { padding: 12px 14px; border-radius: var(--radius-sm); }
+  .layout { gap: 12px; }
+
+  /* Filters & form inputs — 16px font prevents iOS zoom on focus */
+  .filter-bar { gap: 8px; margin-bottom: 10px; }
+  .filter-input, .filter-select { min-height: 44px; padding: 10px 14px; font-size: 16px; }
+  input[type="text"], input[type="email"], input[type="tel"], input[type="number"],
+  input[type="password"], input[type="search"], input[type="url"], textarea, select {
+    font-size: 16px;
+  }
+
+  /* Detail panel: less padding per card */
+  .detail-grid { gap: 10px; }
+  .card { padding: 14px; }
+  .reply-editor { min-height: 140px; padding: 12px; font-size: 15px; }
+
+  /* Undo bar: stack for readability */
+  .undo-bar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 14px; }
+  .undo-bar .ghost-btn { width: 100%; }
+
+  /* Photo gallery: 2 col minimum on phone */
+  .photo-gallery { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  .photo-thumb img { height: 100px; }
+}
+
+/* Touch devices: disable sticky hover transforms */
+@media (hover: none) {
+  .lead-item:hover { transform: none; }
+  .primary-btn:hover,
+  .ghost-btn:hover,
+  .ghost-link:hover { transform: none; }
+  .stat-card:hover { transform: none; }
 }
 
 /* --- Photo gallery --- */
