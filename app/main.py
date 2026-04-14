@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -125,8 +126,18 @@ app.add_middleware(
     allow_credentials=True,
 )
 if settings.app_env == "production":
-    # Trust only the configured domain in production
-    allowed_hosts = [settings.public_base_url.replace("https://", "").replace("http://", "").split(":")[0]]
+    # Trust the configured domain plus Railway's healthcheck/internal hosts
+    primary_host = settings.public_base_url.replace("https://", "").replace("http://", "").split(":")[0]
+    allowed_hosts = [
+        primary_host,
+        "healthcheck.railway.app",
+        "*.up.railway.app",
+        "*.railway.app",
+        "*.railway.internal",
+    ]
+    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN")
+    if railway_domain:
+        allowed_hosts.append(railway_domain)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
     @app.middleware("http")
