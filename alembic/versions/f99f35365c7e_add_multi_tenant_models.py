@@ -13,7 +13,7 @@ from passlib.hash import bcrypt
 
 
 revision: str = 'f99f35365c7e'
-down_revision: Union[str, Sequence[str], None] = '13807a6fdb06'
+down_revision: Union[str, Sequence[str], None] = '2d4f8a1b3c9e'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
