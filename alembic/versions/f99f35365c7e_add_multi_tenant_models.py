@@ -19,6 +19,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_tables = inspector.get_table_names()
+
     # --- Create new tables ---
     op.create_table(
         'organizations',
@@ -27,9 +31,11 @@ def upgrade() -> None:
         sa.Column('slug', sa.String(100), nullable=False, unique=True),
         sa.Column('api_key', sa.String(64), nullable=False, unique=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        if_not_exists=True,
     )
-    op.create_index('ix_organizations_slug', 'organizations', ['slug'])
-    op.create_index('ix_organizations_api_key', 'organizations', ['api_key'])
+    if 'organizations' not in existing_tables:
+        op.create_index('ix_organizations_slug', 'organizations', ['slug'])
+        op.create_index('ix_organizations_api_key', 'organizations', ['api_key'])
 
     op.create_table(
         'users',
@@ -41,9 +47,11 @@ def upgrade() -> None:
         sa.Column('org_id', sa.Integer(), sa.ForeignKey('organizations.id'), nullable=False),
         sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('1')),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        if_not_exists=True,
     )
-    op.create_index('ix_users_email', 'users', ['email'], unique=True)
-    op.create_index('ix_users_org_id', 'users', ['org_id'])
+    if 'users' not in existing_tables:
+        op.create_index('ix_users_email', 'users', ['email'], unique=True)
+        op.create_index('ix_users_org_id', 'users', ['org_id'])
 
     op.create_table(
         'org_settings',
@@ -84,6 +92,7 @@ def upgrade() -> None:
         sa.Column('owner_alert_email', sa.String(255), nullable=False, server_default=''),
         sa.Column('digest_to_email', sa.String(255), nullable=False, server_default=''),
         sa.Column('default_timezone', sa.String(100), nullable=False, server_default='America/Edmonton'),
+        if_not_exists=True,
     )
 
     # --- Seed default org from env vars ---
@@ -91,75 +100,87 @@ def upgrade() -> None:
     org_name = os.environ.get('BUSINESS_NAME', '') or 'Default'
     api_key = secrets.token_hex(32)
 
-    conn = op.get_bind()
-    conn.execute(sa.text(
-        "INSERT INTO organizations (id, name, slug, api_key) VALUES (1, :name, 'default', :api_key)"
-    ), {"name": org_name, "api_key": api_key})
+    # Only seed if the organizations table was just created (i.e. had no rows before)
+    org_exists = conn.execute(sa.text('SELECT 1 FROM organizations WHERE id = 1')).fetchone()
+    if not org_exists:
+        conn.execute(sa.text(
+            "INSERT INTO organizations (id, name, slug, api_key) VALUES (1, :name, 'default', :api_key)"
+        ), {"name": org_name, "api_key": api_key})
 
-    # Seed OrgSettings from env vars
-    env = {
-        'smtp_host': os.environ.get('SMTP_HOST', ''),
-        'smtp_port': int(os.environ.get('SMTP_PORT', '587')),
-        'smtp_username': os.environ.get('SMTP_USERNAME', ''),
-        'smtp_password': os.environ.get('SMTP_PASSWORD', ''),
-        'smtp_use_tls': os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true',
-        'smtp_from_email': os.environ.get('SMTP_FROM_EMAIL', ''),
-        'imap_host': os.environ.get('IMAP_HOST', 'imap.gmail.com'),
-        'imap_port': int(os.environ.get('IMAP_PORT', '993')),
-        'imap_username': os.environ.get('IMAP_USERNAME', ''),
-        'imap_password': os.environ.get('IMAP_PASSWORD', ''),
-        'imap_mailbox': os.environ.get('IMAP_MAILBOX', 'INBOX'),
-        'imap_search_criteria': os.environ.get('IMAP_SEARCH_CRITERIA', 'UNSEEN'),
-        'inbox_poll_enabled': os.environ.get('INBOX_POLL_ENABLED', 'false').lower() == 'true',
-        'business_name': os.environ.get('BUSINESS_NAME', ''),
-        'business_services': os.environ.get('BUSINESS_SERVICES', ''),
-        'business_area': os.environ.get('BUSINESS_AREA', ''),
-        'business_hours': os.environ.get('BUSINESS_HOURS', 'Mon-Fri 8am-5pm'),
-        'business_phone': os.environ.get('BUSINESS_PHONE', ''),
-        'business_tone': os.environ.get('BUSINESS_TONE', 'friendly and professional'),
-        'business_reply_signature': os.environ.get('BUSINESS_REPLY_SIGNATURE', ''),
-        'twilio_account_sid': os.environ.get('TWILIO_ACCOUNT_SID', ''),
-        'twilio_auth_token': os.environ.get('TWILIO_AUTH_TOKEN', ''),
-        'twilio_from_number': os.environ.get('TWILIO_FROM_NUMBER', ''),
-        'sms_alert_to_number': os.environ.get('SMS_ALERT_TO_NUMBER', ''),
-        'human_review': os.environ.get('HUMAN_REVIEW', 'true').lower() == 'true',
-        'auto_send_confidence_threshold': float(os.environ.get('AUTO_SEND_CONFIDENCE_THRESHOLD', '0.85')),
-        'forwarding_token': os.environ.get('FORWARDING_TOKEN', 'change-forwarding-token'),
-        'owner_alert_email': os.environ.get('OWNER_ALERT_EMAIL', ''),
-        'digest_to_email': os.environ.get('DIGEST_TO_EMAIL', ''),
-        'default_timezone': os.environ.get('DEFAULT_TIMEZONE', 'America/Edmonton'),
-    }
-    cols = ', '.join(env.keys())
-    placeholders = ', '.join(f':{k}' for k in env.keys())
-    conn.execute(sa.text(
-        f'INSERT INTO org_settings (org_id, {cols}) VALUES (1, {placeholders})'
-    ), env)
+    # Seed OrgSettings from env vars (only if not already present)
+    settings_exist = conn.execute(sa.text('SELECT 1 FROM org_settings WHERE org_id = 1')).fetchone()
+    if not settings_exist:
+        env = {
+            'smtp_host': os.environ.get('SMTP_HOST', ''),
+            'smtp_port': int(os.environ.get('SMTP_PORT', '587')),
+            'smtp_username': os.environ.get('SMTP_USERNAME', ''),
+            'smtp_password': os.environ.get('SMTP_PASSWORD', ''),
+            'smtp_use_tls': os.environ.get('SMTP_USE_TLS', 'true').lower() == 'true',
+            'smtp_from_email': os.environ.get('SMTP_FROM_EMAIL', ''),
+            'imap_host': os.environ.get('IMAP_HOST', 'imap.gmail.com'),
+            'imap_port': int(os.environ.get('IMAP_PORT', '993')),
+            'imap_username': os.environ.get('IMAP_USERNAME', ''),
+            'imap_password': os.environ.get('IMAP_PASSWORD', ''),
+            'imap_mailbox': os.environ.get('IMAP_MAILBOX', 'INBOX'),
+            'imap_search_criteria': os.environ.get('IMAP_SEARCH_CRITERIA', 'UNSEEN'),
+            'inbox_poll_enabled': os.environ.get('INBOX_POLL_ENABLED', 'false').lower() == 'true',
+            'business_name': os.environ.get('BUSINESS_NAME', ''),
+            'business_services': os.environ.get('BUSINESS_SERVICES', ''),
+            'business_area': os.environ.get('BUSINESS_AREA', ''),
+            'business_hours': os.environ.get('BUSINESS_HOURS', 'Mon-Fri 8am-5pm'),
+            'business_phone': os.environ.get('BUSINESS_PHONE', ''),
+            'business_tone': os.environ.get('BUSINESS_TONE', 'friendly and professional'),
+            'business_reply_signature': os.environ.get('BUSINESS_REPLY_SIGNATURE', ''),
+            'twilio_account_sid': os.environ.get('TWILIO_ACCOUNT_SID', ''),
+            'twilio_auth_token': os.environ.get('TWILIO_AUTH_TOKEN', ''),
+            'twilio_from_number': os.environ.get('TWILIO_FROM_NUMBER', ''),
+            'sms_alert_to_number': os.environ.get('SMS_ALERT_TO_NUMBER', ''),
+            'human_review': os.environ.get('HUMAN_REVIEW', 'true').lower() == 'true',
+            'auto_send_confidence_threshold': float(os.environ.get('AUTO_SEND_CONFIDENCE_THRESHOLD', '0.85')),
+            'forwarding_token': os.environ.get('FORWARDING_TOKEN', 'change-forwarding-token'),
+            'owner_alert_email': os.environ.get('OWNER_ALERT_EMAIL', ''),
+            'digest_to_email': os.environ.get('DIGEST_TO_EMAIL', ''),
+            'default_timezone': os.environ.get('DEFAULT_TIMEZONE', 'America/Edmonton'),
+        }
+        cols = ', '.join(env.keys())
+        placeholders = ', '.join(f':{k}' for k in env.keys())
+        conn.execute(sa.text(
+            f'INSERT INTO org_settings (org_id, {cols}) VALUES (1, {placeholders})'
+        ), env)
 
-    # Seed owner user
-    owner_email = os.environ.get('OWNER_ALERT_EMAIL', '') or 'admin@leadrelay.local'
-    owner_password = os.environ.get('REVIEW_PASSWORD', 'change-me')
-    password_hash = bcrypt.hash(owner_password)
-    conn.execute(sa.text(
-        "INSERT INTO users (email, password_hash, display_name, role, org_id) "
-        "VALUES (:email, :hash, 'Admin', 'owner', 1)"
-    ), {"email": owner_email, "hash": password_hash})
+    # Seed owner user (only if not already present)
+    user_exists = conn.execute(sa.text('SELECT 1 FROM users WHERE role = :role AND org_id = 1'), {"role": "owner"}).fetchone()
+    if not user_exists:
+        owner_email = os.environ.get('OWNER_ALERT_EMAIL', '') or 'admin@leadrelay.local'
+        owner_password = os.environ.get('REVIEW_PASSWORD', 'change-me')
+        password_hash = bcrypt.hash(owner_password)
+        conn.execute(sa.text(
+            "INSERT INTO users (email, password_hash, display_name, role, org_id) "
+            "VALUES (:email, :hash, 'Admin', 'owner', 1)"
+        ), {"email": owner_email, "hash": password_hash})
 
-    # --- Add org_id to existing tables (nullable first) ---
+    # --- Add org_id to existing tables (nullable first, skip if column already exists) ---
     tables = ['leads', 'followups', 'owner_alerts', 'lead_activities', 'inbox_messages']
     for table in tables:
-        with op.batch_alter_table(table) as batch_op:
-            batch_op.add_column(sa.Column('org_id', sa.Integer(), nullable=True))
+        existing_columns = [col['name'] for col in inspector.get_columns(table)]
+        if 'org_id' not in existing_columns:
+            with op.batch_alter_table(table) as batch_op:
+                batch_op.add_column(sa.Column('org_id', sa.Integer(), nullable=True))
 
     # Backfill
     for table in tables:
         conn.execute(sa.text(f'UPDATE {table} SET org_id = 1 WHERE org_id IS NULL'))
 
-    # Make NOT NULL, add index + FK
+    # Make NOT NULL, add index + FK (skip if already applied)
     for table in tables:
+        existing_indexes = [idx['name'] for idx in inspector.get_indexes(table)]
         with op.batch_alter_table(table) as batch_op:
             batch_op.alter_column('org_id', nullable=False)
-            batch_op.create_index(f'ix_{table}_org_id', ['org_id'])
-            batch_op.create_foreign_key(f'fk_{table}_org_id', 'organizations', ['org_id'], ['id'])
+            if f'ix_{table}_org_id' not in existing_indexes:
+                batch_op.create_index(f'ix_{table}_org_id', ['org_id'])
+            existing_fks = [fk['name'] for fk in inspector.get_foreign_keys(table)]
+            if f'fk_{table}_org_id' not in existing_fks:
+                batch_op.create_foreign_key(f'fk_{table}_org_id', 'organizations', ['org_id'], ['id'])
 
 
 def downgrade() -> None:
