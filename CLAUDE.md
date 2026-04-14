@@ -4,9 +4,12 @@ AI-powered inbox management SaaS for local service businesses (plumbing, HVAC, r
 
 ## Current Status
 
-**MVP is feature-complete and working end-to-end.** Google OAuth for Gmail is live and tested. The full flow works: Gmail connects via one-click OAuth, incoming emails are polled via Gmail API, classified by Claude AI, replies are drafted and sent back through Gmail API, and urgent leads trigger SMS alerts.
+**MVP is deployed and live on Railway.** Production URL: https://leadrelay-production-4a37.up.railway.app
+
+The full flow works end-to-end: Gmail connects via OAuth, incoming emails are polled via Gmail API, classified by Claude AI, replies are drafted + sent back through Gmail API, and urgent leads trigger SMS alerts. Two competitive moat features — smart scheduling links and photo intake with Claude vision — are also shipped.
 
 ### What's Done
+- **Deployed to Railway** on the trial plan (Dockerfile build, persistent volume at `/app/data`, auto-redeploy on push to `main`)
 - Full lead pipeline: ingestion, AI classification, reply generation, auto-send with 60s undo window
 - Google OAuth for Gmail (read inbox + send replies) — replaces clunky IMAP/SMTP credential setup
 - Multi-tenant architecture (org-level settings, API keys, user roles)
@@ -14,15 +17,19 @@ AI-powered inbox management SaaS for local service businesses (plumbing, HVAC, r
 - Setup wizard (3-step: business profile, connect Gmail, test lead)
 - Lead review dashboard with filters, thread view, outcome tracking
 - Analytics dashboard (daily trends, category breakdown, conversion funnel, response times)
-- Settings portal (Gmail connection, SMTP/IMAP fallback, Twilio, business profile, behavior toggles)
+- Settings portal (Gmail connection, SMTP/IMAP fallback, Twilio, business profile, behavior toggles, smart scheduling)
 - Follow-up scheduler (2h / 24h / 72h auto follow-ups)
 - Daily/weekly digest emails
 - SMS alerts via Twilio for urgent leads (urgency >= 4)
 - SMS approval flow (owner texts YES/NO to approve drafted reply)
-- Rate limiting, CSRF protection, production security headers
+- Rate limiting, CSRF protection, production security headers (with Railway-compatible TrustedHostMiddleware)
+- **Smart scheduling links** — org configures weekly availability, AI replies embed a booking URL (`/book/{token}`), customers pick a slot, owner gets notified via email/SMS
+- **Photo intake + Claude vision** — Gmail image attachments are extracted (up to 3 images, 5MB each), stored under `data/photos/{org_id}/{lead_id}/`, analyzed by Claude Haiku vision, and shown in the lead detail UI with a lightbox gallery
 
 ### High Priority — Next Up
-- **Deploy to Railway ($5/mo hobby plan)** — init git repo, push to GitHub, connect Railway, configure env vars, update Google OAuth redirect URI to production URL. This is the immediate next step.
+- **Finish post-deploy config** — set `PUBLIC_BASE_URL` in Railway to the production URL, update Google OAuth redirect URI in Google Cloud Console to match (`https://leadrelay-production-4a37.up.railway.app/auth/google/callback`)
+- **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs.
+- **Register first owner account** at `/register` + complete the setup wizard end-to-end on production.
 
 ### What Needs Work Before Launch
 - **Mobile-responsive dashboard** — target user is a plumber on their phone, not at a desk
@@ -32,13 +39,25 @@ AI-powered inbox management SaaS for local service businesses (plumbing, HVAC, r
 - **Google OAuth app verification** — currently limited to 100 test users
 - **Billing/Stripe** — no payment integration yet
 - **Platform-level Twilio** — currently each org must configure their own Twilio credentials, which is impractical for non-technical users. Refactor so LeadRelay owns one Twilio account (credentials in `.env`), business owners just enter their phone number in settings, and all SMS sends through the platform account. Keep "bring your own Twilio" as an optional power-user override.
+- **Image resize before vision API** — photos are sent to Claude at full resolution (~$0.013/image). Cap at 512–1024px to control costs.
 
 ### What's NOT Needed Yet
 - PostgreSQL migration (SQLite is fine for < 100K leads)
 - Horizontal scaling / Kubernetes
 - Webhook support, CRM connectors, Slack integration
 - Admin panel for platform operator
-- White-label / custom domain support
+- White-label multi-domain support
+
+## Deployment Notes (Railway)
+
+- **Hosting**: Railway, Dockerfile builder, persistent volume at `/app/data` for SQLite + photos
+- **Auto-deploy**: pushes to `main` on GitHub (`rmedele/LeadRelay`) trigger rebuilds
+- **Env vars set in Railway**: `APP_ENV=production`, `DATABASE_URL`, `SESSION_SECRET`, `LLM_PROVIDER`, `LLM_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BUSINESS_*`, `OWNER_ALERT_EMAIL`, `DIGEST_TO_EMAIL`, `HUMAN_REVIEW=false`. `PUBLIC_BASE_URL` still needs to be set.
+- **Gotchas fixed during deploy**:
+  - Migration chain was broken: `0c61520c9265` (add indexes) ran before `f99f35365c7e` (create tables). Reordered.
+  - `bcrypt>=4.1` dropped `__about__` which passlib 1.7.4 reads. Pinned `bcrypt==4.0.1` in `requirements.txt`.
+  - `TrustedHostMiddleware` in `app/main.py` rejected Railway's internal healthcheck host with HTTP 400. Expanded allowlist to include `healthcheck.railway.app`, `*.up.railway.app`, `*.railway.app`, `*.railway.internal`, and `RAILWAY_PUBLIC_DOMAIN`.
+  - Idempotent migration guards (`if_not_exists=True`) added so re-runs on a partially-seeded volume don't fail.
 
 ## Tech Stack
 - **Backend**: FastAPI + Uvicorn
