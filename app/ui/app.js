@@ -498,6 +498,7 @@ function renderLeadDetail() {
     btn.classList.toggle('active', btn.dataset.outcome === lead.outcome);
   });
 
+  updateQuickActions(lead);
   loadActivities(lead.id);
   loadPhotos(lead.id);
 }
@@ -571,6 +572,7 @@ async function loadLeads() {
   }
   renderLeadList();
   renderLeadDetail();
+  renderPriorityLeads();
   loadStats();
 }
 
@@ -864,6 +866,130 @@ async function loadCharts() {
     renderFunnelChart(data.funnel);
   } catch (e) { /* charts are non-critical */ }
 }
+
+// --- Priority Leads ---
+
+function renderPriorityLeads() {
+  const section = document.getElementById('prioritySection');
+  const container = document.getElementById('priorityCards');
+  if (!section || !container) return;
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const priority = leads.filter((lead) => {
+    // Urgent leads not yet sent
+    if (lead.urgency_score >= 4 && lead.status !== 'sent' && lead.category !== 'spam') return true;
+    // New leads from today
+    if (lead.status === 'drafted' && new Date(lead.created_at) >= todayStart) return true;
+    // Failed sends
+    if (lead.status === 'send_failed') return true;
+    return false;
+  }).slice(0, 6);
+
+  if (!priority.length) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+
+  container.innerHTML = priority.map((lead) => {
+    let tagClass = 'priority-tag-new';
+    let tagText = 'New';
+    let cardClass = 'priority-new';
+    if (lead.urgency_score >= 4) {
+      tagClass = 'priority-tag-urgent';
+      tagText = 'Urgent';
+      cardClass = 'priority-urgent';
+    } else if (lead.status === 'send_failed') {
+      tagClass = 'priority-tag-pending';
+      tagText = 'Failed';
+      cardClass = 'priority-pending';
+    } else if (lead.status === 'pending_send') {
+      tagClass = 'priority-tag-pending';
+      tagText = 'Sending';
+      cardClass = 'priority-pending';
+    }
+
+    const age = Math.round((now - new Date(lead.created_at)) / 60000);
+    const ageText = age < 60 ? `${age}m ago` : age < 1440 ? `${Math.round(age / 60)}h ago` : `${Math.round(age / 1440)}d ago`;
+
+    return `<div class="priority-card ${cardClass}" data-lead-id="${lead.id}">
+      <div class="priority-card-top">
+        <strong>${escapeHtml(lead.sender_name) || 'Unknown'}</strong>
+        <span class="priority-tag ${tagClass}">${tagText}</span>
+      </div>
+      <p class="priority-card-subject">${escapeHtml(lead.subject) || '(no subject)'}</p>
+      <div class="priority-card-meta">
+        <span>${titleCase(lead.category)}</span>
+        <span>${ageText}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('.priority-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const id = parseInt(card.dataset.leadId);
+      selectLead(id);
+    });
+  });
+}
+
+document.getElementById('dismissPriority')?.addEventListener('click', () => {
+  document.getElementById('prioritySection').classList.add('hidden');
+});
+
+
+// --- Quick Actions ---
+
+function updateQuickActions(lead) {
+  const callBtn = document.getElementById('callCustomerBtn');
+  const emailBtn = document.getElementById('emailCustomerBtn');
+  if (!callBtn || !emailBtn) return;
+
+  if (lead && lead.phone) {
+    callBtn.href = `tel:${lead.phone.replace(/[^\d+]/g, '')}`;
+    callBtn.style.display = 'inline-flex';
+  } else {
+    callBtn.style.display = 'none';
+  }
+
+  if (lead && lead.sender_email) {
+    emailBtn.href = `mailto:${lead.sender_email}`;
+    emailBtn.style.display = 'inline-flex';
+  } else {
+    emailBtn.style.display = 'none';
+  }
+}
+
+function insertTemplate(type) {
+  const lead = leads.find((item) => item.id === selectedLeadId);
+  if (!lead) return;
+
+  const name = lead.sender_name ? lead.sender_name.split(' ')[0] : 'there';
+  const templates = {
+    thanks: `Hi ${name},\n\nThank you for reaching out! We received your message and will get back to you shortly with more details.\n\nBest regards`,
+    schedule: `Hi ${name},\n\nThanks for contacting us! I'd love to set up a time to take care of this for you. What days and times work best this week?\n\nLooking forward to hearing from you.`,
+    quote: `Hi ${name},\n\nThank you for your inquiry. Based on your description, I'd like to provide you with a quote.\n\nService: \nEstimated cost: $\nTimeline: \n\nPlease let me know if you have any questions or would like to proceed.`,
+  };
+
+  if (templates[type]) {
+    replyEditorEl.value = templates[type];
+    replyEditorEl.focus();
+  }
+}
+
+function backToList() {
+  selectedLeadId = null;
+  renderLeadDetail();
+  const listPanel = document.querySelector('.list-panel');
+  if (listPanel) listPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Make functions available globally for onclick handlers
+window.insertTemplate = insertTemplate;
+window.backToList = backToList;
+
 
 // --- Init ---
 
