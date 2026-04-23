@@ -25,6 +25,14 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 - Rate limiting, CSRF protection, production security headers (with Railway-compatible TrustedHostMiddleware)
 - **Smart scheduling links** — org configures weekly availability, AI replies embed a booking URL (`/book/{token}`), customers pick a slot, owner gets notified via email/SMS
 - **Photo intake + Claude vision** — Gmail image attachments are extracted (up to 3 images, 5MB each), stored under `data/photos/{org_id}/{lead_id}/`, analyzed by Claude Haiku vision, and shown in the lead detail UI with a lightbox gallery
+- **Mobile-responsive dashboard** (on `mobile-responsive-pass` branch, pending merge to `main`):
+  - Responsive breakpoints at 1180px, 820px, and 560px across dashboard, analytics, and settings
+  - Today's Priority section — surfaces urgent, new, and failed leads at top of queue
+  - Quick action buttons — one-tap call/email customer, reply templates (Thank You, Schedule, Quote)
+  - Lead Outcome controls (Won/Lost/No Response) added to main dashboard (was missing from HTML)
+  - Mobile bottom navigation bar (Queue/Analytics/Settings) on small screens
+  - Back-to-list button on mobile detail view
+  - Touch-friendly: 44px min tap targets, 16px font inputs (prevents iOS zoom), disabled hover transforms on touch devices
 
 ### High Priority — Next Up
 - **Finish post-deploy config** — set `PUBLIC_BASE_URL` in Railway to the production URL, update Google OAuth redirect URI in Google Cloud Console to match (`https://leadrelay-production-4a37.up.railway.app/auth/google/callback`)
@@ -32,7 +40,7 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 - **Register first owner account** at `/register` + complete the setup wizard end-to-end on production.
 
 ### What Needs Work Before Launch
-- **Mobile-responsive dashboard** — target user is a plumber on their phone, not at a desk
+- **Merge `mobile-responsive-pass` branch** — dashboard enhancements are built and tested, need to merge to `main` to deploy
 - **Job queue** — in-process asyncio scheduler needs to be replaced with Celery/Redis for reliability
 - **Email/SMS retry** — currently fire-and-forget, no retry on failure
 - **More test coverage** — only ~280 lines of tests covering happy paths
