@@ -35,8 +35,11 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
   - Touch-friendly: 44px min tap targets, 16px font inputs (prevents iOS zoom), disabled hover transforms on touch devices
 
 ### High Priority — Next Up
-- **Finish post-deploy config** — set `PUBLIC_BASE_URL` in Railway to the production URL, update Google OAuth redirect URI in Google Cloud Console to match (`https://leadrelay-production-4a37.up.railway.app/auth/google/callback`)
-- **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs.
+- **Fix Google OAuth on production** — two steps needed:
+  1. Set `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` in Railway env vars (currently defaults to `http://127.0.0.1:8080` which breaks OAuth redirects)
+  2. In Google Cloud Console → APIs & Services → Credentials → OAuth client, add `https://leadrelay-production-4a37.up.railway.app/auth/google/callback` as an authorized redirect URI
+  - For local dev, set `PUBLIC_BASE_URL=http://127.0.0.1:8001` in `.env` and add `http://127.0.0.1:8001/auth/google/callback` to the redirect URIs in Google Console
+- **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console.
 - **Register first owner account** at `/register` + complete the setup wizard end-to-end on production.
 
 ### What Needs Work Before Launch
