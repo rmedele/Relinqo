@@ -34,7 +34,8 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest.fixture(scope='session', autouse=True)
 def cleanup_test_db():
     yield
+    app_engine.dispose()
     try:
         os.remove(test_db_path)
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError):
         pass
