@@ -34,14 +34,16 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
   - Back-to-list button on mobile detail view
   - Touch-friendly: 44px min tap targets, 16px font inputs (prevents iOS zoom), disabled hover transforms on touch devices
 - **Phone lead capture V1 — backend complete** (on `mobile-responsive-pass` branch, pending merge to `main`, NOT yet tested against a real Twilio number):
-  - Full Twilio Programmable Voice integration: missed-call rescue, voicemail-to-lead, after-hours intake
-  - `/incoming` webhook branches on business hours + routing rule: emits `<Dial>` to owner when open and owner is configured, falls through to voicemail on no-answer/busy/failed; skips dialing entirely after hours
+  - Full Twilio Programmable Voice integration: missed-call rescue, voicemail-to-lead, after-hours intake, **SMS outreach after hangup** (primary path for modern callers who won't leave voicemails)
+  - `/incoming` branches on business hours + routing rule: emits `<Dial>` to owner when open + owner configured, else plays a short "we'll text you" greeting + fires an outreach SMS in the background + offers a voicemail as a landline fallback
+  - After-hours flow: no dial attempted, plays closed greeting, fires outreach SMS, caller's SMS reply becomes the Lead (no voicemail required)
   - Twilio native transcription + Claude Haiku extraction (caller name, callback number, service address, issue summary, urgency, category, is_spam) — deliberately chose Twilio STT over Whisper for V1 simplicity; Claude is robust to noisy transcripts
-  - Creates a Lead with `source="phone"` and `call_event_id` FK on completion; spam short-circuits without creating a Lead
-  - Sends owner SMS alert (urgency icons, `[AFTER HOURS]` prefix, dashboard deep link) + optional caller-confirmation SMS (deduped within 10 min to handle redial storms)
+  - Dual-channel intake: voicemails AND inbound SMS replies both create Leads via Claude classification; deduped on `call_event_id` so one call = one Lead (first channel wins, second appends)
+  - Sends owner SMS alert (urgency icons, `[AFTER HOURS]` prefix, `(voicemail)` / `(SMS)` channel tag, dashboard deep link) + optional caller-confirmation (deduped against outreach SMS to prevent double-texting)
   - HMAC-SHA1 webhook signature validation (stdlib only, no `twilio` SDK dependency) — skipped in dev, enforced in production
   - Idempotent webhook handling via unique constraints on `twilio_call_sid` + `twilio_recording_sid`; conditional UPDATE on transcript so retries don't double-process
-  - Local E2E test script: `scripts/simulate_twilio_call.py` — exercises the full pipeline via FastAPI TestClient without Twilio or ngrok. Flags: `--spam`, `--with-dial --owner-phone=...`, `--after-hours`
+  - **Self-service number provisioning**: `/api/phone/search` + `/api/phone/provision` buy a number via Twilio REST API, configure webhooks, and save it to the org — all from inside LeadRelay. Settings UI has a "Find me a number" button (area code → list → pick one → live). Customers never touch the Twilio console.
+  - Local E2E test script: `scripts/simulate_twilio_call.py` — exercises all paths via FastAPI TestClient without Twilio or ngrok. Flags: `--spam`, `--with-dial --owner-phone=...`, `--after-hours`, `--sms-reply "message"` (simulates caller hanging up + replying via SMS)
 
 ### High Priority — Next Up
 - **Fix Google OAuth on production** — two steps needed:
@@ -103,12 +105,16 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
   - `routes/google_oauth.py` - Google OAuth connect/callback/disconnect
   - `routes/sms_webhook.py` - Twilio SMS webhook for approval replies (YES/NO reply-to-approve)
   - `routes/twilio_voice.py` - Twilio Programmable Voice webhooks (phone lead capture V1)
+  - `routes/phone_provisioning.py` - `/api/phone/*` endpoints — Bob clicks "Find me a number" in the UI, backend calls Twilio REST to buy + configure it on the platform account
   - `gmail.py` - Gmail API client (poll inbox, send email, token refresh)
   - `classifier.py` - Heuristic + AI lead classification (for email leads)
   - `reply_generator.py` - Template-based reply generation
   - `ai.py` - Claude API integration for email classification & reply generation
-  - `voicemail_processor.py` - Background job: Claude extraction from voicemail transcripts -> Lead creation + owner/caller SMS
+  - `voicemail_processor.py` - Background job: Claude extraction from voicemail transcripts -> Lead creation
+  - `sms_intake.py` - After-hours SMS outreach send + inbound SMS reply -> Lead creation (the primary phone-lead path)
+  - `phone_leads.py` - Shared helpers for both intake channels: owner-alert formatter, Twilio SMS send + persistence, synthetic sender_email, dedup windows
   - `phone_routing.py` - Business-hours gate, timezone-aware dial-owner decision logic, phone normalization
+  - `twilio_client.py` - Thin stdlib REST client for buying numbers + configuring webhooks (no `twilio` SDK dep)
   - `twilio_signature.py` - HMAC-SHA1 Twilio webhook signature validator (stdlib only, no SDK dependency)
   - `inbox_poll.py` - IMAP polling (delegates to Gmail API when OAuth is connected)
   - `mailer.py` - Email sender (delegates to Gmail API when OAuth is connected)
@@ -152,6 +158,7 @@ PYTHONPATH=. python scripts/simulate_twilio_call.py                             
 PYTHONPATH=. python scripts/simulate_twilio_call.py --spam                            # spam transcript, asserts no Lead created
 PYTHONPATH=. python scripts/simulate_twilio_call.py --with-dial --owner-phone=+1555...  # missed-call rescue (dial -> no-answer -> voicemail)
 PYTHONPATH=. python scripts/simulate_twilio_call.py --after-hours --owner-phone=+1555...  # after-hours intake + [AFTER HOURS] prefix in owner SMS
+PYTHONPATH=. python scripts/simulate_twilio_call.py --after-hours --sms-reply "furnace broken, need help ASAP"  # SMS-outreach flow (caller hangs up, replies by text)
 ```
 The script seeds `phone_numbers` / `phone_routing_rules` / `phone_business_hours` rows as needed. Signature validation is skipped automatically because `APP_ENV != production`. SMS sends are attempted but will be recorded as `failed` in `sms_notifications` unless Twilio credentials are present in `OrgSettings` — the test exercises the pipeline regardless.
 
@@ -171,6 +178,7 @@ The script seeds `phone_numbers` / `phone_routing_rules` / `phone_business_hours
 - Setup wizard test leads use `source="setup_wizard"` to bypass spam send restrictions
 
 ### Phone-capture specific decisions (V1)
+- **SMS outreach is the PRIMARY missed-call path, voicemail is the fallback.** Most callers under 40 won't leave voicemail — they hang up the moment they hear a recording. The `/incoming` TwiML plays "we're sending you a text" + opens a `<Record>` with a 5-second silence timeout as a landline fallback. Outreach SMS fires in the background via `run_in_executor` so the TwiML response isn't blocked on the Twilio API call.
 - **Twilio native transcription over Whisper/AssemblyAI** — free, async via `transcribeCallback`, good enough because Claude recovers well from noisy transcripts. Upgrade path preserved (download `RecordingUrl.mp3` via authenticated Twilio REST, pipe through Whisper, write back to `voicemails.transcript`).
 - **`<Record>` over `<Gather>`** — voicemail has lower caller-abandonment than question-by-question voice prompts; Claude extracts structure from free-form speech better than Gather can orchestrate.
 - **Single owner number, not ring groups** — `phone_routing_rules` stores one `owner_phone` per org. Ring groups + sequential dial are Week 4+ features.
@@ -180,6 +188,9 @@ The script seeds `phone_numbers` / `phone_routing_rules` / `phone_business_hours
 - **Signature validation rebuilds the URL from `PUBLIC_BASE_URL`**, not `request.url`, because Railway terminates TLS upstream and would otherwise yield `http://` even though Twilio signed `https://`.
 - **SMS dedup via `sms_notifications`**: caller confirmations suppressed if one has been sent to the same `to_number` for the same `org_id` within 10 minutes (protects against redial storms).
 - **Fire-and-forget background job**: transcription-complete uses `asyncio.create_task(process_voicemail(vm_id))` — matches the existing in-process scheduler pattern. A sweep job is still needed (see Week 3 follow-ups) to recover from Railway restarts mid-classification.
+- **Channel dedup on the Lead**: one CallEvent = one Lead regardless of how many channels responded. If voicemail classification beats SMS reply, the SMS body is appended to the existing Lead's body. If SMS gets there first, the voicemail transcript is appended. No duplicate Lead rows for the same physical call.
+- **Recent-caller SMS window**: inbound SMS from a number that called within the last 30 min is treated as a lead-intake reply, NOT as the owner YES/NO approval flow. This means if the owner happens to test-call their own business number, their next SMS won't accidentally approve a lead. The `/sms/webhook` handler checks `find_recent_call_for_sender` FIRST; YES/NO parsing only runs if no recent call exists.
+- **Self-service number provisioning is mandatory for the product to work.** Bob is a 60-year-old plumber. He will not go to the Twilio console, read docs, or configure webhooks. LeadRelay owns the provisioning flow end-to-end: `POST /api/phone/search` returns available numbers by area code, `POST /api/phone/provision` buys + wires one in a single call. Credentials come from `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` env vars (platform-level account), not from each org's `OrgSettings` — this matches the "platform-level Twilio" direction noted in the pre-launch TODOs.
 
 ### Phone-capture testing setup against real Twilio
 1. Buy a Twilio number (trial works). Get the `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`.

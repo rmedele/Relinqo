@@ -1,24 +1,24 @@
 """Voicemail -> Lead processing pipeline.
 
-Takes a freshly-transcribed voicemail, runs Claude extraction to pull
-structured fields, creates a Lead row, sends owner alert SMS, and
-optionally sends a confirmation SMS back to the caller.
-
-The pipeline is called from the transcription-complete webhook via
-asyncio.create_task for fire-and-forget background processing. A sweep
-job (future) will re-enqueue any Voicemails stuck in 'completed
-transcription, no classification' state.
+Runs Claude extraction on a freshly-transcribed voicemail, creates a Lead,
+fires owner SMS alert + optional caller confirmation. Deduped against
+SMS-intake leads for the same call (first channel wins; second appends).
 """
 import json
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any
 
-from app.config import settings
 from app.database import SessionLocal
-from app.models import CallEvent, Lead, OrgSettings, PhoneRoutingRule, SmsNotification, Voicemail
-from app.sms import send_sms_to
+from app.models import CallEvent, Lead, OrgSettings, PhoneRoutingRule, Voicemail
+from app.phone_leads import (
+    business_context,
+    format_owner_summary,
+    record_and_send_sms,
+    recent_sms_exists,
+    synthetic_sender_email,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,31 +82,16 @@ Return ONLY the JSON object.
 """
 
 
-def _business_context(org_settings: OrgSettings | None) -> str:
-    if not org_settings:
-        return "No business profile configured."
-    parts = []
-    if org_settings.business_name:
-        parts.append(f"Business: {org_settings.business_name}")
-    if org_settings.business_services:
-        parts.append(f"Services offered: {org_settings.business_services}")
-    if org_settings.business_area:
-        parts.append(f"Service area: {org_settings.business_area}")
-    return "\n".join(parts) if parts else "No business profile configured."
-
-
 def _extract_with_claude(
     transcript: str, from_number: str, org_settings: OrgSettings | None,
 ) -> dict[str, Any] | None:
-    """Call Claude to extract structured fields. Returns None on failure."""
     from app.ai import _get_client, ai_available
 
     if not ai_available():
         return None
-
     try:
         prompt = VOICEMAIL_EXTRACTION_PROMPT.format(
-            business_context=_business_context(org_settings),
+            business_context=business_context(org_settings),
             from_number=from_number,
             transcript=transcript,
         )
@@ -128,7 +113,6 @@ def _extract_with_claude(
 
 
 def _heuristic_extract(transcript: str | None, from_number: str) -> dict[str, Any]:
-    """Fallback when Claude is unavailable. No NLP, just punts to manual review."""
     if not transcript or len(transcript.strip()) < 10:
         return {
             "is_spam": False,
@@ -141,13 +125,8 @@ def _heuristic_extract(transcript: str | None, from_number: str) -> dict[str, An
             "owner_alert_needed": True,
             "confidence": 0.3,
         }
-
-    # Crude phone-number grab: 10+ contiguous digits (possibly separated)
     digits = re.findall(r"\d", transcript)
-    callback = None
-    if len(digits) >= 10:
-        callback = "".join(digits[:10])
-
+    callback = "".join(digits[:10]) if len(digits) >= 10 else None
     return {
         "is_spam": False,
         "customer_name": None,
@@ -161,113 +140,21 @@ def _heuristic_extract(transcript: str | None, from_number: str) -> dict[str, An
     }
 
 
-def _synthetic_sender_email(from_number: str) -> str:
-    """The Lead.sender_email column is NOT NULL. Phone leads don't have
-    one, so synthesize a routing-only address that clearly indicates the
-    lead originated from a voicemail, not a real inbox.
-    """
-    digits = re.sub(r"\D", "", from_number) or "unknown"
-    return f"caller-{digits}@phone.leadrelay.local"
-
-
-_URGENCY_ICON = {1: "", 2: "", 3: "!", 4: "!!", 5: "!!!"}
-
-
-def _format_owner_summary(
-    lead: Lead,
-    call: CallEvent,
-    vm: Voicemail,
-    org_settings: OrgSettings | None,
-) -> str:
-    hdr = "[AFTER HOURS] " if call.is_after_hours else ""
-    icon = _URGENCY_ICON.get(lead.urgency_score, "")
-    callback = lead.phone or call.from_number
-    name = lead.sender_name or "Unknown caller"
-    summary = (lead.summary or "No transcript")
-    if len(summary) > 140:
-        summary = summary[:137] + "..."
-    base_url = (settings.public_base_url or "").rstrip("/")
-    link = f"{base_url}/review#lead-{lead.id}" if base_url else f"lead #{lead.id}"
-    prefix = f"{hdr}{icon + ' ' if icon else ''}".strip()
-    header_line = f"{prefix + ' ' if prefix else ''}New {lead.category} lead"
-    return (
-        f"{header_line}\n"
-        f"{name} · {callback}\n"
-        f"{summary}\n"
-        f"{link}"
-    )
-
-
-def _recent_confirmation_exists(
-    db, org_id: int, to_number: str, within_minutes: int = 10,
-) -> bool:
-    """Suppress duplicate confirmation SMS if one has been sent recently
-    to the same number for the same org (handles redial storms)."""
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=within_minutes)
-    return db.query(SmsNotification).filter(
-        SmsNotification.org_id == org_id,
-        SmsNotification.to_number == to_number,
-        SmsNotification.purpose == "caller_confirmation",
-        SmsNotification.created_at >= cutoff,
-    ).first() is not None
-
-
-def _record_and_send_sms(
-    db,
-    *,
-    org_id: int,
-    to_number: str,
-    body: str,
-    purpose: str,
-    lead_id: int | None,
-    call_event_id: int | None,
-    org_settings: OrgSettings | None,
-) -> None:
-    """Send SMS via Twilio and persist the attempt to sms_notifications."""
-    notification = SmsNotification(
-        org_id=org_id,
-        lead_id=lead_id,
-        call_event_id=call_event_id,
-        direction="outbound",
-        to_number=to_number,
-        body=body,
-        purpose=purpose,
-        status="queued",
-    )
-    db.add(notification)
-    db.flush()
-
-    ok, msg, twilio_sid = send_sms_to(body, to_number, org_settings)
-    notification.twilio_message_sid = twilio_sid
-    notification.status = "sent" if ok else "failed"
-    if not ok:
-        notification.error_message = msg
-        logger.warning("SMS %s to %s failed: %s", purpose, to_number, msg)
-    db.commit()
-
-
 async def process_voicemail(voicemail_id: int) -> None:
-    """Background job: classify a voicemail, create a Lead, send SMS
-    alerts.
+    """Classify a voicemail, create a Lead (unless one already exists for
+    this call from an SMS reply), send owner SMS + caller confirmation.
 
-    Idempotent via the `classified_at` timestamp on Voicemail. If called
-    twice concurrently the second invocation will no-op because the first
-    will have set classified_at before the second starts Claude work.
+    Idempotent via `voicemails.classified_at`.
     """
     db = SessionLocal()
     try:
         vm = db.query(Voicemail).filter(Voicemail.id == voicemail_id).first()
-        if not vm:
-            logger.warning("process_voicemail: voicemail_id=%s not found", voicemail_id)
-            return
-        if vm.classified_at is not None:
-            logger.info("process_voicemail: voicemail_id=%s already classified", voicemail_id)
+        if not vm or vm.classified_at is not None:
             return
 
         call = db.query(CallEvent).filter(CallEvent.id == vm.call_event_id).first()
         if not call:
-            logger.error("process_voicemail: call_event_id=%s missing for vm=%s",
-                         vm.call_event_id, voicemail_id)
+            logger.error("process_voicemail: missing call_event for vm=%s", voicemail_id)
             return
 
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == call.org_id).first()
@@ -275,27 +162,38 @@ async def process_voicemail(voicemail_id: int) -> None:
             PhoneRoutingRule.org_id == call.org_id,
         ).first()
 
-        # 1. Extract
         transcript = vm.transcript or ""
         extraction = _extract_with_claude(transcript, call.from_number, org_settings)
         if extraction is None:
             extraction = _heuristic_extract(transcript, call.from_number)
 
-        # 2. Short-circuit spam without creating a Lead row
         if extraction.get("is_spam"):
             vm.classified_at = datetime.now(timezone.utc)
             db.commit()
-            logger.info("voicemail_id=%s classified as spam, skipping Lead creation", voicemail_id)
+            logger.info("vm_id=%s spam, skipping Lead", voicemail_id)
             return
 
-        # 3. Create Lead
+        # Dedup: if an SMS reply for the same call already created a Lead,
+        # append the voicemail transcript to it rather than making a duplicate.
+        existing_lead = db.query(Lead).filter(Lead.call_event_id == call.id).first()
+        if existing_lead:
+            appended = (existing_lead.body or "") + "\n\n[Voicemail transcript]\n" + (transcript or "(unavailable)")
+            existing_lead.body = appended
+            vm.classified_at = datetime.now(timezone.utc)
+            db.commit()
+            logger.info(
+                "vm_id=%s: appended transcript to existing lead_id=%s (SMS got there first)",
+                voicemail_id, existing_lead.id,
+            )
+            return
+
         callback = extraction.get("callback_number") or call.from_number
         lead = Lead(
             org_id=call.org_id,
             source="phone",
             call_event_id=call.id,
             sender_name=extraction.get("customer_name"),
-            sender_email=_synthetic_sender_email(call.from_number),
+            sender_email=synthetic_sender_email(call.from_number),
             subject=f"Voicemail from {callback}",
             body=transcript or "(transcript unavailable)",
             phone=callback,
@@ -308,67 +206,60 @@ async def process_voicemail(voicemail_id: int) -> None:
             confidence=float(extraction.get("confidence", 0.5)),
             next_step="review_voicemail",
             raw_payload=json.dumps({
+                "channel": "voicemail",
                 "from_number": call.from_number,
                 "to_number": call.to_number,
                 "recording_url": vm.recording_url,
                 "recording_duration": vm.recording_duration,
-                "transcription_status": vm.transcription_status,
             }),
         )
         db.add(lead)
         vm.classified_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(lead)
-
         logger.info(
-            "voicemail_id=%s -> lead_id=%s category=%s urgency=%s",
+            "vm_id=%s -> lead_id=%s category=%s urgency=%s",
             voicemail_id, lead.id, lead.category, lead.urgency_score,
         )
 
-        # 4. Owner SMS alert
         owner_number = (routing_rule.owner_phone if routing_rule else "") or (
             org_settings.sms_alert_to_number if org_settings else ""
         )
         if owner_number:
-            _record_and_send_sms(
+            record_and_send_sms(
                 db,
                 org_id=call.org_id,
                 to_number=owner_number,
-                body=_format_owner_summary(lead, call, vm, org_settings),
+                body=format_owner_summary(lead, call, org_settings, channel_label="voicemail"),
                 purpose="owner_alert",
                 lead_id=lead.id,
                 call_event_id=call.id,
                 org_settings=org_settings,
             )
-        else:
-            logger.info("voicemail_id=%s: no owner number configured, skipping owner SMS", voicemail_id)
 
-        # 5. Caller confirmation SMS (guarded)
+        # Caller confirmation SMS — only if we did NOT already outreach them
+        # via the SMS-intake flow (outreach carries the same "we got your
+        # request" message).
         send_confirmation = routing_rule.send_caller_confirmation if routing_rule else True
         if send_confirmation and call.from_number and call.from_number != owner_number:
-            if _recent_confirmation_exists(db, call.org_id, call.from_number):
-                logger.info(
-                    "voicemail_id=%s: skipped caller confirmation — recent send exists to %s",
-                    voicemail_id, call.from_number,
-                )
-            else:
-                business_name = (org_settings.business_name if org_settings else "") or "the team"
-                body = (
-                    f"Hi from {business_name}. We got your voicemail and will "
-                    f"reach out shortly."
-                )
-                _record_and_send_sms(
+            already_reached = (
+                recent_sms_exists(db, call.org_id, call.from_number, "caller_confirmation")
+                or recent_sms_exists(db, call.org_id, call.from_number, "outreach")
+            )
+            if not already_reached:
+                biz_name = (org_settings.business_name if org_settings else "") or "the team"
+                record_and_send_sms(
                     db,
                     org_id=call.org_id,
                     to_number=call.from_number,
-                    body=body,
+                    body=f"Hi from {biz_name}. We got your voicemail and will reach out shortly.",
                     purpose="caller_confirmation",
                     lead_id=lead.id,
                     call_event_id=call.id,
                     org_settings=org_settings,
                 )
     except Exception:
-        logger.exception("process_voicemail failed for voicemail_id=%s", voicemail_id)
+        logger.exception("process_voicemail failed vm_id=%s", voicemail_id)
         db.rollback()
     finally:
         db.close()
