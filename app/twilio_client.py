@@ -163,3 +163,48 @@ def provision_number(
 def release_number(sid: str, *, org_settings: OrgSettings | None = None) -> None:
     """Release a previously-provisioned number (frees the Twilio charge)."""
     _request("DELETE", f"/IncomingPhoneNumbers/{sid}.json", org_settings=org_settings)
+
+
+def lookup_owned_number(
+    phone_number: str, *, org_settings: OrgSettings | None = None,
+) -> dict | None:
+    """Find an already-owned number on this Twilio account by its E.164
+    value. Returns the IncomingPhoneNumber resource dict, or None if the
+    account doesn't own that number."""
+    data = _request(
+        "GET", "/IncomingPhoneNumbers.json",
+        org_settings=org_settings,
+        params={"PhoneNumber": phone_number},
+    )
+    items = data.get("incoming_phone_numbers", [])
+    return items[0] if items else None
+
+
+def update_number_webhooks(
+    sid: str,
+    *,
+    voice_url: str,
+    status_callback_url: str,
+    sms_url: str | None = None,
+    friendly_name: str | None = None,
+    org_settings: OrgSettings | None = None,
+) -> dict:
+    """Reconfigure an already-owned number's voice + SMS webhooks.
+    Used by the 'adopt existing number' flow for customers who bought
+    the number in the Twilio console before onboarding."""
+    form = {
+        "VoiceUrl": voice_url,
+        "VoiceMethod": "POST",
+        "StatusCallback": status_callback_url,
+        "StatusCallbackMethod": "POST",
+    }
+    if sms_url:
+        form["SmsUrl"] = sms_url
+        form["SmsMethod"] = "POST"
+    if friendly_name:
+        form["FriendlyName"] = friendly_name
+    return _request(
+        "POST", f"/IncomingPhoneNumbers/{sid}.json",
+        org_settings=org_settings,
+        form=form,
+    )

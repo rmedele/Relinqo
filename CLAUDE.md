@@ -46,6 +46,15 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
   - Local E2E test script: `scripts/simulate_twilio_call.py` — exercises all paths via FastAPI TestClient without Twilio or ngrok. Flags: `--spam`, `--with-dial --owner-phone=...`, `--after-hours`, `--sms-reply "message"` (simulates caller hanging up + replying via SMS)
 
 ### High Priority — Next Up
+- **Real Twilio end-to-end test for phone capture** (current active work — code is done, validation pending). To unblock the test, user needs to:
+  1. Sign up for Twilio trial at twilio.com (free, $15 credit, one free number)
+  2. Buy a phone number in the Twilio console (Voice + SMS enabled)
+  3. Verify the owner cell phone in Twilio → Phone Numbers → Verified Caller IDs (trial accounts can only send SMS / calls to verified numbers)
+  4. Copy `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` from the Twilio Account Dashboard into `.env`
+  5. Install ngrok, run `ngrok http 8001`, set `PUBLIC_BASE_URL=https://xxx.ngrok-free.app` in `.env`
+  6. Start the app (`uvicorn app.main:app --reload --port 8001`), log in at `/settings`, use the new "Phone lead capture" card: enter area code + cell number → click "Find me a number" → pick one → click "Use this". This calls `/api/phone/provision` which buys the number on the platform account AND configures webhooks automatically (no Twilio Console visit required after this point).
+  7. Call the provisioned number from a different phone, hang up without answering your cell, and verify: (a) owner cell receives summary SMS within ~10s; (b) caller's phone receives outreach SMS; (c) caller's SMS reply creates a Lead in the dashboard.
+  - The provisioning UI is the canonical setup path — do NOT use the old manual `INSERT INTO phone_numbers` approach (still works but bypasses the webhook auto-configuration).
 - **Fix Google OAuth on production** — two steps needed:
   1. Set `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` in Railway env vars (currently defaults to `http://127.0.0.1:8080` which breaks OAuth redirects)
   2. In Google Cloud Console → APIs & Services → Credentials → OAuth client, add `https://leadrelay-production-4a37.up.railway.app/auth/google/callback` as an authorized redirect URI
@@ -164,11 +173,13 @@ The script seeds `phone_numbers` / `phone_routing_rules` / `phone_business_hours
 
 ## Key Config (.env)
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - Google OAuth for Gmail integration
-- `PUBLIC_BASE_URL` - Must match the OAuth redirect URI registered in Google Cloud Console
+- `PUBLIC_BASE_URL` - Must match (a) the OAuth redirect URI registered in Google Cloud Console AND (b) the base URL used when provisioning Twilio numbers (phone webhooks are wired to `{PUBLIC_BASE_URL}/twilio/voice/*`). Changing this after provisioning leaves existing numbers pointing at the old URL — re-provision or update webhook URLs in Twilio Console.
 - `LLM_PROVIDER=anthropic` / `LLM_API_KEY` - Claude AI for classification
 - `HUMAN_REVIEW=false` - Auto-sends replies above confidence threshold
 - SMTP/IMAP credentials (fallback when Gmail OAuth is not connected)
-- Twilio SID/token/phone for SMS alerts
+- `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` - **Platform-level Twilio account** — used for webhook signature validation, outbound SMS, AND number provisioning via `/api/phone/*`. These env vars are authoritative; `OrgSettings.twilio_*` columns are a BYO-Twilio fallback for power users.
+- `TWILIO_FROM_NUMBER` - Default "from" number for owner-alert SMS when an org hasn't provisioned its own
+- `SMS_ALERT_TO_NUMBER` - Default owner-alert destination (superseded by `phone_routing_rules.owner_phone` when configured)
 
 ## Key Architecture Decisions
 - Gmail OAuth tokens are stored per-org in `OrgSettings` (not per-user)
@@ -193,12 +204,33 @@ The script seeds `phone_numbers` / `phone_routing_rules` / `phone_business_hours
 - **Self-service number provisioning is mandatory for the product to work.** Bob is a 60-year-old plumber. He will not go to the Twilio console, read docs, or configure webhooks. LeadRelay owns the provisioning flow end-to-end: `POST /api/phone/search` returns available numbers by area code, `POST /api/phone/provision` buys + wires one in a single call. Credentials come from `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` env vars (platform-level account), not from each org's `OrgSettings` — this matches the "platform-level Twilio" direction noted in the pre-launch TODOs.
 
 ### Phone-capture testing setup against real Twilio
-1. Buy a Twilio number (trial works). Get the `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`.
-2. Insert `phone_numbers` row: `INSERT INTO phone_numbers (org_id, twilio_sid, phone_number, is_active) VALUES (1, 'PN...', '+1555...', 1);`
-3. Insert `phone_routing_rules` row with your cell as `owner_phone` (E.164 format, e.g. `+14035551234`).
-4. Set Twilio credentials in `OrgSettings` (or as env vars) so SMS sends actually go out.
-5. In Twilio Console → your number → Voice Configuration:
-   - "A CALL COMES IN" webhook → `POST {PUBLIC_BASE_URL}/twilio/voice/incoming`
-   - "CALL STATUS CHANGES" → `POST {PUBLIC_BASE_URL}/twilio/voice/call-status` with events `completed, no-answer, busy, failed`
-6. For local testing: `ngrok http 8001`, use the ngrok HTTPS URL as `PUBLIC_BASE_URL` and in the Twilio Console webhooks.
-7. Call the Twilio number from a different phone, leave a voicemail, verify Lead creation + owner SMS.
+
+**Canonical path (use the UI, not the DB):**
+1. Set env vars in `.env`:
+   ```
+   TWILIO_ACCOUNT_SID=AC...            # from Twilio Account Dashboard
+   TWILIO_AUTH_TOKEN=...               # from Twilio Account Dashboard
+   PUBLIC_BASE_URL=https://xxx.ngrok-free.app   # ngrok URL (rotates on free tier)
+   ```
+2. `ngrok http 8001` in a second terminal. Paste the HTTPS URL into `PUBLIC_BASE_URL` and restart uvicorn so the new value is picked up — the provisioning endpoint uses it to wire webhook URLs on the Twilio number.
+3. Verify the owner cell + any test-caller number on Twilio → Phone Numbers → Verified Caller IDs. Trial accounts silently reject calls/SMS to unverified numbers.
+4. Log in at `https://xxx.ngrok-free.app/settings`. Scroll to "Phone lead capture" → enter area code + cell → "Find me a number" → pick one → "Use this". Provisioning takes ~3s; webhooks are auto-configured on the number.
+5. Test scenarios to run:
+   - **Missed-call → SMS outreach**: call from a different phone, don't answer your cell within 20s, hear the "we'll text you" greeting, hang up. Expect: outreach SMS to caller + owner alert within ~10s of any SMS reply.
+   - **Voicemail fallback**: during the greeting, stay on the line and leave a voicemail (simulates a landline caller). Expect: Lead created from transcript, owner alert tagged `(voicemail)`.
+   - **Owner answers**: call, pick up on your cell, hang up. Expect: no SMS, no Lead — normal call.
+6. Verify DB state after each scenario:
+   ```bash
+   python -c "from app.database import SessionLocal; from app.models import *; \
+   db=SessionLocal(); \
+   [print('CALL', c.id, c.from_number, c.status, c.dial_status, 'after_hours=', c.is_after_hours) for c in db.query(CallEvent).order_by(CallEvent.id.desc()).limit(3)]; \
+   [print('LEAD', l.id, l.sender_name, l.phone, l.category, 'urg=', l.urgency_score) for l in db.query(Lead).filter(Lead.source=='phone').order_by(Lead.id.desc()).limit(3)]; \
+   [print('SMS', s.purpose, s.to_number, s.status) for s in db.query(SmsNotification).order_by(SmsNotification.id.desc()).limit(5)]"
+   ```
+
+**Common gotchas:**
+- Ngrok free-tier URL rotates on every restart → the number's Twilio webhook URLs go stale. Workaround: re-run provisioning, OR update the number's webhook URLs in the Twilio Console, OR upgrade to ngrok paid for a reserved domain.
+- Trial accounts: Twilio prefixes every call with "You are receiving a call from a Twilio trial account" — annoying but harmless.
+- `APP_ENV=production` turns on webhook signature validation. Keep it at `development` or empty during local ngrok testing or every webhook will 403.
+- Outbound SMS cost on trial is covered by the $15 credit but SMS to unverified numbers silently fails. Check `sms_notifications.status='failed'` + `error_message` column for Twilio's rejection reason.
+- If `PUBLIC_BASE_URL` is not set when provisioning runs, `/api/phone/provision` returns 500 with "PUBLIC_BASE_URL not configured". Set it before clicking "Use this".

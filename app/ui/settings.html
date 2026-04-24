@@ -167,6 +167,26 @@
                   Find me a number
                 </button>
                 <div id="phoneSearchResults" style="margin-top:1rem;"></div>
+
+                <hr style="margin:1.5rem 0; border:none; border-top:1px solid rgba(255,255,255,0.12);" />
+
+                <p class="muted" style="margin-bottom:0.75rem;">
+                  <strong>Already bought a number in the Twilio console?</strong>
+                  Paste it below and we'll adopt it — no extra charge, we just reconfigure it to point at LeadRelay.
+                </p>
+                <div class="field-group field-group-double">
+                  <label class="form-field">
+                    <span class="field-label">Number you already own (E.164)</span>
+                    <input id="phoneAdoptNumber" class="filter-input" placeholder="+17822121292" />
+                  </label>
+                  <label class="form-field">
+                    <span class="field-label">Ring my cell (optional)</span>
+                    <input id="phoneAdoptCell" class="filter-input" placeholder="+18254401394" />
+                  </label>
+                </div>
+                <button type="button" id="phoneAdoptBtn" class="ghost-btn" style="margin-top:0.5rem;">
+                  Adopt this number
+                </button>
               </div>
 
               <div id="phoneProvisionedPanel" class="hidden">
@@ -744,6 +764,35 @@
           showPhoneMsg('Provisioning error: ' + e.message, false);
         }
       }
+
+      document.getElementById('phoneAdoptBtn').addEventListener('click', async () => {
+        const phoneNumber = document.getElementById('phoneAdoptNumber').value.trim();
+        const ownerPhone = document.getElementById('phoneAdoptCell').value.trim();
+        if (!phoneNumber) {
+          showPhoneMsg('Enter the number you own in E.164 format (e.g. +17822121292).', false);
+          return;
+        }
+        showPhoneMsg('Adopting your number…', true);
+        try {
+          const res = await fetch('/api/phone/adopt', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              phone_number: phoneNumber,
+              owner_phone: ownerPhone || null,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            showPhoneMsg(data.detail || 'Adoption failed.', false);
+            return;
+          }
+          showPhoneMsg(`Done — ${data.phone_number} is now wired to LeadRelay.`, true);
+          await loadPhone();
+        } catch (e) {
+          showPhoneMsg('Error: ' + e.message, false);
+        }
+      });
 
       document.getElementById('phoneRoutingSaveBtn').addEventListener('click', async () => {
         const payload = {
