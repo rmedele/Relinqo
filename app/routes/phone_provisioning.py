@@ -23,7 +23,14 @@ from app.auth import get_current_user
 from app.config import settings
 from app.database import get_db
 from app.models import PhoneNumber, PhoneRoutingRule, User
-from app.twilio_client import TwilioError, provision_number, release_number, search_available_numbers
+from app.twilio_client import (
+    TwilioError,
+    lookup_owned_number,
+    provision_number,
+    release_number,
+    search_available_numbers,
+    update_number_webhooks,
+)
 
 router = APIRouter(prefix="/api/phone", tags=["phone-provisioning"])
 logger = logging.getLogger(__name__)
@@ -38,6 +45,14 @@ class SearchRequest(BaseModel):
 class ProvisionRequest(BaseModel):
     phone_number: str  # E.164, e.g. "+15874567890"
     friendly_name: str | None = None
+
+
+class AdoptRequest(BaseModel):
+    """For a number the user bought in the Twilio Console before
+    onboarding. We look it up by E.164, reconfigure its webhooks, and
+    save it to the org. No Twilio charge — it's already theirs."""
+    phone_number: str
+    owner_phone: str | None = None
 
 
 class RoutingRequest(BaseModel):
@@ -153,6 +168,104 @@ def provision(
         "friendly_name": row.friendly_name,
         "voice_url": voice_url,
         "status_callback_url": status_url,
+    }
+
+
+@router.post("/adopt")
+def adopt(
+    payload: AdoptRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Take over a number the user already bought in the Twilio console.
+    Looks it up on their Twilio account, reconfigures its webhooks to
+    point at LeadRelay, and saves it to the org. Optionally writes the
+    routing rule (owner_phone) in the same call so the UI can 'finish
+    setup' in one click.
+    """
+    phone = _normalize_e164(payload.phone_number)
+    if not phone:
+        raise HTTPException(status_code=400, detail="phone_number required in E.164 format")
+
+    existing_local = db.query(PhoneNumber).filter(
+        PhoneNumber.org_id == user.org_id,
+        PhoneNumber.is_active == True,  # noqa: E712
+    ).first()
+    if existing_local:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Org already has phone number {existing_local.phone_number}. Release it first.",
+        )
+
+    try:
+        remote = lookup_owned_number(phone)
+    except TwilioError as e:
+        logger.warning("twilio lookup failed for %s: %s", phone, e.message)
+        raise HTTPException(status_code=e.status, detail=e.message)
+
+    if not remote:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Number {phone} not found on this Twilio account. Buy it in the Twilio Console first, or use /provision to buy via LeadRelay.",
+        )
+
+    sid = remote.get("sid")
+    voice_url, status_url = _webhook_urls()
+    sms_url = f"{settings.public_base_url.rstrip('/')}/sms/webhook"
+
+    try:
+        update_number_webhooks(
+            sid,
+            voice_url=voice_url,
+            status_callback_url=status_url,
+            sms_url=sms_url,
+            friendly_name=f"LeadRelay {phone}",
+        )
+    except TwilioError as e:
+        logger.warning("twilio webhook update failed for %s: %s", sid, e.message)
+        raise HTTPException(status_code=e.status, detail=e.message)
+
+    row = PhoneNumber(
+        org_id=user.org_id,
+        twilio_sid=sid,
+        phone_number=remote.get("phone_number") or phone,
+        friendly_name=f"LeadRelay {phone}",
+        is_active=True,
+    )
+    db.add(row)
+
+    # If owner_phone provided, upsert the routing rule in one shot
+    if payload.owner_phone:
+        owner = _normalize_e164(payload.owner_phone)
+        rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == user.org_id).first()
+        if rule is None:
+            rule = PhoneRoutingRule(
+                org_id=user.org_id,
+                owner_phone=owner,
+                ring_owner_first=True,
+                ring_timeout_seconds=20,
+                send_caller_confirmation=True,
+            )
+            db.add(rule)
+        else:
+            rule.owner_phone = owner
+            rule.ring_owner_first = True
+
+    db.commit()
+    db.refresh(row)
+
+    logger.info(
+        "adopted phone_number=%s sid=%s org_id=%s",
+        row.phone_number, row.twilio_sid, user.org_id,
+    )
+    return {
+        "id": row.id,
+        "phone_number": row.phone_number,
+        "twilio_sid": row.twilio_sid,
+        "friendly_name": row.friendly_name,
+        "voice_url": voice_url,
+        "status_callback_url": status_url,
+        "sms_url": sms_url,
     }
 
 
