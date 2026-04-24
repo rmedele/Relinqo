@@ -157,6 +157,8 @@ def main() -> int:
     parser.add_argument("--spam", action="store_true",
                         help="Use a clearly-spammy transcript")
     parser.add_argument("--transcript", default=None, help="Custom transcript text")
+    parser.add_argument("--sms-reply", default=None,
+                        help="Simulate the after-hours SMS outreach flow: caller hangs up without leaving VM, then sends this SMS reply. Skips voicemail steps.")
     args = parser.parse_args()
 
     _ensure_seed(args.org_id, args.to, args.owner_phone, args.after_hours)
@@ -196,28 +198,42 @@ def main() -> int:
                 "DialCallDuration": "20",
             })
 
-        print(f"\n=== /recording-complete rec_sid={recording_sid} ===")
-        _post_form(client, "/twilio/voice/recording-complete", {
-            "CallSid": call_sid,
-            "RecordingSid": recording_sid,
-            "RecordingUrl": f"https://api.twilio.com/2010-04-01/Accounts/ACfake/Recordings/{recording_sid}",
-            "RecordingDuration": "42",
-            "RecordingStatus": "completed",
-        })
+        if args.sms_reply is not None:
+            # Skip the voicemail path entirely — simulate a mobile caller
+            # hanging up after the "we'll text you" message, then replying
+            # by SMS a few seconds later.
+            print(f"\n=== waiting for outreach SMS to fire ===")
+            time.sleep(0.5)
 
-        print(f"\n=== /transcription-complete (enqueues process_voicemail) ===")
-        _post_form(client, "/twilio/voice/transcription-complete", {
-            "CallSid": call_sid,
-            "RecordingSid": recording_sid,
-            "TranscriptionSid": f"TR{uuid.uuid4().hex[:30]}",
-            "TranscriptionText": transcript,
-            "TranscriptionStatus": "completed",
-        })
+            print(f"\n=== /sms/webhook (caller replies with: {args.sms_reply!r}) ===")
+            _post_form(client, "/sms/webhook", {
+                "From": args.from_number,
+                "To": args.to,
+                "Body": args.sms_reply,
+                "NumMedia": "0",
+                "MessageSid": f"SM{uuid.uuid4().hex[:30]}",
+            })
+        else:
+            print(f"\n=== /recording-complete rec_sid={recording_sid} ===")
+            _post_form(client, "/twilio/voice/recording-complete", {
+                "CallSid": call_sid,
+                "RecordingSid": recording_sid,
+                "RecordingUrl": f"https://api.twilio.com/2010-04-01/Accounts/ACfake/Recordings/{recording_sid}",
+                "RecordingDuration": "42",
+                "RecordingStatus": "completed",
+            })
 
-        # The handler uses asyncio.create_task — wait a beat for it to complete.
-        # In TestClient the event loop is per-request, so we poll the DB.
-        print("\n=== waiting for background process_voicemail... ===")
-        _wait_for_classification(recording_sid, timeout_s=30)
+            print(f"\n=== /transcription-complete (enqueues process_voicemail) ===")
+            _post_form(client, "/twilio/voice/transcription-complete", {
+                "CallSid": call_sid,
+                "RecordingSid": recording_sid,
+                "TranscriptionSid": f"TR{uuid.uuid4().hex[:30]}",
+                "TranscriptionText": transcript,
+                "TranscriptionStatus": "completed",
+            })
+
+            print("\n=== waiting for background process_voicemail... ===")
+            _wait_for_classification(recording_sid, timeout_s=30)
 
         print(f"\n=== /call-status (final) ===")
         _post_form(client, "/twilio/voice/call-status", {

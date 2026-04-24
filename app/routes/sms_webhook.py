@@ -1,39 +1,49 @@
-"""Twilio SMS webhook for reply-to-approve flow.
+"""Twilio SMS webhook — handles TWO distinct inbound SMS flows:
 
-When the business owner replies YES <id> or NO <id>, this endpoint
-processes the approval/rejection and sends or skips the draft reply.
+1. **Caller SMS reply** (new, phone-lead pipeline): if the sender's
+   number matches a CallEvent we received in the last 30 minutes,
+   treat the message as the caller's reply to our "we'll text you"
+   outreach. Creates a Lead and alerts the owner.
+
+2. **Owner YES/NO approval** (existing email flow): if the sender is
+   the configured owner number, parse "YES <lead#>" / "NO <lead#>"
+   to approve or reject drafted replies.
+
+Order matters: we check recent-caller FIRST so owner-approval stays
+uncluttered even if the owner happens to call their own business number.
 """
 import logging
 import re
 
-from fastapi import APIRouter, Form, Depends, Response
+from fastapi import APIRouter, Depends, Form, Request, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.mailer import send_email
 from app.models import Lead, OrgSettings
-from app.sms import send_sms
+from app.sms_intake import find_recent_call_for_sender, process_sms_lead
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Match "YES 42", "yes42", "NO 42", "no 42" etc.
 APPROVE_RE = re.compile(r"^\s*(yes)\s*(\d+)\s*$", re.IGNORECASE)
 REJECT_RE = re.compile(r"^\s*(no)\s*(\d+)\s*$", re.IGNORECASE)
 
 
-def _twiml_response(message: str) -> Response:
-    """Return a minimal TwiML response."""
-    xml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{message}</Message></Response>'
+def _twiml_response(message: str | None = None) -> Response:
+    """TwiML <Message> auto-replies to the sender. Passing None returns
+    an empty <Response/> (no auto-reply)."""
+    if message is None:
+        xml = '<?xml version="1.0" encoding="UTF-8"?><Response/>'
+    else:
+        xml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{message}</Message></Response>'
     return Response(content=xml, media_type="application/xml")
 
 
 def _find_org_by_phone(db: Session, from_number: str) -> tuple[int | None, OrgSettings | None]:
-    """Find the org whose sms_alert_to_number matches the sender."""
-    # Normalize: strip everything except digits and leading +
     normalized = re.sub(r"[^\d+]", "", from_number)
-    settings = db.query(OrgSettings).all()
-    for s in settings:
+    settings_rows = db.query(OrgSettings).all()
+    for s in settings_rows:
         owner_num = re.sub(r"[^\d+]", "", s.sms_alert_to_number or "")
         if owner_num and owner_num == normalized:
             return s.org_id, s
@@ -41,15 +51,38 @@ def _find_org_by_phone(db: Session, from_number: str) -> tuple[int | None, OrgSe
 
 
 @router.post("/sms/webhook")
-def sms_webhook(
+async def sms_webhook(
+    request: Request,
     Body: str = Form(""),
     From: str = Form(""),
     db: Session = Depends(get_db),
 ):
-    """Handle incoming SMS from Twilio."""
+    """Route inbound SMS."""
     body = Body.strip()
-    logger.info("SMS webhook received from=%s body=%r", From, body)
+    # NumMedia and MediaUrl0..N are Twilio MMS fields.
+    form = await request.form()
+    try:
+        num_media = int(form.get("NumMedia", "0"))
+    except (TypeError, ValueError):
+        num_media = 0
+    media_urls = [form.get(f"MediaUrl{i}") for i in range(num_media) if form.get(f"MediaUrl{i}")]
 
+    logger.info(
+        "SMS webhook from=%s num_media=%s body_len=%s",
+        From, num_media, len(body),
+    )
+
+    # --- 1. Recent-caller reply flow ---
+    recent_call = find_recent_call_for_sender(db, From)
+    if recent_call is not None:
+        lead_id = process_sms_lead(recent_call.id, body, media_urls)
+        if lead_id is not None:
+            logger.info("sms/webhook: recent-caller reply -> lead_id=%s", lead_id)
+        # Empty TwiML so Twilio doesn't auto-reply; our outreach SMS already
+        # did the customer-facing messaging via record_and_send_sms.
+        return _twiml_response(None)
+
+    # --- 2. Owner YES/NO approval flow (existing) ---
     approve_match = APPROVE_RE.match(body)
     reject_match = REJECT_RE.match(body)
 
@@ -59,7 +92,6 @@ def sms_webhook(
     is_approve = approve_match is not None
     lead_id = int((approve_match or reject_match).group(2))
 
-    # Find the org by the sender's phone number
     org_id, org_settings = _find_org_by_phone(db, From)
     if org_id is None:
         return _twiml_response("Phone number not linked to an account.")
@@ -93,11 +125,10 @@ def sms_webhook(
             return _twiml_response(f"Reply sent to {lead.sender_email} for lead #{lead_id}.")
         return _twiml_response(f"Send failed for lead #{lead_id}. Check SMTP settings.")
 
-    else:
-        lead.status = "skipped"
-        db.commit()
+    lead.status = "skipped"
+    db.commit()
 
-        from app.routes.leads import log_activity
-        log_activity(db, lead.id, lead.org_id, "sms_rejected", "Lead rejected via SMS reply.")
+    from app.routes.leads import log_activity
+    log_activity(db, lead.id, lead.org_id, "sms_rejected", "Lead rejected via SMS reply.")
 
-        return _twiml_response(f"Lead #{lead_id} skipped.")
+    return _twiml_response(f"Lead #{lead_id} skipped.")

@@ -137,6 +137,91 @@
             </div>
           </section>
 
+          <section id="phoneCard" class="settings-card card editorial-card">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Phone lead capture</p>
+                <h2>Your business phone line</h2>
+              </div>
+              <span class="section-chip">Missed-call rescue</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <div id="phoneNotProvisioned">
+                <p class="subhead" style="margin-bottom:1rem;">
+                  Get a phone number that rings your cell, captures every
+                  missed call, and texts you a summary of who called and
+                  what they need. Customers can even reply by text — we'll
+                  handle the back-and-forth.
+                </p>
+                <div class="field-group field-group-double">
+                  <label class="form-field">
+                    <span class="field-label">Preferred area code</span>
+                    <input id="phoneAreaCode" class="filter-input" placeholder="e.g. 403" maxlength="3" />
+                  </label>
+                  <label class="form-field">
+                    <span class="field-label">Ring my cell</span>
+                    <input id="phoneOwnerCell" class="filter-input" placeholder="+1 403 555 0123" />
+                  </label>
+                </div>
+                <button type="button" id="phoneSearchBtn" class="primary-btn primary-btn-strong" style="margin-top:0.75rem;">
+                  Find me a number
+                </button>
+                <div id="phoneSearchResults" style="margin-top:1rem;"></div>
+              </div>
+
+              <div id="phoneProvisionedPanel" class="hidden">
+                <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                  <div>
+                    <span style="color:var(--clr-success, #34d399); font-weight:600;">Live</span>
+                    <span id="phoneDisplay" style="margin-left:0.5rem; font-weight:600; font-size:1.1em;"></span>
+                  </div>
+                  <button type="button" id="phoneReleaseBtn" class="ghost-btn" style="color:var(--clr-error, #f87171);">Release number</button>
+                </div>
+                <p class="muted" style="margin-top:0.5rem;">
+                  Put this number on your website, business cards, and
+                  Google Business Profile. Customers call it. You keep
+                  answering your cell like normal — we only step in when
+                  you can't answer.
+                </p>
+
+                <div class="field-group field-group-double" style="margin-top:1rem;">
+                  <label class="form-field">
+                    <span class="field-label">Ring my cell when a customer calls</span>
+                    <input id="routeOwnerPhone" class="filter-input" placeholder="+1 403 555 0123" />
+                  </label>
+                  <label class="form-field">
+                    <span class="field-label">Ring for how long</span>
+                    <select id="routeRingTimeout" class="filter-input">
+                      <option value="15">15 seconds</option>
+                      <option value="20" selected>20 seconds</option>
+                      <option value="25">25 seconds</option>
+                      <option value="30">30 seconds</option>
+                    </select>
+                  </label>
+                </div>
+                <label class="form-field">
+                  <span class="field-label">Try ringing me first</span>
+                  <label class="toggle-card">
+                    <input id="routeRingFirst" type="checkbox" checked />
+                    <span>Attempt to reach me before falling back to text</span>
+                  </label>
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Auto-text callers back</span>
+                  <label class="toggle-card">
+                    <input id="routeSendConfirmation" type="checkbox" checked />
+                    <span>Send every caller "we got your message" confirmation</span>
+                  </label>
+                </label>
+                <button type="button" id="phoneRoutingSaveBtn" class="primary-btn" style="margin-top:0.75rem;">
+                  Save phone settings
+                </button>
+              </div>
+
+              <div id="phoneStatusMsg" class="inline-alert hidden" style="margin-top:1rem;"></div>
+            </div>
+          </section>
+
           <section class="settings-card card editorial-card">
             <div class="section-heading-row">
               <div>
@@ -543,8 +628,160 @@
         } catch { /* availability save failed silently */ }
       });
 
+      // --- Phone provisioning ---
+      const phoneNotProvisioned = document.getElementById('phoneNotProvisioned');
+      const phoneProvisionedPanel = document.getElementById('phoneProvisionedPanel');
+      const phoneDisplay = document.getElementById('phoneDisplay');
+      const phoneStatusMsg = document.getElementById('phoneStatusMsg');
+      const phoneSearchResults = document.getElementById('phoneSearchResults');
+
+      function showPhoneMsg(text, ok) {
+        phoneStatusMsg.textContent = text;
+        phoneStatusMsg.className = `inline-alert ${ok ? 'success' : 'error'}`;
+        phoneStatusMsg.classList.remove('hidden');
+      }
+
+      function updatePhoneUI(phone, routing) {
+        if (phone) {
+          phoneNotProvisioned.classList.add('hidden');
+          phoneProvisionedPanel.classList.remove('hidden');
+          phoneDisplay.textContent = phone.phone_number;
+        } else {
+          phoneNotProvisioned.classList.remove('hidden');
+          phoneProvisionedPanel.classList.add('hidden');
+        }
+        if (routing) {
+          document.getElementById('routeOwnerPhone').value = routing.owner_phone || '';
+          document.getElementById('routeRingTimeout').value = String(routing.ring_timeout_seconds || 20);
+          document.getElementById('routeRingFirst').checked = !!routing.ring_owner_first;
+          document.getElementById('routeSendConfirmation').checked = !!routing.send_caller_confirmation;
+        }
+      }
+
+      async function loadPhone() {
+        try {
+          const res = await fetch('/api/phone/my-number');
+          if (!res.ok) return;
+          const data = await res.json();
+          updatePhoneUI(data.phone, data.routing);
+        } catch { /* best effort */ }
+      }
+
+      document.getElementById('phoneSearchBtn').addEventListener('click', async () => {
+        const areaCode = document.getElementById('phoneAreaCode').value.trim();
+        if (!/^\d{3}$/.test(areaCode)) {
+          showPhoneMsg('Enter a 3-digit area code (e.g. 403).', false);
+          return;
+        }
+        phoneSearchResults.innerHTML = '<p class="muted">Searching…</p>';
+        try {
+          const res = await fetch('/api/phone/search', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({area_code: areaCode, limit: 5}),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            phoneSearchResults.innerHTML = '';
+            showPhoneMsg(data.detail || 'Search failed.', false);
+            return;
+          }
+          if (!data.numbers || data.numbers.length === 0) {
+            phoneSearchResults.innerHTML = '<p class="muted">No numbers found in that area code. Try another.</p>';
+            return;
+          }
+          phoneSearchResults.innerHTML = '<p class="muted" style="margin-bottom:0.5rem;">Pick one:</p>' +
+            data.numbers.map(n => `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <div>
+                  <strong>${n.friendly_name || n.phone_number}</strong>
+                  <span class="muted" style="margin-left:0.5rem;">${[n.locality, n.region].filter(Boolean).join(', ')}</span>
+                </div>
+                <button type="button" class="primary-btn phone-provision-btn" data-number="${n.phone_number}">
+                  Use this
+                </button>
+              </div>
+            `).join('');
+          document.querySelectorAll('.phone-provision-btn').forEach(btn => {
+            btn.addEventListener('click', () => provisionNumber(btn.dataset.number));
+          });
+        } catch (e) {
+          phoneSearchResults.innerHTML = '';
+          showPhoneMsg('Search error: ' + e.message, false);
+        }
+      });
+
+      async function provisionNumber(phoneNumber) {
+        showPhoneMsg('Buying your number…', true);
+        try {
+          const res = await fetch('/api/phone/provision', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({phone_number: phoneNumber}),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            showPhoneMsg(data.detail || 'Provisioning failed.', false);
+            return;
+          }
+          // Save the owner cell they typed in the setup form, if any.
+          const ownerCell = document.getElementById('phoneOwnerCell').value.trim();
+          if (ownerCell) {
+            await fetch('/api/phone/routing', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                owner_phone: ownerCell,
+                ring_owner_first: true,
+                ring_timeout_seconds: 20,
+                send_caller_confirmation: true,
+              }),
+            });
+          }
+          showPhoneMsg(`You're live on ${data.phone_number}. Put this on your website and business cards.`, true);
+          await loadPhone();
+        } catch (e) {
+          showPhoneMsg('Provisioning error: ' + e.message, false);
+        }
+      }
+
+      document.getElementById('phoneRoutingSaveBtn').addEventListener('click', async () => {
+        const payload = {
+          owner_phone: document.getElementById('routeOwnerPhone').value.trim(),
+          ring_owner_first: document.getElementById('routeRingFirst').checked,
+          ring_timeout_seconds: parseInt(document.getElementById('routeRingTimeout').value, 10) || 20,
+          send_caller_confirmation: document.getElementById('routeSendConfirmation').checked,
+        };
+        const res = await fetch('/api/phone/routing', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) showPhoneMsg('Phone settings saved.', true);
+        else {
+          const d = await res.json();
+          showPhoneMsg(d.detail || 'Save failed.', false);
+        }
+      });
+
+      document.getElementById('phoneReleaseBtn').addEventListener('click', async () => {
+        if (!confirm('Release this number? You will lose it immediately and customers who call it will hear an error.')) return;
+        const res = await fetch('/api/phone/my-number');
+        const data = await res.json();
+        if (!data.phone) return;
+        const rel = await fetch(`/api/phone/release/${data.phone.id}`, {method: 'POST'});
+        if (rel.ok) {
+          showPhoneMsg('Number released.', true);
+          await loadPhone();
+        } else {
+          const d = await rel.json();
+          showPhoneMsg(d.detail || 'Release failed.', false);
+        }
+      });
+
       loadSettings();
       loadAvailability();
+      loadPhone();
     </script>
   </body>
 </html>
