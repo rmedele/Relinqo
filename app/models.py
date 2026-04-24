@@ -133,8 +133,10 @@ class Lead(Base):
     parent_lead_id = Column(Integer, ForeignKey("leads.id"), nullable=True, index=True)
 
     booking_token = Column(String(64), nullable=True, unique=True, index=True)
+    call_event_id = Column(Integer, ForeignKey("call_events.id"), nullable=True, index=True)
 
     org = relationship("Organization", back_populates="leads")
+    call_event = relationship("CallEvent", back_populates="lead")
     parent_lead = relationship("Lead", remote_side="Lead.id", backref="replies", foreign_keys=[parent_lead_id])
     followups = relationship("FollowUp", back_populates="lead", cascade="all, delete-orphan")
     owner_alerts = relationship("OwnerAlert", back_populates="lead", cascade="all, delete-orphan")
@@ -270,3 +272,100 @@ class Booking(Base):
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
     lead = relationship("Lead", back_populates="bookings")
+
+
+class PhoneNumber(Base):
+    __tablename__ = "phone_numbers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    twilio_sid = Column(String(100), nullable=False, unique=True, index=True)
+    phone_number = Column(String(32), nullable=False, unique=True, index=True)  # E.164
+    friendly_name = Column(String(255), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PhoneBusinessHours(Base):
+    __tablename__ = "phone_business_hours"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    day_of_week = Column(Integer, nullable=False)  # 0=Mon, 6=Sun
+    open_time = Column(String(5), nullable=True)   # "09:00", null = closed
+    close_time = Column(String(5), nullable=True)  # "17:00"
+    timezone = Column(String(100), nullable=False, default="America/Edmonton")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class PhoneRoutingRule(Base):
+    __tablename__ = "phone_routing_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, unique=True, index=True)
+    ring_owner_first = Column(Boolean, nullable=False, default=True)
+    owner_phone = Column(String(32), nullable=False, default="")  # E.164
+    ring_timeout_seconds = Column(Integer, nullable=False, default=20)
+    send_caller_confirmation = Column(Boolean, nullable=False, default=True)
+    voicemail_greeting = Column(Text, nullable=True)
+    after_hours_greeting = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class CallEvent(Base):
+    __tablename__ = "call_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    twilio_call_sid = Column(String(64), nullable=False, unique=True, index=True)
+    from_number = Column(String(32), nullable=False, index=True)
+    to_number = Column(String(32), nullable=False, index=True)
+    from_city = Column(String(100), nullable=True)
+    from_state = Column(String(100), nullable=True)
+    direction = Column(String(20), nullable=False, default="inbound")
+    status = Column(String(30), nullable=False, default="ringing")
+    dial_status = Column(String(30), nullable=True)
+    answered_by_owner = Column(Boolean, nullable=False, default=False)
+    duration_seconds = Column(Integer, nullable=True)
+    is_after_hours = Column(Boolean, nullable=False, default=False)
+    started_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    voicemail = relationship("Voicemail", back_populates="call_event", uselist=False, cascade="all, delete-orphan")
+    lead = relationship("Lead", back_populates="call_event", uselist=False)
+
+
+class Voicemail(Base):
+    __tablename__ = "voicemails"
+
+    id = Column(Integer, primary_key=True, index=True)
+    call_event_id = Column(Integer, ForeignKey("call_events.id"), nullable=False, index=True)
+    twilio_recording_sid = Column(String(64), nullable=False, unique=True, index=True)
+    recording_url = Column(String(500), nullable=False)
+    recording_duration = Column(Integer, nullable=False, default=0)
+    transcript = Column(Text, nullable=True)
+    transcript_confidence = Column(Float, nullable=True)
+    transcription_status = Column(String(20), nullable=False, default="pending")
+    classified_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    call_event = relationship("CallEvent", back_populates="voicemail")
+
+
+class SmsNotification(Base):
+    __tablename__ = "sms_notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=True)
+    call_event_id = Column(Integer, ForeignKey("call_events.id"), nullable=True)
+    direction = Column(String(10), nullable=False, default="outbound")
+    to_number = Column(String(32), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    twilio_message_sid = Column(String(64), nullable=True)
+    status = Column(String(20), nullable=False, default="queued")
+    purpose = Column(String(40), nullable=False, index=True)  # owner_alert | caller_confirmation | approval_request
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
