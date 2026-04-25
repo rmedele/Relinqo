@@ -2536,9 +2536,9 @@ select:focus-visible {
    Pipeline Kanban
    ================================================================ */
 .kanban-shell {
-  max-width: 1640px;
+  max-width: 1920px;
   margin: 0 auto;
-  padding: 28px 24px 80px;
+  padding: 28px 32px 80px;
   animation: fadeIn 0.4s var(--ease-out);
 }
 .kanban-header {
@@ -2590,10 +2590,19 @@ select:focus-visible {
 }
 .kanban-board {
   display: grid;
-  grid-template-columns: repeat(6, minmax(240px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
-  overflow-x: auto;
   padding-bottom: 10px;
+  width: 100%;
+}
+/* On narrower screens, fall back to horizontal scroll with fixed-width columns */
+@media (max-width: 1280px) {
+  .kanban-board {
+    grid-template-columns: repeat(6, 240px);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+  .kanban-col { scroll-snap-align: start; }
 }
 .kanban-col {
   background: rgba(8, 8, 16, 0.5);
@@ -2728,12 +2737,12 @@ select:focus-visible {
 .kanban-card-star.starred { color: var(--accent-yellow); }
 .kanban-card-star:hover { transform: scale(1.15); color: var(--accent-yellow); }
 
-@media (max-width: 1180px) {
-  .kanban-board { grid-template-columns: repeat(6, 260px); }
-}
 @media (max-width: 768px) {
   .kanban-shell { padding: 16px 12px 60px; }
-  .kanban-board { grid-template-columns: repeat(6, 240px); }
+  .kanban-board { grid-template-columns: repeat(6, 220px); gap: 10px; }
+  .kanban-col { padding: 10px; }
+  .kanban-totals { gap: 10px; }
+  .kanban-total-card { min-width: 130px; padding: 12px 14px; }
 }
 
 
