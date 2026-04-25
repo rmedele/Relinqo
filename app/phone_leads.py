@@ -81,6 +81,7 @@ def recent_sms_exists(
         SmsNotification.org_id == org_id,
         SmsNotification.to_number == to_number,
         SmsNotification.purpose == purpose,
+        SmsNotification.status == "sent",
         SmsNotification.created_at >= cutoff,
     ).first() is not None
 
