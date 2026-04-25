@@ -66,12 +66,14 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 
 ### High Priority — Next Up (priority order — tackle top-to-bottom)
 
-**STATE as of 2026-04-25 (post-MVP-polish sweep, post real-Twilio test):**
+**STATE as of 2026-04-25 (post-MVP-polish sweep, post review/calendar sweep, post real-Twilio test):**
 - All MVP features merged to `main` and live on Railway production.
+- **Review request automation + Google Calendar two-way sync shipped 2026-04-25** — committed on branch `mobile-responsive-pass` (commit `9946e55`), pushed to `origin`, PR pending merge to `main`. Once merged, Railway auto-deploys. **Existing connected orgs must reconnect Gmail to grant the new `calendar.events` scope** before calendar sync works for them.
 - Twilio env vars set on Railway. `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app`. Google OAuth working. SMTP/forgot-password not being pursued.
 - Number +17822121292 is adopted in org_id=4 with `owner_phone=+18254401394`. Canada is enabled in Twilio Geo Permissions.
 - Real test call from +17802633390 (verified caller ID) successfully exercised: `/incoming` → dial-owner → owner-no-answer → outreach SMS to caller → caller SMS reply → Lead created in dashboard.
 - **Owner-alert SMS to +18254401394 was NOT received** on that test — investigation still open.
+- **Considered + rejected (2026-04-25): rolling our own carrier to replace Twilio.** To receive PSTN calls + send SMS we'd need to be a CLEC (FCC/CRTC licensing, ~$100K+ regulatory + interconnection costs, 6–18 months) OR run our own SIP/Asterisk infra against a wholesale carrier — neither makes economic sense at our scale (Twilio costs ~$3/customer/mo). If the real itch is "Bob wants calls to ring his existing personal number," that's already solved by the `<Dial>` branch in `app/routes/twilio_voice.py`. If it's "use Bob's existing carrier number with no new LeadRelay number at all," the answer is conditional call forwarding (`*61*<lr-number>#` on his cell) — small feature on top of Twilio, not a custom carrier. **Decision: stay on Twilio, revisit only if/when scale or unit economics demand it.**
 - **Strategic shift: the next 10x of value is no longer engineering — it's distribution.** The product is feature-complete enough to put in front of one paying customer. Engineering should slow until that happens; otherwise we'll keep adding features no real user has asked for.
 
 1. **Get this in front of one real plumber/HVAC tech for 30–60 days** — comp them, watch what they actually use, kill what they don't. Until there's one anecdote of "I won $X jobs because of this," every product decision is a guess. Source ideas: Reese's personal network, local trades Facebook groups, r/plumbing, cold outreach to 5–10 local businesses with a free-pilot offer.
@@ -86,7 +88,9 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 
 4. **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console. Adopted Twilio numbers will need webhook URLs re-pointed (use `POST /api/phone/adopt` again, or update directly in Twilio Console).
 
-5. **60-second product demo video** — trades buy from video, not landing pages. Show: real lead arriving → AI reply going out → owner SMS alert → kanban move to Won. This is higher-leverage than any new feature right now.
+5. **60-second product demo video** — trades buy from video, not landing pages. Show: real lead arriving → AI reply going out → owner SMS alert → kanban move to Won → review request auto-fires → calendar event auto-pops onto Google Calendar. Now that review automation + calendar sync are live, the demo has a much sharper "money loop" story to tell. This is higher-leverage than any new feature right now.
+
+6. **Verify the 2026-04-25 review/calendar features work in production** once the PR is merged: (a) reconnect Gmail to grant calendar scope, (b) toggle calendar sync on, drop a test event on the calendar, confirm `/book/{token}` hides that slot, (c) toggle review automation on with a real Google review URL + 0h delay, mark a lead Won, hit `POST /api/review-requests/run`, verify the email arrives. Document any production-only gotchas back into this file.
 
 ### Real-Twilio test — gotchas hit and fixed (2026-04-25)
 - **Twilio auth token had a trailing whitespace** in the Railway env var. Symptom: every webhook returned 403 "signature mismatch" → Twilio plays "we are sorry, an application error has occurred." Strip whitespace; redeploy.
