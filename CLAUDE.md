@@ -6,7 +6,9 @@ AI-powered inbox management SaaS for local service businesses (plumbing, HVAC, r
 
 **MVP is deployed and live on Railway.** Production URL: https://leadrelay-production-4a37.up.railway.app
 
-The full flow works end-to-end: Gmail connects via OAuth, incoming emails are polled via Gmail API, classified by Claude AI, replies are drafted + sent back through Gmail API, and urgent leads trigger SMS alerts. Two competitive moat features — smart scheduling links and photo intake with Claude vision — are also shipped.
+The full flow works end-to-end: Gmail connects via OAuth, incoming emails are polled via Gmail API, classified by Claude AI, replies are drafted + sent back through Gmail API, and urgent leads trigger SMS alerts. Mobile-responsive dashboard, phone-lead capture, and the **2026-04-25 MVP polish sweep** (pipeline kanban, deal tracking, internal notes, reply templates, command palette, SLA timers, revenue analytics, marketing polish) are all merged to `main` and live in production.
+
+**Where the project sits today:** technically the product is well above MVP-bar — multi-tenant, deployed, end-to-end working. The bottleneck is no longer engineering; it's **distribution + first paying customer**. Next strategic step is putting it in the hands of one real plumber/HVAC tech for 30–60 days and watching what they actually use vs. what they ignore.
 
 ### What's Done
 - **Deployed to Railway** on the trial plan (Dockerfile build, persistent volume at `/app/data`, auto-redeploy on push to `main`)
@@ -25,7 +27,7 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 - Rate limiting, CSRF protection, production security headers (with Railway-compatible TrustedHostMiddleware)
 - **Smart scheduling links** — org configures weekly availability, AI replies embed a booking URL (`/book/{token}`), customers pick a slot, owner gets notified via email/SMS
 - **Photo intake + Claude vision** — Gmail image attachments are extracted (up to 3 images, 5MB each), stored under `data/photos/{org_id}/{lead_id}/`, analyzed by Claude Haiku vision, and shown in the lead detail UI with a lightbox gallery
-- **Mobile-responsive dashboard** (on `mobile-responsive-pass` branch, pending merge to `main`):
+- **Mobile-responsive dashboard** (merged to `main`):
   - Responsive breakpoints at 1180px, 820px, and 560px across dashboard, analytics, and settings
   - Today's Priority section — surfaces urgent, new, and failed leads at top of queue
   - Quick action buttons — one-tap call/email customer, reply templates (Thank You, Schedule, Quote)
@@ -33,7 +35,19 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
   - Mobile bottom navigation bar (Queue/Analytics/Settings) on small screens
   - Back-to-list button on mobile detail view
   - Touch-friendly: 44px min tap targets, 16px font inputs (prevents iOS zoom), disabled hover transforms on touch devices
-- **Phone lead capture V1 — backend complete** (on `mobile-responsive-pass` branch, pending merge to `main`, NOT yet tested against a real Twilio number):
+- **MVP polish sweep — shipped 2026-04-25** (commits `853733c`, `ff30ead` on `main`):
+  - **Pipeline kanban** at `/pipeline` — 6 columns (New → Contacted → Quoted → Scheduled → Won → Lost) with HTML5 drag-and-drop, optimistic UI, per-column dollar totals, star toggle, age badge. Columns use `minmax(0, 1fr)` ≥1280px (fill width), fall back to fixed 240px + horizontal scroll-snap below.
+  - **Deal tracking** on every lead: `Lead.deal_value`, `tags` (comma-separated), `pipeline_stage`, `starred`, `last_contacted_at`. `pipeline_stage` and `outcome` stay in sync — setting outcome=won mirrors stage=won and vice versa.
+  - **Internal team notes** — separate `lead_notes` table with author, body, pinned flag. Visible only to logged-in team members; never sent to customer. Pin-to-top + delete in UI.
+  - **Reply templates** at `/templates` — `reply_templates` table per org. Variables `{{name}}`, `{{full_name}}`, `{{phone}}`, `{{email}}`, `{{location}}`, `{{business}}` auto-fill at insert time. `use_count` tracked. "Save as template" button on the lead detail.
+  - **Revenue analytics** — `/stats` extended with `won_revenue`, `pipeline_value`, `avg_deal_size`. New `/stats/revenue` endpoint returns daily won + new-pipeline trend. Analytics page has 3 new revenue KPI cards + a stacked revenue chart on top.
+  - **Shared `/ui/shell.js`** — toast notifications (top-right slide-in, success/error/warning/info), `Cmd/Ctrl+K` command palette (fuzzy search leads + jump anywhere), keyboard shortcuts overlay (`?`), `g`+`q/p/a/s/t` two-key navigation. Loaded on every authenticated page.
+  - **SLA timer badges** — every lead gets a `fresh` (<5min) / `warm` (5–60min) / `cold` (>60min, pulses) / `done` badge based on age and status. Reinforces speed-to-lead value prop visually.
+  - **Lead detail upgrades** — deal value input, pipeline stage selector, tag pills, star button, SLA timer in operator snapshot, internal notes timeline, templates dropdown, "save as template" link, j/k navigation, single-key shortcuts (w=won, l=lost, s=star, r=refresh, e=focus reply), `Cmd+Enter` to send.
+  - **Marketing page polish** — sharper hero ("Reply to every lead in 60 seconds. Even at 2 a.m."), 4-card stat strip (78% / 5min / 62% / $0), 9-card "Everything in the box" feature grid, expanded FAQ with missed-call SMS explainer.
+  - **Route convention introduced**: page URLs use bare paths (`/pipeline`, `/templates`); JSON APIs are namespaced under `/api/...` to avoid `app.include_router` shadowing `@app.get` page routes (FastAPI resolves in registration order). Existing routes (`/leads`, `/stats`, `/leads/{id}/notes`) kept as-is for compatibility — only the genuinely-conflicting endpoints (`/api/pipeline`, `/api/templates`) moved.
+  - Migration `h3c4d5e6f7g8` — idempotent, batch_alter_table guards, safe on the production volume.
+- **Phone lead capture V1 — backend complete** (merged to `main`, NOT yet fully tested against a real Twilio number):
   - Full Twilio Programmable Voice integration: missed-call rescue, voicemail-to-lead, after-hours intake, **SMS outreach after hangup** (primary path for modern callers who won't leave voicemails)
   - `/incoming` branches on business hours + routing rule: emits `<Dial>` to owner when open + owner configured, else plays a short "we'll text you" greeting + fires an outreach SMS in the background + offers a voicemail as a landline fallback
   - After-hours flow: no dial attempted, plays closed greeting, fires outreach SMS, caller's SMS reply becomes the Lead (no voicemail required)
@@ -47,16 +61,27 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 
 ### High Priority — Next Up (priority order — tackle top-to-bottom)
 
-**STATE as of 2026-04-25 (post real-Twilio test):** Twilio env vars are set on Railway (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER=+17822121292`, `SMS_ALERT_TO_NUMBER=+18254401394`). `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` is set. Google OAuth works in prod. SMTP/forgot-password not being pursued. The number +17822121292 is adopted in org_id=4 with `owner_phone=+18254401394`. Canada is enabled in Twilio Geo Permissions. Real test call from +17802633390 (verified caller ID) successfully exercised: `/incoming` → dial-owner → owner-no-answer → outreach SMS to caller → caller SMS reply → Lead created in dashboard. **Owner-alert SMS to +18254401394 was NOT received** — uncertain whether send was attempted or skipped silently; investigation deferred (need Railway logs around `process_sms_lead` for `lead_id=2` to determine: sent-but-undelivered vs. send-failed vs. owner_number-resolved-empty).
+**STATE as of 2026-04-25 (post-MVP-polish sweep, post real-Twilio test):**
+- All MVP features merged to `main` and live on Railway production.
+- Twilio env vars set on Railway. `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app`. Google OAuth working. SMTP/forgot-password not being pursued.
+- Number +17822121292 is adopted in org_id=4 with `owner_phone=+18254401394`. Canada is enabled in Twilio Geo Permissions.
+- Real test call from +17802633390 (verified caller ID) successfully exercised: `/incoming` → dial-owner → owner-no-answer → outreach SMS to caller → caller SMS reply → Lead created in dashboard.
+- **Owner-alert SMS to +18254401394 was NOT received** on that test — investigation still open.
+- **Strategic shift: the next 10x of value is no longer engineering — it's distribution.** The product is feature-complete enough to put in front of one paying customer. Engineering should slow until that happens; otherwise we'll keep adding features no real user has asked for.
 
-1. **Investigate missing owner-alert SMS** — primary blocker before real launch. Pull Railway logs immediately after the SMS reply that created `lead_id=2` (around 2026-04-25 04:31–04:33 UTC). Look for `sms_lead:`, `SMS sent to +18254401394`, `SMS owner_alert`, or `SMS send failed` lines. Three possibilities:
+1. **Get this in front of one real plumber/HVAC tech for 30–60 days** — comp them, watch what they actually use, kill what they don't. Until there's one anecdote of "I won $X jobs because of this," every product decision is a guess. Source ideas: Reese's personal network, local trades Facebook groups, r/plumbing, cold outreach to 5–10 local businesses with a free-pilot offer.
+
+2. **Investigate missing owner-alert SMS** — still the open Twilio bug from 2026-04-25. Pull Railway logs around the SMS reply that created `lead_id=2` (2026-04-25 04:31–04:33 UTC). Look for `sms_lead:`, `SMS sent to +18254401394`, `SMS owner_alert`, or `SMS send failed` lines. Three possibilities:
    - Send completed (logs say `SMS sent to +18254401394`) → Twilio delivery issue, check Twilio Console → Monitor → Logs → Messages.
-   - Send failed (logs say `SMS send failed`) → most likely another geo-permissions or trial-account quirk; the new error-body logging in `app/sms.py` will show the Twilio error code.
+   - Send failed → most likely another geo-permissions or trial-account quirk; error-body logging in `app/sms.py` will show the Twilio error code.
    - No send line at all → `owner_number` resolved to empty in `process_sms_lead` despite `routing_rule.owner_phone` being set; check `record_and_send_sms` call site at `app/sms_intake.py:309`.
+   Must be fixed before any external user touches the system.
 
-2. **Remove the temporary `/auth/rescue` endpoint** — added during the Twilio test to bypass broken SMTP. See `app/routes/auth.py` — the block under `# TEMPORARY RESCUE FLOW`. Delete the block + the `HTMLResponse`/`Form` imports if they're unused after removal. Secret is `lr-rescue-2026-04-24-9f3a`, hardcoded, so this is a live backdoor until removed.
+3. **Remove the temporary `/auth/rescue` endpoint** — backdoor added during the Twilio test to bypass broken SMTP. See `app/routes/auth.py`, block under `# TEMPORARY RESCUE FLOW`. Delete the block + the `HTMLResponse`/`Form` imports if they become unused. Secret is `lr-rescue-2026-04-24-9f3a`, hardcoded, so this is a live backdoor until removed.
 
-3. **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console. Adopted Twilio numbers will need webhook URLs re-pointed (use `POST /api/phone/adopt` again, or update directly in Twilio Console).
+4. **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console. Adopted Twilio numbers will need webhook URLs re-pointed (use `POST /api/phone/adopt` again, or update directly in Twilio Console).
+
+5. **60-second product demo video** — trades buy from video, not landing pages. Show: real lead arriving → AI reply going out → owner SMS alert → kanban move to Won. This is higher-leverage than any new feature right now.
 
 ### Real-Twilio test — gotchas hit and fixed (2026-04-25)
 - **Twilio auth token had a trailing whitespace** in the Railway env var. Symptom: every webhook returned 403 "signature mismatch" → Twilio plays "we are sorry, an application error has occurred." Strip whitespace; redeploy.
@@ -66,6 +91,7 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 - **Twilio HTTP error bodies were being swallowed** — fixed in commit `28b0cb2`. `urlopen` raises `HTTPError` on 4xx/5xx and the default exception handler discards the response body, where Twilio puts the actual error code + message. Now logged at ERROR level. Same pattern applies anywhere we use stdlib `urllib` against a JSON-API — always catch `HTTPError` separately and read the body.
 
 ### What Needs Work Before Launch
+- **First paying customer / pilot** — the gating thing. See priority item 1 above. Without this, every other engineering decision is guesswork.
 - **Phone lead capture — Week 3 follow-ups** (backend done, partially verified against real Twilio):
   - Owner-alert SMS not arriving on real-Twilio test (see High Priority item 1) — investigate before any external user touches the system
   - Admin UI for `phone_numbers`, `phone_routing_rules`, `phone_business_hours` — adopt/provision flow exists in Settings but routing rule + hours still require direct DB inserts or `POST /api/phone/routing`
