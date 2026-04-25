@@ -6,238 +6,57 @@
     <title>LeadRelay Analytics</title>
     <link rel="stylesheet" href="/ui/styles.css" />
     <style>
-      .analytics-shell {
-        max-width: 1280px; margin: 0 auto; padding: 28px 24px 80px;
-        animation: fadeIn 0.4s var(--ease-out);
-      }
-      .analytics-header {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        margin-bottom: 32px;
-        animation: fadeInDown 0.5s var(--ease-out);
-      }
-      .analytics-header h1 {
-        font-size: 1.75rem; font-weight: 750; letter-spacing: -0.035em;
-        background: linear-gradient(135deg, var(--text) 0%, var(--accent-cyan) 50%, var(--primary) 100%);
-        background-size: 200% auto;
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-      .analytics-nav { display: flex; gap: 10px; align-items: center; }
-      .analytics-nav a {
-        color: var(--text-secondary); text-decoration: none; font-size: 0.82rem;
-        font-weight: 500; padding: 8px 16px;
-        border: 1px solid var(--border); border-radius: var(--radius-full);
-        transition: all 0.25s var(--ease-out);
-      }
-      .analytics-nav a:hover {
-        color: var(--text); border-color: var(--border-hover);
-        background: rgba(255, 255, 255, 0.03);
-      }
+      .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+      .kpi-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+      .kpi-label { font-size: 0.72rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+      .kpi-value { font-size: 1.5rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+      .kpi-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
 
-      /* KPIs */
-      .kpi-row {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-        gap: 14px; margin-bottom: 28px;
-      }
-      .kpi-card {
-        position: relative;
-        background: var(--glass); backdrop-filter: blur(24px) saturate(1.3);
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-md); padding: 22px;
-        transition: all 0.3s var(--ease-out);
-        animation: fadeInUp 0.5s var(--ease-out) both;
-      }
-      .kpi-card:nth-child(1) { animation-delay: 0.05s; }
-      .kpi-card:nth-child(2) { animation-delay: 0.1s; }
-      .kpi-card:nth-child(3) { animation-delay: 0.15s; }
-      .kpi-card:nth-child(4) { animation-delay: 0.2s; }
-      .kpi-card:nth-child(5) { animation-delay: 0.25s; }
-      .kpi-card:nth-child(6) { animation-delay: 0.3s; }
-      .kpi-card::before {
-        content: ''; position: absolute; inset: 0;
-        border-radius: var(--radius-md);
-        background: var(--glass-shine); pointer-events: none;
-      }
-      .kpi-card:hover {
-        border-color: rgba(167, 139, 250, 0.2);
-        box-shadow: var(--shadow-glow);
-        transform: translateY(-3px);
-      }
-      .kpi-label {
-        font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
-        letter-spacing: 0.12em; font-weight: 600; margin-bottom: 6px;
-      }
-      .kpi-value {
-        font-size: 1.6rem; font-weight: 750;
-        background: linear-gradient(135deg, var(--text), var(--accent-cyan));
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
-      .kpi-sub { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
-
-      /* Charts grid */
-      .charts-row {
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 18px; margin-bottom: 18px;
-      }
+      .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
       .charts-row.full { grid-template-columns: 1fr; }
-      .chart-box {
-        position: relative;
-        background: var(--glass); backdrop-filter: blur(24px) saturate(1.3);
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-lg); padding: 28px;
-        transition: all 0.3s var(--ease-out);
-        animation: fadeInUp 0.5s 0.2s var(--ease-out) both;
-      }
-      .chart-box::before {
-        content: ''; position: absolute; inset: 0;
-        border-radius: var(--radius-lg);
-        background: var(--glass-shine); pointer-events: none;
-      }
-      .chart-box:hover {
-        border-color: rgba(34, 211, 238, 0.15);
-        box-shadow: var(--shadow-glow);
-      }
-      .chart-box h3 {
-        font-size: 0.92rem; font-weight: 650; margin-bottom: 18px;
-        color: var(--text); position: relative;
-      }
+      .chart-box { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
+      .chart-box h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 
-      /* Response time chart */
-      .rt-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; position: relative; }
-      .rt-bar {
-        flex: 1; min-width: 4px; border-radius: 3px 3px 0 0;
-        background: linear-gradient(180deg, var(--accent-blue), rgba(96, 165, 250, 0.3));
-        transition: all 0.2s;
-      }
-      .rt-bar:hover {
-        background: linear-gradient(180deg, var(--primary), rgba(167, 139, 250, 0.4));
-        box-shadow: 0 0 8px rgba(167, 139, 250, 0.2);
-      }
-      .rt-bar-empty { background: rgba(255, 255, 255, 0.03); }
+      .rt-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
+      .rt-bar { flex: 1; min-width: 4px; border-radius: 2px 2px 0 0; background: var(--accent); }
+      .rt-bar-empty { background: var(--surface-2); }
 
-      /* Hourly chart */
-      .hourly-chart { display: flex; align-items: flex-end; gap: 2px; height: 100px; position: relative; }
-      .hourly-bar {
-        flex: 1; min-width: 4px; border-radius: 3px 3px 0 0;
-        background: linear-gradient(180deg, var(--accent-orange), rgba(251, 146, 60, 0.3));
-        transition: all 0.2s;
-      }
-      .hourly-bar:hover {
-        background: linear-gradient(180deg, var(--accent-cyan), rgba(34, 211, 238, 0.4));
-        box-shadow: 0 0 8px rgba(34, 211, 238, 0.15);
-      }
-      .hourly-labels {
-        display: flex; justify-content: space-between;
-        font-size: 0.65rem; color: var(--muted); margin-top: 8px;
-      }
+      .hourly-chart { display: flex; align-items: flex-end; gap: 2px; height: 100px; }
+      .hourly-bar { flex: 1; min-width: 4px; border-radius: 2px 2px 0 0; background: var(--accent); }
+      .hourly-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); margin-top: 6px; }
 
-      /* Weekday chart */
-      .weekday-chart { display: flex; flex-direction: column; gap: 8px; }
-      .wd-row { display: flex; align-items: center; gap: 12px; }
-      .wd-label { width: 80px; font-size: 0.82rem; color: var(--text-secondary); text-align: right; font-weight: 500; }
-      .wd-track {
-        flex: 1; height: 28px;
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 8px; overflow: hidden;
-        border: 1px solid var(--border);
-      }
-      .wd-fill {
-        height: 100%; border-radius: 8px;
-        transition: width 0.4s var(--ease-out);
-      }
-      .wd-count { width: 32px; font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+      .wd-row { display: grid; grid-template-columns: 80px 1fr 40px; align-items: center; gap: 10px; }
+      .wd-label { font-size: 0.82rem; color: var(--text-secondary); text-align: right; }
+      .wd-track { height: 14px; background: var(--surface-2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+      .wd-fill { height: 100%; background: var(--accent); }
+      .wd-count { font-size: 0.82rem; color: var(--muted); }
 
-      /* Source performance table */
-      .perf-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; position: relative; }
-      .perf-table th {
-        text-align: left; color: var(--muted); font-weight: 600; font-size: 0.72rem;
-        text-transform: uppercase; letter-spacing: 0.08em;
-        padding: 10px 14px; border-bottom: 1px solid var(--border);
-      }
-      .perf-table td {
-        padding: 12px 14px; border-bottom: 1px solid var(--border);
-        color: var(--text-secondary); transition: background 0.15s;
-      }
-      .perf-table tr:hover td { background: rgba(167, 139, 250, 0.04); }
+      .perf-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+      .perf-table th, .perf-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+      .perf-table th { color: var(--muted); font-weight: 500; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+      .perf-table td { color: var(--text-secondary); }
       .perf-table .num { text-align: right; font-variant-numeric: tabular-nums; }
-      .perf-rate {
-        font-weight: 700;
-        background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
+      .perf-rate { color: var(--success); font-weight: 600; }
 
-      /* Top senders */
-      .sender-list { display: flex; flex-direction: column; gap: 4px; position: relative; }
-      .sender-row {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 10px 0; border-bottom: 1px solid var(--border);
-        transition: background 0.15s;
-      }
+      .sender-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); cursor: default; background: transparent; border-left: 0; border-right: 0; border-top: 0; border-radius: 0; }
       .sender-row:last-child { border-bottom: none; }
-      .sender-row:hover { background: rgba(167, 139, 250, 0.03); }
       .sender-name { font-size: 0.88rem; color: var(--text); font-weight: 500; }
       .sender-email { font-size: 0.75rem; color: var(--muted); }
-      .sender-count {
-        font-size: 0.88rem; font-weight: 700;
-        background: linear-gradient(135deg, var(--accent-cyan), var(--primary));
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        background-clip: text;
-      }
+      .sender-count { font-size: 0.88rem; font-weight: 600; color: var(--accent); }
 
-      /* Category trend */
-      .cat-trend { display: flex; align-items: flex-end; gap: 2px; height: 120px; position: relative; }
+      .cat-trend { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
       .cat-stack { flex: 1; display: flex; flex-direction: column-reverse; min-width: 4px; }
-      .cat-seg { min-height: 1px; border-radius: 1px; }
-      .cat-legend { display: flex; gap: 14px; margin-top: 10px; flex-wrap: wrap; }
-      .cat-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--muted); }
-      .cat-dot { width: 8px; height: 8px; border-radius: 50%; }
+      .cat-seg { min-height: 1px; }
+      .cat-legend { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+      .cat-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); }
+      .cat-dot { width: 10px; height: 10px; border-radius: 2px; }
 
-      /* Period select */
-      .period-select {
-        background: var(--glass); color: var(--text);
-        border: 1px solid var(--border); border-radius: var(--radius-full);
-        padding: 8px 16px; font-size: 0.82rem; cursor: pointer;
-        backdrop-filter: blur(16px);
-        transition: border-color 0.2s;
-      }
-      .period-select:hover { border-color: var(--border-hover); }
-      .period-select:focus { outline: none; border-color: var(--border-active); }
+      .period-select { background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 0.85rem; cursor: pointer; }
 
-      @media (max-width: 768px) {
+      @media (max-width: 880px) {
         .charts-row { grid-template-columns: 1fr; }
         .kpi-row { grid-template-columns: repeat(2, 1fr); }
-        .analytics-header { flex-direction: column; gap: 16px; }
-        .analytics-shell { padding: 20px 16px 60px; }
-      }
-
-      @media (max-width: 560px) {
-        .analytics-shell { padding: 14px 12px 60px; }
-        .analytics-header { margin-bottom: 20px; }
-        .analytics-header h1 { font-size: 1.4rem; }
-        .analytics-nav { width: 100%; flex-wrap: wrap; gap: 8px; }
-        .analytics-nav a, .period-select { flex: 1 1 auto; text-align: center; }
-
-        .kpi-row { gap: 10px; margin-bottom: 18px; }
-        .kpi-card { padding: 14px; border-radius: var(--radius-sm); }
-        .kpi-value { font-size: 1.25rem; }
-        .kpi-label { font-size: 0.65rem; }
-
-        .charts-row { gap: 12px; margin-bottom: 12px; }
-        .chart-box { padding: 16px; border-radius: var(--radius-md); }
-        .chart-box h3 { margin-bottom: 12px; }
-
-        .rt-chart, .cat-trend { height: 90px; }
-        .hourly-chart { height: 80px; }
-
-        .wd-label { width: 54px; font-size: 0.72rem; }
-        .wd-track { height: 22px; }
-
-        /* Performance table: horizontal scroll instead of squish */
-        .chart-box .perf-table { font-size: 0.78rem; }
-        .chart-box:has(.perf-table) { overflow-x: auto; }
-        .perf-table th, .perf-table td { padding: 8px 10px; white-space: nowrap; }
+        .wd-row { grid-template-columns: 60px 1fr 36px; }
       }
     </style>
   </head>
@@ -267,12 +86,12 @@
       <div class="kpi-row">
         <div class="kpi-card">
           <div class="kpi-label">Won Revenue</div>
-          <div class="kpi-value" id="kpiWonRevenue" style="background: linear-gradient(135deg, var(--success-text), var(--accent-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">--</div>
+          <div class="kpi-value" id="kpiWonRevenue" style="color: var(--success);">--</div>
           <div class="kpi-sub">Closed deals (all time)</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Open Pipeline</div>
-          <div class="kpi-value" id="kpiPipelineValue" style="background: linear-gradient(135deg, var(--text), var(--accent-lilac)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">--</div>
+          <div class="kpi-value" id="kpiPipelineValue">--</div>
           <div class="kpi-sub">Active deal value</div>
         </div>
         <div class="kpi-card">
@@ -395,13 +214,13 @@
       };
 
       const wdColors = [
-        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
-        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
-        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
-        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
-        'linear-gradient(135deg, var(--accent-blue), var(--accent-cyan))',
-        'linear-gradient(135deg, var(--accent-orange), var(--accent-pink))',
-        'linear-gradient(135deg, var(--accent-orange), var(--accent-pink))',
+        'var(--accent)',
+        'var(--accent)',
+        'var(--accent)',
+        'var(--accent)',
+        'var(--accent)',
+        'var(--muted)',
+        'var(--muted)',
       ];
 
       function fmtMoney(v) {
@@ -462,8 +281,8 @@
           const wonH = Math.max(0, Math.round(((d.won_revenue || 0) / maxVal) * 100));
           const pipelineH = Math.max(0, Math.round(((d.new_pipeline || 0) / maxVal) * 100));
           return `<div style="flex:1; min-width:4px; display:flex; flex-direction:column-reverse; gap:1px;" title="${d.date} — Won: ${fmtMoney(d.won_revenue)}, New pipeline: ${fmtMoney(d.new_pipeline)}">
-            <div style="height:${wonH}%; background: linear-gradient(180deg, var(--success-text), rgba(110,231,183,0.3)); border-radius:2px 2px 0 0;"></div>
-            <div style="height:${pipelineH}%; background: linear-gradient(180deg, var(--accent-lilac), rgba(167,139,250,0.3)); border-radius:2px 2px 0 0; opacity: 0.7;"></div>
+            <div style="height:${wonH}%; background: var(--success); border-radius:2px 2px 0 0;"></div>
+            <div style="height:${pipelineH}%; background: var(--accent); border-radius:2px 2px 0 0; opacity: 0.55;"></div>
           </div>`;
         }).join('');
       }
