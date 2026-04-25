@@ -45,22 +45,18 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
   - **Self-service number provisioning**: `/api/phone/search` + `/api/phone/provision` buy a number via Twilio REST API, configure webhooks, and save it to the org — all from inside LeadRelay. Settings UI has a "Find me a number" button (area code → list → pick one → live). Customers never touch the Twilio console.
   - Local E2E test script: `scripts/simulate_twilio_call.py` — exercises all paths via FastAPI TestClient without Twilio or ngrok. Flags: `--spam`, `--with-dial --owner-phone=...`, `--after-hours`, `--sms-reply "message"` (simulates caller hanging up + replying via SMS)
 
-### High Priority — Next Up
-- **Real Twilio end-to-end test for phone capture** (current active work — code is done, validation pending). To unblock the test, user needs to:
-  1. Sign up for Twilio trial at twilio.com (free, $15 credit, one free number)
-  2. Buy a phone number in the Twilio console (Voice + SMS enabled)
-  3. Verify the owner cell phone in Twilio → Phone Numbers → Verified Caller IDs (trial accounts can only send SMS / calls to verified numbers)
-  4. Copy `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` from the Twilio Account Dashboard into `.env`
-  5. Install ngrok, run `ngrok http 8001`, set `PUBLIC_BASE_URL=https://xxx.ngrok-free.app` in `.env`
-  6. Start the app (`uvicorn app.main:app --reload --port 8001`), log in at `/settings`, use the new "Phone lead capture" card: enter area code + cell number → click "Find me a number" → pick one → click "Use this". This calls `/api/phone/provision` which buys the number on the platform account AND configures webhooks automatically (no Twilio Console visit required after this point).
-  7. Call the provisioned number from a different phone, hang up without answering your cell, and verify: (a) owner cell receives summary SMS within ~10s; (b) caller's phone receives outreach SMS; (c) caller's SMS reply creates a Lead in the dashboard.
-  - The provisioning UI is the canonical setup path — do NOT use the old manual `INSERT INTO phone_numbers` approach (still works but bypasses the webhook auto-configuration).
-- **Fix Google OAuth on production** — two steps needed:
-  1. Set `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` in Railway env vars (currently defaults to `http://127.0.0.1:8080` which breaks OAuth redirects)
-  2. In Google Cloud Console → APIs & Services → Credentials → OAuth client, add `https://leadrelay-production-4a37.up.railway.app/auth/google/callback` as an authorized redirect URI
-  - For local dev, set `PUBLIC_BASE_URL=http://127.0.0.1:8001` in `.env` and add `http://127.0.0.1:8001/auth/google/callback` to the redirect URIs in Google Console
-- **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console.
-- **Register first owner account** at `/register` + complete the setup wizard end-to-end on production.
+### High Priority — Next Up (priority order — tackle top-to-bottom)
+
+**STATE as of 2026-04-24:** Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER=+17822121292`, `SMS_ALERT_TO_NUMBER=+18254401394`) are set on Railway. `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` is set. Google OAuth is working on production. SMTP/forgot-password is no longer being pursued.
+
+1. **Remove the temporary `/auth/rescue` endpoint** — added during the Twilio test to bypass broken SMTP. See `app/routes/auth.py` — the block under `# TEMPORARY RESCUE FLOW`. Delete the block + the `HTMLResponse`/`Form` imports if they're unused after removal. Secret is `lr-rescue-2026-04-24-9f3a`, hardcoded, so this is a live backdoor until removed.
+
+2. **Test Twilio phone capture end-to-end against production** (the code is done + merged to main + deployed via PR #7, Twilio env vars are set, the number +17822121292 is bought). Remaining steps:
+   - Log into `/settings` → "Phone lead capture" card → use the "Already bought a number?" Adopt form → enter `+17822121292` + `+18254401394` → click Adopt. This calls `POST /api/phone/adopt` which configures webhooks on the existing number via Twilio REST.
+   - Verify an additional phone on Twilio → Phone Numbers → Verified Caller IDs (the phone the test call will be placed FROM — trial accounts reject calls from unverified numbers)
+   - Make a test call to +17822121292, don't answer the cell, hang up, verify: (a) cell gets summary SMS within ~10s of any SMS reply; (b) caller gets "we'll text you" SMS; (c) SMS reply creates a Lead in the dashboard with `source="phone"`.
+
+3. **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console. Adopted Twilio numbers will need webhook URLs re-pointed (use `POST /api/phone/adopt` again, or update directly in Twilio Console).
 
 ### What Needs Work Before Launch
 - **Phone lead capture — Week 3 follow-ups** (backend done, not yet shipped):
