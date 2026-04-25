@@ -47,28 +47,16 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 
 ### High Priority — Next Up (priority order — tackle top-to-bottom)
 
-**STATE as of 2026-04-24:** Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER=+17822121292`, `SMS_ALERT_TO_NUMBER=+18254401394`) are set on Railway. `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` is set. Real Twilio test-call validation is blocked on the three items below, in this order:
+**STATE as of 2026-04-24:** Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER=+17822121292`, `SMS_ALERT_TO_NUMBER=+18254401394`) are set on Railway. `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` is set. Google OAuth is working on production. SMTP/forgot-password is no longer being pursued.
 
-1. **Fix Google OAuth on production** (blocking onboarding — user tried to log in, discovered OAuth isn't wired up):
-   - Confirm `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` on Railway (should be done — verify no trailing slash)
-   - In Google Cloud Console → APIs & Services → Credentials → OAuth client, add `https://leadrelay-production-4a37.up.railway.app/auth/google/callback` as an authorized redirect URI
-   - Verify `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set on Railway
-   - For local dev: set `PUBLIC_BASE_URL=http://127.0.0.1:8001` in `.env` and add `http://127.0.0.1:8001/auth/google/callback` to Google Console redirect URIs
+1. **Remove the temporary `/auth/rescue` endpoint** — added during the Twilio test to bypass broken SMTP. See `app/routes/auth.py` — the block under `# TEMPORARY RESCUE FLOW`. Delete the block + the `HTMLResponse`/`Form` imports if they're unused after removal. Secret is `lr-rescue-2026-04-24-9f3a`, hardcoded, so this is a live backdoor until removed.
 
-2. **Fix SMTP so `/forgot-password` emails actually deliver** (discovered during Twilio test prep — Gmail rescue email never arrived on production):
-   - Either (a) enable Gmail OAuth on production (same fix as item 1) so `mailer.py` sends via Gmail API, OR (b) set SMTP env vars: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USERNAME=reesemedele@gmail.com`, `SMTP_PASSWORD=<Gmail app password, not regular pw>`, `SMTP_FROM_EMAIL=reesemedele@gmail.com`, `SMTP_USE_TLS=true`
-   - Gmail app passwords require 2FA to be enabled on the Google account first. Generate one at https://myaccount.google.com/apppasswords
-   - Note: the auth confirmation email uses `mailer.py` which checks Gmail OAuth first, falls back to SMTP — either path fixes forgot-password + registration emails + owner alerts
-
-3. **Remove the temporary `/auth/rescue` endpoint** — added during the Twilio test to bypass broken SMTP. See `app/routes/auth.py` — the block under `# TEMPORARY RESCUE FLOW`. Delete the block + the `HTMLResponse`/`Form` imports if they're unused after removal. Secret is `lr-rescue-2026-04-24-9f3a`, hardcoded, so this is a live backdoor until removed.
-
-4. **Test Twilio phone capture end-to-end against production** (the code is done + merged to main + deployed via PR #7, Twilio env vars are set, the number +17822121292 is bought). Remaining steps:
-   - Register an owner account on production via `/register` (this was blocked on SMTP — with items 1-3 fixed, registration should work cleanly)
+2. **Test Twilio phone capture end-to-end against production** (the code is done + merged to main + deployed via PR #7, Twilio env vars are set, the number +17822121292 is bought). Remaining steps:
    - Log into `/settings` → "Phone lead capture" card → use the "Already bought a number?" Adopt form → enter `+17822121292` + `+18254401394` → click Adopt. This calls `POST /api/phone/adopt` which configures webhooks on the existing number via Twilio REST.
    - Verify an additional phone on Twilio → Phone Numbers → Verified Caller IDs (the phone the test call will be placed FROM — trial accounts reject calls from unverified numbers)
    - Make a test call to +17822121292, don't answer the cell, hang up, verify: (a) cell gets summary SMS within ~10s of any SMS reply; (b) caller gets "we'll text you" SMS; (c) SMS reply creates a Lead in the dashboard with `source="phone"`.
 
-5. **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console. Adopted Twilio numbers will need webhook URLs re-pointed (use `POST /api/phone/adopt` again, or update directly in Twilio Console).
+3. **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console. Adopted Twilio numbers will need webhook URLs re-pointed (use `POST /api/phone/adopt` again, or update directly in Twilio Console).
 
 ### What Needs Work Before Launch
 - **Phone lead capture — Week 3 follow-ups** (backend done, not yet shipped):
