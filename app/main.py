@@ -393,6 +393,16 @@ def analytics_page():
     return FileResponse(UI_DIR / "analytics.html")
 
 
+@app.get("/pipeline", include_in_schema=False)
+def pipeline_page():
+    return FileResponse(UI_DIR / "pipeline.html")
+
+
+@app.get("/templates", include_in_schema=False)
+def templates_page():
+    return FileResponse(UI_DIR / "templates.html")
+
+
 @app.get("/setup", include_in_schema=False)
 def setup_page():
     return FileResponse(UI_DIR / "setup.html")

@@ -19,10 +19,12 @@
         </div>
         <div class="topbar-actions">
           <span id="orgName" class="muted"></span>
+          <a href="/pipeline" class="ghost-link compact-link">Pipeline</a>
           <a href="/analytics" class="ghost-link compact-link">Analytics</a>
+          <a href="/templates" class="ghost-link compact-link">Templates</a>
           <a href="/settings" class="ghost-link compact-link">Settings</a>
-          <a href="/" class="ghost-link compact-link">View Site</a>
           <button id="refreshBtn" class="ghost-btn compact-link">Refresh</button>
+          <button id="cmdkBtn" class="ghost-btn compact-link" title="Cmd+K — Search & jump">⌘K</button>
           <label class="ghost-btn compact-link poll-toggle">
             <input type="checkbox" id="autoPollToggle" checked />
             Live
@@ -236,9 +238,40 @@
                     <strong id="detailSource">&mdash;</strong>
                   </div>
                   <div class="snapshot-item">
-                    <span class="snapshot-label">Next step</span>
-                    <strong id="detailNextStep">&mdash;</strong>
+                    <span class="snapshot-label">SLA timer</span>
+                    <strong id="detailSlaTimer">&mdash;</strong>
                   </div>
+                </div>
+              </article>
+
+              <article class="card wide">
+                <h3>Deal Tracking</h3>
+                <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:flex-end;">
+                  <div>
+                    <label class="snapshot-label" style="display:block; margin-bottom:6px;">Stage</label>
+                    <select id="detailPipelineStage" class="filter-select" style="min-width:160px;">
+                      <option value="new">New</option>
+                      <option value="contacted">Contacted</option>
+                      <option value="quoted">Quoted</option>
+                      <option value="scheduled">Scheduled</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="snapshot-label" style="display:block; margin-bottom:6px;">Deal value ($)</label>
+                    <div class="deal-value-row">
+                      <input id="detailDealValue" class="deal-value-input" type="number" step="50" min="0" placeholder="0" />
+                      <button id="saveDealValueBtn" class="ghost-btn compact-link">Save</button>
+                    </div>
+                  </div>
+                  <div style="flex:1; min-width: 240px;">
+                    <label class="snapshot-label" style="display:block; margin-bottom:6px;">Tags</label>
+                    <div id="tagRow" class="tag-row" style="background:var(--glass); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 8px; min-height:38px; align-items:center;">
+                      <input id="tagInput" class="tag-input" placeholder="add tag and press enter" />
+                    </div>
+                  </div>
+                  <button id="starToggleBtn" class="ghost-btn compact-link" title="Star this lead">☆ Star</button>
                 </div>
               </article>
 
@@ -258,11 +291,37 @@
               </article>
 
               <article class="card wide">
-                <h3>Recommended Reply</h3>
+                <h3>
+                  Recommended Reply
+                  <span class="template-picker" style="float:right;">
+                    <button id="templatePickerBtn" class="ghost-btn compact-link template-picker-btn" type="button">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      Templates ▾
+                    </button>
+                    <div id="templateMenu" class="template-menu hidden"></div>
+                  </span>
+                </h3>
                 <textarea id="detailReplyEditor" class="reply-editor" rows="8"></textarea>
                 <div class="actions actions-inline">
                   <button id="saveReplyBtn" class="ghost-btn">Save Reply</button>
+                  <a id="saveAsTemplateBtn" class="ghost-btn compact-link" href="#" style="margin-left:auto;">Save as template</a>
                 </div>
+              </article>
+
+              <article class="card wide" id="notesCard">
+                <h3>
+                  Internal Notes <span class="muted" style="font-weight:400; font-size:0.8rem;">(team only — never sent to customer)</span>
+                </h3>
+                <div class="note-composer">
+                  <textarea id="newNoteBody" placeholder="Add a private note for your team — observations, callbacks, anything you'd write on a sticky..."></textarea>
+                  <div class="note-composer-row">
+                    <label class="note-pin-toggle">
+                      <input type="checkbox" id="newNotePinned" /> Pin to top
+                    </label>
+                    <button id="addNoteBtn" class="primary-btn compact-link" style="padding: 8px 14px; font-size: 0.82rem;">Add note</button>
+                  </div>
+                </div>
+                <div id="notesList" class="notes-list"></div>
               </article>
 
               <!-- Quick Actions -->
@@ -350,6 +409,7 @@
       </a>
     </nav>
 
+    <script src="/ui/shell.js"></script>
     <script src="/ui/app.js"></script>
   </body>
 </html>
