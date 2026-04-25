@@ -91,6 +91,18 @@ class OrgSettings(Base):
     scheduling_buffer_minutes = Column(Integer, nullable=False, default=0)
     scheduling_max_days_ahead = Column(Integer, nullable=False, default=7)
 
+    # Google Calendar two-way sync (uses the same OAuth credentials as Gmail)
+    google_calendar_id = Column(String(255), nullable=False, default="primary")
+    google_calendar_sync_enabled = Column(Boolean, nullable=False, default=False)
+
+    # Review request automation — fires N hours after a lead is marked won
+    review_request_enabled = Column(Boolean, nullable=False, default=False)
+    review_url = Column(String(500), nullable=False, default="")
+    review_delay_hours = Column(Integer, nullable=False, default=72)
+    review_request_channel = Column(String(20), nullable=False, default="email")  # email | sms | both
+    review_request_subject = Column(String(255), nullable=False, default="Quick favor — would you mind leaving us a review?")
+    review_request_body = Column(Text, nullable=False, default="")
+
     # Behavior
     human_review = Column(Boolean, nullable=False, default=True)
     auto_send_confidence_threshold = Column(Float, nullable=False, default=0.85)
@@ -277,6 +289,7 @@ class Booking(Base):
     customer_phone = Column(String(100), nullable=True)
     customer_notes = Column(Text, nullable=True)
     status = Column(String(50), nullable=False, default="confirmed")
+    google_event_id = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -395,6 +408,22 @@ class LeadNote(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     lead = relationship("Lead", back_populates="notes")
+
+
+class ReviewRequest(Base):
+    """Scheduled customer review request. Created when a lead is marked won."""
+    __tablename__ = "review_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False, index=True)
+    scheduled_for = Column(DateTime(timezone=True), nullable=False, index=True)
+    channel = Column(String(20), nullable=False, default="email")  # email | sms | both
+    status = Column(String(20), nullable=False, default="scheduled", index=True)
+    # scheduled | sent | failed | skipped | cancelled
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class ReplyTemplate(Base):

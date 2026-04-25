@@ -19,7 +19,7 @@ from app.digest import build_daily_digest, build_weekly_summary, send_daily_dige
 from app.email_parser import parse_lead_fields
 from app.followups import schedule_followups
 from app.mailer import send_email
-from app.models import Lead, LeadActivity, LeadNote, LeadPhoto, OrgSettings, ReplyTemplate, ScheduleAvailability, User
+from app.models import Lead, LeadActivity, LeadNote, LeadPhoto, OrgSettings, ReplyTemplate, ReviewRequest, ScheduleAvailability, User
 from app.schemas import (
     DigestResponse,
     LeadActivityResponse,
@@ -315,14 +315,23 @@ def update_lead(lead_id: int, payload: LeadUpdateRequest, db: Session = Depends(
             changes.append(field)
 
     # Mirror pipeline_stage -> outcome when entering terminal stages
+    won_just_set = False
     if payload.pipeline_stage in {"won", "lost"} and lead.outcome != payload.pipeline_stage:
         lead.outcome = payload.pipeline_stage
         lead.outcome_at = datetime.now(timezone.utc)
+        if payload.pipeline_stage == "won":
+            won_just_set = True
 
     db.commit()
     db.refresh(lead)
     if changes:
         log_activity(db, lead.id, lead.org_id, "lead_updated", f"Updated fields: {', '.join(changes)}")
+
+    if won_just_set:
+        from app.review_requests import schedule_review_request
+        org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
+        schedule_review_request(db, lead, org_settings)
+
     return lead
 
 
@@ -355,6 +364,12 @@ def set_lead_outcome(
     db.commit()
     db.refresh(lead)
     log_activity(db, lead.id, lead.org_id, "outcome_set", f"Outcome set to '{payload.outcome}'" + (f": {payload.outcome_notes}" if payload.outcome_notes else ""))
+
+    if payload.outcome == "won":
+        from app.review_requests import schedule_review_request
+        org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
+        schedule_review_request(db, lead, org_settings)
+
     return lead
 
 
@@ -1077,3 +1092,92 @@ def get_revenue_trend(
         "total_won": round(sum(v["won_revenue"] for v in daily.values()), 2),
         "total_pipeline": round(sum(v["new_pipeline"] for v in daily.values()), 2),
     }
+
+
+# --- Review request automation ---
+
+
+@router.get("/api/review-requests")
+def list_review_requests(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    status: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    q = db.query(ReviewRequest).filter(ReviewRequest.org_id == user.org_id)
+    if status:
+        q = q.filter(ReviewRequest.status == status)
+    total = q.count()
+    rows = q.order_by(ReviewRequest.scheduled_for.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "lead_id": r.lead_id,
+                "scheduled_for": r.scheduled_for.isoformat() if r.scheduled_for else None,
+                "channel": r.channel,
+                "status": r.status,
+                "sent_at": r.sent_at.isoformat() if r.sent_at else None,
+                "error_message": r.error_message,
+            }
+            for r in rows
+        ],
+        "total": total,
+        "page": page,
+        "pages": (total + page_size - 1) // page_size if total else 1,
+    }
+
+
+@router.post("/api/review-requests/run")
+def run_review_requests_now(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    org_settings: OrgSettings = Depends(get_org_settings),
+):
+    """Manually flush all due review requests for the current org. Useful for
+    smoke-testing the configured template + Google review URL."""
+    from app.review_requests import run_due_review_requests
+    return run_due_review_requests(db, org_id=user.org_id, org_settings=org_settings)
+
+
+@router.post("/leads/{lead_id}/review-request")
+def queue_review_request(
+    lead_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    org_settings: OrgSettings = Depends(get_org_settings),
+):
+    """Manually schedule a review request for a specific lead even if outcome
+    isn't 'won' yet. Respects the configured delay; pass ?send_now=1 to fire
+    immediately."""
+    from app.review_requests import schedule_review_request
+    lead = _scoped_lead(db, lead_id, user.org_id)
+    req = schedule_review_request(db, lead, org_settings)
+    if not req:
+        raise HTTPException(status_code=400, detail="Review automation not enabled or review_url missing")
+    return {
+        "ok": True,
+        "review_request_id": req.id,
+        "scheduled_for": req.scheduled_for.isoformat(),
+        "status": req.status,
+    }
+
+
+@router.delete("/api/review-requests/{request_id}")
+def cancel_review_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    req = db.query(ReviewRequest).filter(
+        ReviewRequest.id == request_id,
+        ReviewRequest.org_id == user.org_id,
+    ).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Review request not found")
+    if req.status != "scheduled":
+        raise HTTPException(status_code=400, detail=f"Cannot cancel a {req.status} request")
+    req.status = "cancelled"
+    db.commit()
+    return {"ok": True, "id": req.id, "status": req.status}

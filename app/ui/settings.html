@@ -398,6 +398,67 @@
                 <p class="muted" style="margin-bottom:0.75rem;font-size:0.8rem;">Set the hours you're available each day. Uncheck days you're not working.</p>
                 <div id="availabilityGrid" class="availability-grid"></div>
               </div>
+              <label class="form-field">
+                <span class="field-label">Sync with Google Calendar</span>
+                <label class="toggle-card toggle-card-strong">
+                  <input name="google_calendar_sync_enabled" type="checkbox" />
+                  <span>Push new bookings to my calendar &amp; block conflicting slots automatically</span>
+                </label>
+                <p class="muted" style="margin-top:0.5rem;font-size:0.78rem;">Uses the same Google account you connected for Gmail. If you connected before this feature shipped, click <strong>Reconnect Gmail</strong> above to grant Calendar access.</p>
+              </label>
+              <label class="form-field">
+                <span class="field-label">Calendar ID</span>
+                <input name="google_calendar_id" class="filter-input" placeholder="primary" />
+                <p class="muted" style="margin-top:0.35rem;font-size:0.75rem;">Leave as <code>primary</code> unless you want bookings on a specific calendar.</p>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-card card editorial-card">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Reviews on autopilot</p>
+                <h2>Auto-ask happy customers for a Google review</h2>
+              </div>
+              <span class="section-chip">Growth loop</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <p class="muted" style="margin:0;font-size:0.85rem;">When you mark a lead as <strong>Won</strong>, LeadRelay waits the delay below and then sends the customer a friendly review-request message with your Google review link. Skips phone-only leads when the channel is email.</p>
+              <label class="form-field">
+                <span class="field-label">Enable review requests</span>
+                <label class="toggle-card toggle-card-strong">
+                  <input name="review_request_enabled" type="checkbox" />
+                  <span>Auto-send a review request after every Won deal</span>
+                </label>
+              </label>
+              <label class="form-field">
+                <span class="field-label">Google review URL</span>
+                <input name="review_url" class="filter-input" placeholder="https://g.page/r/...." />
+                <p class="muted" style="margin-top:0.35rem;font-size:0.75rem;">Find this in your Google Business Profile → Reviews → Get more reviews.</p>
+              </label>
+              <div class="field-group field-group-double">
+                <label class="form-field">
+                  <span class="field-label">Send delay (hours after Won)</span>
+                  <input name="review_delay_hours" type="number" min="0" max="720" class="filter-input" placeholder="72" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Channel</span>
+                  <select name="review_request_channel" class="filter-input">
+                    <option value="email">Email</option>
+                    <option value="sms">SMS</option>
+                    <option value="both">Both</option>
+                  </select>
+                </label>
+              </div>
+              <label class="form-field">
+                <span class="field-label">Email subject line</span>
+                <input name="review_request_subject" class="filter-input" placeholder="Quick favor — would you mind leaving us a review?" />
+              </label>
+              <label class="form-field">
+                <span class="field-label">Message body</span>
+                <textarea name="review_request_body" class="filter-input" rows="6" placeholder="Hi {{name}}, thanks for choosing {{business}}..."></textarea>
+                <p class="muted" style="margin-top:0.35rem;font-size:0.75rem;">Variables: <code>{{name}}</code>, <code>{{full_name}}</code>, <code>{{business}}</code>, <code>{{review_url}}</code>, <code>{{phone}}</code>.</p>
+              </label>
             </div>
           </section>
 
