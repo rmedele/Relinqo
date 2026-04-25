@@ -42,6 +42,11 @@ class LeadResponse(BaseModel):
     parent_lead_id: int | None = None
     booking_token: str | None = None
     photo_count: int = 0
+    deal_value: float | None = None
+    tags: str = ""
+    pipeline_stage: str = "new"
+    starred: bool = False
+    last_contacted_at: datetime | None = None
 
 
 class ClassificationResult(BaseModel):
@@ -82,6 +87,60 @@ class LeadUpdateRequest(BaseModel):
     recommended_reply: str | None = None
     status: str | None = None
     next_step: str | None = None
+    deal_value: float | None = None
+    tags: str | None = None
+    pipeline_stage: str | None = None
+    starred: bool | None = None
+
+
+class LeadNoteCreateRequest(BaseModel):
+    body: str
+    pinned: bool = False
+
+
+class LeadNoteUpdateRequest(BaseModel):
+    body: str | None = None
+    pinned: bool | None = None
+
+
+class LeadNoteResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    lead_id: int
+    user_id: int | None
+    author_name: str | None
+    body: str
+    pinned: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class ReplyTemplateCreateRequest(BaseModel):
+    name: str
+    body: str
+    category: str | None = None
+    sort_order: int = 0
+
+
+class ReplyTemplateUpdateRequest(BaseModel):
+    name: str | None = None
+    body: str | None = None
+    category: str | None = None
+    sort_order: int | None = None
+
+
+class ReplyTemplateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    body: str
+    category: str | None
+    sort_order: int
+    use_count: int
+    created_at: datetime
+    updated_at: datetime
 
 
 class LeadOutcomeRequest(BaseModel):
@@ -115,6 +174,9 @@ class StatsResponse(BaseModel):
     by_outcome: dict[str, int]
     close_rate: float | None
     avg_close_minutes: float | None
+    won_revenue: float = 0.0
+    pipeline_value: float = 0.0
+    avg_deal_size: float | None = None
 
 
 class PaginatedLeadsResponse(BaseModel):

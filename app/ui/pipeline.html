@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pipeline · LeadRelay</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body>
+    <div class="kanban-shell">
+      <header class="kanban-header">
+        <div>
+          <p class="eyebrow" style="color: var(--accent-cyan);">LeadRelay</p>
+          <h1>Pipeline</h1>
+          <p class="muted" style="margin-top:6px; font-size:0.85rem;">
+            Drag a lead between columns to update its stage. Star high-priority deals.
+          </p>
+        </div>
+        <nav class="analytics-nav">
+          <a href="/review" class="subnav-link">Queue</a>
+          <a href="/pipeline" class="subnav-link active">Pipeline</a>
+          <a href="/analytics" class="subnav-link">Analytics</a>
+          <a href="/templates" class="subnav-link">Templates</a>
+          <a href="/settings" class="subnav-link">Settings</a>
+          <button id="refreshBoardBtn" class="ghost-btn compact-link">Refresh</button>
+        </nav>
+      </header>
+
+      <div class="kanban-totals" id="kanbanTotals"></div>
+
+      <div class="kanban-board" id="kanbanBoard"></div>
+    </div>
+
+    <script src="/ui/shell.js"></script>
+    <script>
+      const STAGE_LABELS = {
+        new: 'New',
+        contacted: 'Contacted',
+        quoted: 'Quoted',
+        scheduled: 'Scheduled',
+        won: 'Won',
+        lost: 'Lost',
+      };
+      const STAGES = ['new', 'contacted', 'quoted', 'scheduled', 'won', 'lost'];
+
+      let board = null;
+      let dragLeadId = null;
+
+      async function loadBoard() {
+        try {
+          const res = await fetch('/api/pipeline');
+          if (res.status === 401) { location.href = '/login'; return; }
+          if (!res.ok) throw new Error('Failed to load pipeline');
+          board = await res.json();
+          render();
+        } catch (e) {
+          LR.error(e.message);
+        }
+      }
+
+      function urgencyClass(score) {
+        if (score >= 5) return 'high';
+        if (score >= 3) return 'med';
+        return 'low';
+      }
+      function urgencyLabel(score) {
+        if (score >= 5) return 'Urgent';
+        if (score >= 3) return 'Med';
+        return 'Low';
+      }
+
+      function renderTotals() {
+        const totals = board.totals || {};
+        const counts = board.counts || {};
+        const wonCount = counts.won || 0;
+        const wonValue = totals.won || 0;
+        const lostValue = totals.lost || 0;
+        const openValue = STAGES.filter(s => !['won', 'lost'].includes(s))
+          .reduce((sum, s) => sum + (totals[s] || 0), 0);
+        const totalLeads = STAGES.reduce((sum, s) => sum + (counts[s] || 0), 0);
+        const closedDeals = (counts.won || 0) + (counts.lost || 0);
+        const winRate = closedDeals ? Math.round((wonCount / closedDeals) * 100) : 0;
+
+        const cards = [
+          { label: 'Open Pipeline', value: LR.formatCurrency(openValue), sub: `${(counts.new||0) + (counts.contacted||0) + (counts.quoted||0) + (counts.scheduled||0)} leads` },
+          { label: 'Won Revenue', value: LR.formatCurrency(wonValue), sub: `${wonCount} deals`, klass: '' },
+          { label: 'Win Rate', value: `${winRate}%`, sub: `${wonCount}/${closedDeals} closed` },
+          { label: 'Total Leads', value: totalLeads, sub: 'all stages' },
+          { label: 'Lost Value', value: LR.formatCurrency(lostValue), sub: `${counts.lost||0} deals`, klass: 'lost' },
+        ];
+
+        const container = document.getElementById('kanbanTotals');
+        container.innerHTML = cards.map((c, i) => `
+          <div class="kanban-total-card ${c.klass||''}" style="animation-delay:${i*0.05}s">
+            <div class="ktc-label">${c.label}</div>
+            <div class="ktc-value">${c.value}</div>
+            <div class="muted" style="font-size:0.74rem; margin-top:4px;">${c.sub}</div>
+          </div>
+        `).join('');
+      }
+
+      function renderTags(raw) {
+        if (!raw) return '';
+        return raw.split(',').map(t => t.trim()).filter(Boolean).slice(0, 3).map(t =>
+          `<span class="tag-pill">${LR.escapeHtml(t)}</span>`
+        ).join('');
+      }
+
+      function render() {
+        renderTotals();
+        const container = document.getElementById('kanbanBoard');
+        const cols = board.columns || {};
+        const counts = board.counts || {};
+        const totals = board.totals || {};
+
+        container.innerHTML = STAGES.map(stage => {
+          const items = cols[stage] || [];
+          return `<section class="kanban-col" data-stage="${stage}">
+            <header class="kanban-col-header">
+              <span class="kanban-col-title"><span class="kanban-col-dot"></span> ${STAGE_LABELS[stage]}</span>
+              <div class="kanban-col-meta">
+                <div><span class="kc-count">${counts[stage]||0}</span> ${(counts[stage]||0)===1 ? 'lead' : 'leads'}</div>
+                ${totals[stage] ? `<div style="font-size:0.7rem;">${LR.formatCurrency(totals[stage])}</div>` : ''}
+              </div>
+            </header>
+            <div class="kanban-col-body" data-col-body="${stage}">
+              ${items.map(card => renderCard(card)).join('') || '<div class="muted" style="text-align:center; padding:18px 0; font-size:0.78rem;">drop leads here</div>'}
+            </div>
+          </section>`;
+        }).join('');
+
+        wireDnd();
+      }
+
+      function renderCard(lead) {
+        const ageMs = lead.created_at ? Date.now() - new Date(lead.created_at).getTime() : 0;
+        const ageM = Math.floor(ageMs / 60000);
+        const ageStr = ageM < 60 ? `${ageM}m` : ageM < 1440 ? `${Math.floor(ageM/60)}h` : `${Math.floor(ageM/1440)}d`;
+        const urgC = urgencyClass(lead.urgency_score);
+        const value = lead.deal_value ? LR.formatCurrency(lead.deal_value) : '';
+        return `<article class="kanban-card" draggable="true" data-lead-id="${lead.id}">
+          <button class="kanban-card-star ${lead.starred ? 'starred' : ''}" title="${lead.starred ? 'Unstar' : 'Star'}" data-action="star">
+            ${lead.starred ? '★' : '☆'}
+          </button>
+          <div class="kanban-card-top">
+            <div class="kanban-card-name" style="padding-right:24px;">${LR.escapeHtml(lead.sender_name || lead.sender_email)}</div>
+          </div>
+          <p class="kanban-card-subject">${LR.escapeHtml(lead.subject || '(no subject)')}</p>
+          <div class="kanban-card-meta">
+            <span class="urgency-pill ${urgC}">${urgencyLabel(lead.urgency_score)}</span>
+            ${value ? `<span class="kanban-card-value">${value}</span>` : ''}
+            <span>${ageStr}</span>
+          </div>
+          ${lead.tags ? `<div class="kanban-card-tags">${renderTags(lead.tags)}</div>` : ''}
+        </article>`;
+      }
+
+      function wireDnd() {
+        document.querySelectorAll('.kanban-card').forEach(card => {
+          card.addEventListener('dragstart', (e) => {
+            dragLeadId = parseInt(card.dataset.leadId, 10);
+            card.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+          });
+          card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            dragLeadId = null;
+          });
+          card.addEventListener('click', (e) => {
+            if (e.target.closest('[data-action="star"]')) {
+              e.preventDefault();
+              toggleStar(parseInt(card.dataset.leadId, 10));
+              return;
+            }
+            location.href = `/review?lead=${card.dataset.leadId}`;
+          });
+        });
+
+        document.querySelectorAll('.kanban-col').forEach(col => {
+          col.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            col.classList.add('drop-target');
+          });
+          col.addEventListener('dragleave', () => col.classList.remove('drop-target'));
+          col.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            col.classList.remove('drop-target');
+            if (!dragLeadId) return;
+            const newStage = col.dataset.stage;
+            await moveLead(dragLeadId, newStage);
+          });
+        });
+      }
+
+      async function moveLead(leadId, stage) {
+        // Optimistic UI: find & move
+        let movedFrom = null;
+        let movedCard = null;
+        for (const s of STAGES) {
+          const arr = board.columns[s] || [];
+          const idx = arr.findIndex(c => c.id === leadId);
+          if (idx >= 0) {
+            movedFrom = s;
+            movedCard = arr.splice(idx, 1)[0];
+            board.counts[s] = Math.max(0, (board.counts[s]||1) - 1);
+            if (movedCard.deal_value) {
+              board.totals[s] = Math.max(0, (board.totals[s]||0) - movedCard.deal_value);
+            }
+            break;
+          }
+        }
+        if (!movedCard) return;
+        board.columns[stage] = board.columns[stage] || [];
+        board.columns[stage].unshift(movedCard);
+        board.counts[stage] = (board.counts[stage]||0) + 1;
+        if (movedCard.deal_value) board.totals[stage] = (board.totals[stage]||0) + movedCard.deal_value;
+        render();
+
+        try {
+          const res = await fetch(`/leads/${leadId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pipeline_stage: stage }),
+          });
+          if (!res.ok) throw new Error('Failed to update stage');
+          if (stage === 'won') LR.success(`Marked as Won — nice work`);
+          else if (stage === 'lost') LR.warning(`Marked as Lost`);
+          else LR.success(`Moved to ${STAGE_LABELS[stage]}`);
+        } catch (e) {
+          LR.error(e.message);
+          // rollback
+          loadBoard();
+        }
+      }
+
+      async function toggleStar(leadId) {
+        let card = null;
+        for (const s of STAGES) {
+          card = (board.columns[s] || []).find(c => c.id === leadId);
+          if (card) break;
+        }
+        if (!card) return;
+        card.starred = !card.starred;
+        render();
+        try {
+          await fetch(`/leads/${leadId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ starred: card.starred }),
+          });
+        } catch (e) {
+          LR.error('Failed to update star');
+        }
+      }
+
+      document.getElementById('refreshBoardBtn').addEventListener('click', () => loadBoard());
+
+      loadBoard();
+    </script>
+  </body>
+</html>

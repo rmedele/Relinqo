@@ -135,6 +135,14 @@ class Lead(Base):
     booking_token = Column(String(64), nullable=True, unique=True, index=True)
     call_event_id = Column(Integer, ForeignKey("call_events.id"), nullable=True, index=True)
 
+    # Deal tracking
+    deal_value = Column(Float, nullable=True)  # estimated/won revenue
+    tags = Column(String(500), nullable=False, default="")  # comma-separated
+    pipeline_stage = Column(String(50), nullable=False, default="new", index=True)
+    # new | contacted | quoted | scheduled | won | lost
+    starred = Column(Boolean, nullable=False, default=False, index=True)
+    last_contacted_at = Column(DateTime(timezone=True), nullable=True)
+
     org = relationship("Organization", back_populates="leads")
     call_event = relationship("CallEvent", back_populates="lead")
     parent_lead = relationship("Lead", remote_side="Lead.id", backref="replies", foreign_keys=[parent_lead_id])
@@ -143,6 +151,7 @@ class Lead(Base):
     activities = relationship("LeadActivity", back_populates="lead", cascade="all, delete-orphan")
     photos = relationship("LeadPhoto", back_populates="lead", cascade="all, delete-orphan")
     bookings = relationship("Booking", back_populates="lead")
+    notes = relationship("LeadNote", back_populates="lead", cascade="all, delete-orphan")
 
     @hybrid_property
     def photo_count(self):
@@ -369,3 +378,36 @@ class SmsNotification(Base):
     purpose = Column(String(40), nullable=False, index=True)  # owner_alert | caller_confirmation | approval_request
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+
+class LeadNote(Base):
+    """Internal team notes on a lead — not visible to the customer."""
+    __tablename__ = "lead_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    lead_id = Column(Integer, ForeignKey("leads.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    author_name = Column(String(255), nullable=True)
+    body = Column(Text, nullable=False)
+    pinned = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    lead = relationship("Lead", back_populates="notes")
+
+
+class ReplyTemplate(Base):
+    """Saved reply templates per org. Supports {{name}}, {{business}}, {{phone}} variables."""
+    __tablename__ = "reply_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    body = Column(Text, nullable=False)
+    category = Column(String(50), nullable=True)  # optional pairing with lead category
+    sort_order = Column(Integer, nullable=False, default=0)
+    use_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+

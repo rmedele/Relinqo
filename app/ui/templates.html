@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reply Templates · LeadRelay</title>
+    <link rel="stylesheet" href="/ui/styles.css" />
+  </head>
+  <body>
+    <div class="tmpl-shell">
+      <header class="tmpl-header">
+        <div>
+          <p class="eyebrow" style="color: var(--accent-cyan);">LeadRelay</p>
+          <h1 style="font-size: 1.6rem; font-weight: 750; letter-spacing: -0.03em; margin: 0;
+              background: linear-gradient(135deg, var(--text) 0%, var(--accent-cyan) 50%, var(--primary) 100%);
+              -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            Reply Templates
+          </h1>
+          <p class="muted" style="margin-top:6px; font-size:0.85rem; max-width: 560px;">
+            Save reusable reply templates. Use <code style="color:var(--accent-cyan);background:rgba(0,0,0,0.2);padding:1px 5px;border-radius:4px;font-size:0.78rem;">{{name}}</code>,
+            <code style="color:var(--accent-cyan);background:rgba(0,0,0,0.2);padding:1px 5px;border-radius:4px;font-size:0.78rem;">{{business}}</code>,
+            <code style="color:var(--accent-cyan);background:rgba(0,0,0,0.2);padding:1px 5px;border-radius:4px;font-size:0.78rem;">{{phone}}</code> as variables — they fill in automatically when picked from a lead.
+          </p>
+        </div>
+        <nav class="analytics-nav">
+          <a href="/review" class="subnav-link">Queue</a>
+          <a href="/pipeline" class="subnav-link">Pipeline</a>
+          <a href="/analytics" class="subnav-link">Analytics</a>
+          <a href="/templates" class="subnav-link active">Templates</a>
+          <a href="/settings" class="subnav-link">Settings</a>
+        </nav>
+      </header>
+
+      <div class="card" style="margin-bottom: 18px; padding: 18px;">
+        <h3 style="margin-top:0;">New template</h3>
+        <div style="display:flex; gap:10px; margin-bottom: 10px;">
+          <input id="newName" class="filter-input" placeholder="Template name (e.g. Quote follow-up)" style="flex:1;" />
+          <select id="newCategory" class="filter-select">
+            <option value="">No category</option>
+            <option value="urgent_request">Urgent</option>
+            <option value="quote_request">Quote</option>
+            <option value="general_inquiry">General</option>
+            <option value="existing_customer">Existing customer</option>
+          </select>
+        </div>
+        <textarea id="newBody" placeholder="Hi {{name}}, thanks for reaching out about your project at {{business}}..." rows="5"
+          style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:var(--radius-sm);
+                 padding:12px; color:var(--text); font-family:inherit; font-size:0.92rem; resize:vertical; outline:none;"></textarea>
+        <div style="display:flex; justify-content: flex-end; margin-top: 10px;">
+          <button id="createBtn" class="primary-btn">Create template</button>
+        </div>
+      </div>
+
+      <div class="tmpl-list" id="tmplList">
+        <p class="muted" style="text-align:center; padding: 30px;">Loading...</p>
+      </div>
+    </div>
+
+    <script src="/ui/shell.js"></script>
+    <script>
+      let templates = [];
+
+      async function loadTemplates() {
+        try {
+          const res = await fetch('/api/templates');
+          if (res.status === 401) { location.href = '/login'; return; }
+          templates = await res.json();
+          render();
+        } catch (e) {
+          LR.error('Failed to load templates');
+        }
+      }
+
+      function render() {
+        const list = document.getElementById('tmplList');
+        if (!templates.length) {
+          list.innerHTML = `<div class="card" style="text-align:center; padding: 40px;">
+            <p class="muted">No templates yet. Create one above to save your favorite reply.</p>
+          </div>`;
+          return;
+        }
+        list.innerHTML = templates.map(t => `
+          <div class="tmpl-row" data-id="${t.id}">
+            <div class="tmpl-row-head">
+              <input class="tmpl-row-name filter-input" data-field="name" value="${LR.escapeHtml(t.name)}" style="font-weight:700;font-size:1rem;flex:1;" />
+              <select class="filter-select" data-field="category">
+                <option value="" ${!t.category ? 'selected' : ''}>No category</option>
+                <option value="urgent_request" ${t.category==='urgent_request'?'selected':''}>Urgent</option>
+                <option value="quote_request" ${t.category==='quote_request'?'selected':''}>Quote</option>
+                <option value="general_inquiry" ${t.category==='general_inquiry'?'selected':''}>General</option>
+                <option value="existing_customer" ${t.category==='existing_customer'?'selected':''}>Existing customer</option>
+              </select>
+              <button class="ghost-btn compact-link" data-action="save">Save</button>
+              <button class="ghost-btn compact-link" data-action="delete">Delete</button>
+            </div>
+            <textarea data-field="body" rows="5">${LR.escapeHtml(t.body)}</textarea>
+            <div class="tmpl-row-meta">
+              <span>Used ${t.use_count} times</span>
+              <span>Updated ${LR.timeSince(t.updated_at)} ago</span>
+            </div>
+          </div>
+        `).join('');
+
+        list.querySelectorAll('.tmpl-row').forEach(row => {
+          const id = parseInt(row.dataset.id, 10);
+          row.querySelector('[data-action="save"]').addEventListener('click', () => saveRow(row, id));
+          row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteRow(id));
+        });
+      }
+
+      async function saveRow(row, id) {
+        const name = row.querySelector('[data-field="name"]').value.trim();
+        const body = row.querySelector('[data-field="body"]').value.trim();
+        const category = row.querySelector('[data-field="category"]').value || null;
+        if (!name || !body) { LR.error('Name and body required'); return; }
+        try {
+          const res = await fetch(`/api/templates/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, body, category }),
+          });
+          if (!res.ok) throw new Error('Failed to save');
+          LR.success('Template saved');
+          await loadTemplates();
+        } catch (e) {
+          LR.error(e.message);
+        }
+      }
+
+      async function deleteRow(id) {
+        if (!confirm('Delete this template?')) return;
+        try {
+          const res = await fetch(`/api/templates/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error('Failed to delete');
+          LR.success('Template deleted');
+          await loadTemplates();
+        } catch (e) {
+          LR.error(e.message);
+        }
+      }
+
+      document.getElementById('createBtn').addEventListener('click', async () => {
+        const name = document.getElementById('newName').value.trim();
+        const body = document.getElementById('newBody').value.trim();
+        const category = document.getElementById('newCategory').value || null;
+        if (!name || !body) { LR.error('Name and body required'); return; }
+        try {
+          const res = await fetch('/api/templates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, body, category }),
+          });
+          if (!res.ok) throw new Error('Failed to create template');
+          LR.success('Template created');
+          document.getElementById('newName').value = '';
+          document.getElementById('newBody').value = '';
+          document.getElementById('newCategory').value = '';
+          await loadTemplates();
+        } catch (e) {
+          LR.error(e.message);
+        }
+      });
+
+      loadTemplates();
+    </script>
+  </body>
+</html>

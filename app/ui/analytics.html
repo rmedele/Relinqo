@@ -256,16 +256,29 @@
             <option value="60">Last 60 days</option>
             <option value="90">Last 90 days</option>
           </select>
-          <a href="/review">Review Queue</a>
+          <a href="/review">Queue</a>
+          <a href="/pipeline">Pipeline</a>
+          <a href="/templates">Templates</a>
           <a href="/settings">Settings</a>
         </div>
       </div>
 
-      <!-- KPI Row -->
+      <!-- Revenue KPI Row -->
       <div class="kpi-row">
         <div class="kpi-card">
-          <div class="kpi-label">Total Leads</div>
-          <div class="kpi-value" id="kpiTotal">--</div>
+          <div class="kpi-label">Won Revenue</div>
+          <div class="kpi-value" id="kpiWonRevenue" style="background: linear-gradient(135deg, var(--success-text), var(--accent-cyan)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">--</div>
+          <div class="kpi-sub">Closed deals (all time)</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Open Pipeline</div>
+          <div class="kpi-value" id="kpiPipelineValue" style="background: linear-gradient(135deg, var(--text), var(--accent-lilac)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">--</div>
+          <div class="kpi-sub">Active deal value</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Deal Size</div>
+          <div class="kpi-value" id="kpiAvgDeal">--</div>
+          <div class="kpi-sub">Across won deals</div>
         </div>
         <div class="kpi-card">
           <div class="kpi-label">Win Rate</div>
@@ -275,6 +288,26 @@
           <div class="kpi-label">Avg Response</div>
           <div class="kpi-value" id="kpiAvgResponse">--</div>
         </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Leads</div>
+          <div class="kpi-value" id="kpiTotal">--</div>
+        </div>
+      </div>
+
+      <!-- Revenue trend chart -->
+      <div class="charts-row full">
+        <div class="chart-box">
+          <h3>Revenue Trend <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">(won deals + new pipeline)</span></h3>
+          <div id="revenueChart" class="rt-chart" style="height:140px;"></div>
+          <div class="cat-legend" style="margin-top:10px;">
+            <span class="cat-legend-item"><span class="cat-dot" style="background: var(--success-text);"></span>Won revenue</span>
+            <span class="cat-legend-item"><span class="cat-dot" style="background: var(--accent-lilac);"></span>New pipeline</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary KPIs -->
+      <div class="kpi-row">
         <div class="kpi-card">
           <div class="kpi-label">AI Confidence</div>
           <div class="kpi-value" id="kpiConfidence">--</div>
@@ -346,6 +379,7 @@
       </div>
     </div>
 
+    <script src="/ui/shell.js"></script>
     <script>
       const periodSelect = document.getElementById('periodSelect');
 
@@ -370,17 +404,27 @@
         'linear-gradient(135deg, var(--accent-orange), var(--accent-pink))',
       ];
 
+      function fmtMoney(v) {
+        if (v == null) return '--';
+        if (v >= 1000000) return '$' + (v / 1000000).toFixed(1) + 'M';
+        if (v >= 1000) return '$' + (v / 1000).toFixed(1) + 'k';
+        return '$' + Math.round(v).toLocaleString();
+      }
+
       async function loadAnalytics() {
         const days = periodSelect.value;
         try {
-          const [statsRes, analyticsRes] = await Promise.all([
+          const [statsRes, analyticsRes, revenueRes] = await Promise.all([
             fetch('/stats'),
             fetch(`/stats/analytics?days=${days}`),
+            fetch(`/stats/revenue?days=${days}`),
           ]);
           if (!statsRes.ok || !analyticsRes.ok) return;
           const stats = await statsRes.json();
           const data = await analyticsRes.json();
+          const revenue = revenueRes.ok ? await revenueRes.json() : { daily: [], total_won: 0, total_pipeline: 0 };
           renderKPIs(stats, data);
+          renderRevenueChart(revenue.daily || []);
           renderResponseTimeChart(data.response_time_trend);
           renderHourlyChart(data.hourly_distribution);
           renderWeekdayChart(data.weekday_distribution);
@@ -397,6 +441,9 @@
         document.getElementById('kpiWinRate').textContent = stats.close_rate != null ? `${stats.close_rate}%` : '--';
         document.getElementById('kpiAvgResponse').textContent = stats.avg_response_minutes != null ? `${stats.avg_response_minutes}m` : '--';
         document.getElementById('kpiConfidence').textContent = data.avg_confidence != null ? `${Math.round(data.avg_confidence * 100)}%` : '--';
+        document.getElementById('kpiWonRevenue').textContent = fmtMoney(stats.won_revenue || 0);
+        document.getElementById('kpiPipelineValue').textContent = fmtMoney(stats.pipeline_value || 0);
+        document.getElementById('kpiAvgDeal').textContent = fmtMoney(stats.avg_deal_size);
 
         const wd = data.weekday_distribution;
         const busiestDay = Object.entries(wd).sort((a, b) => b[1] - a[1])[0];
@@ -404,6 +451,21 @@
 
         const topSource = data.source_performance.sort((a, b) => b.count - a.count)[0];
         document.getElementById('kpiTopSource').textContent = topSource ? titleCase(topSource.source) : '--';
+      }
+
+      function renderRevenueChart(daily) {
+        const container = document.getElementById('revenueChart');
+        if (!daily.length) { container.innerHTML = ''; return; }
+        const maxVal = Math.max(1, ...daily.map(d => Math.max(d.won_revenue || 0, d.new_pipeline || 0)));
+        container.style.gap = '3px';
+        container.innerHTML = daily.map(d => {
+          const wonH = Math.max(0, Math.round(((d.won_revenue || 0) / maxVal) * 100));
+          const pipelineH = Math.max(0, Math.round(((d.new_pipeline || 0) / maxVal) * 100));
+          return `<div style="flex:1; min-width:4px; display:flex; flex-direction:column-reverse; gap:1px;" title="${d.date} — Won: ${fmtMoney(d.won_revenue)}, New pipeline: ${fmtMoney(d.new_pipeline)}">
+            <div style="height:${wonH}%; background: linear-gradient(180deg, var(--success-text), rgba(110,231,183,0.3)); border-radius:2px 2px 0 0;"></div>
+            <div style="height:${pipelineH}%; background: linear-gradient(180deg, var(--accent-lilac), rgba(167,139,250,0.3)); border-radius:2px 2px 0 0; opacity: 0.7;"></div>
+          </div>`;
+        }).join('');
       }
 
       function renderResponseTimeChart(trend) {

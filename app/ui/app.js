@@ -73,14 +73,29 @@ function formatDate(value) {
 }
 
 function showStatus(message, kind) {
-  sendStatusEl.textContent = message;
-  sendStatusEl.className = `send-status ${kind}`;
-  sendStatusEl.classList.remove('hidden');
+  // Hybrid: keep the inline pill so existing flows still work, plus a toast.
+  if (sendStatusEl) {
+    sendStatusEl.textContent = message;
+    sendStatusEl.className = `send-status ${kind}`;
+    sendStatusEl.classList.remove('hidden');
+  }
+  if (window.LR && message) {
+    const fn = window.LR[kind === 'error' ? 'error' : kind === 'success' ? 'success' : 'info'];
+    if (fn) fn(message);
+  }
 }
 
 function clearStatus() {
+  if (!sendStatusEl) return;
   sendStatusEl.className = 'send-status hidden';
   sendStatusEl.textContent = '';
+}
+
+function slaBadge(lead) {
+  if (!window.LR) return '';
+  const tier = window.LR.slaTier(lead.created_at, lead.status);
+  const label = tier === 'done' ? 'replied' : window.LR.timeSince(lead.created_at);
+  return `<span class="sla-badge ${tier}"><span class="sla-dot"></span>${label}</span>`;
 }
 
 // --- Filtering ---
@@ -361,21 +376,38 @@ function renderLeadList() {
     const button = document.createElement('button');
     button.className = `lead-item ${statusClass(lead.status)}-row ${lead.id === selectedLeadId ? 'active' : ''}`;
     const pendingIcon = lead.status === 'pending_send' ? '<span class="pending-icon" title="Auto-sending soon">&#9200;</span> ' : '';
+    const starHtml = `<button class="star-toggle ${lead.starred ? 'starred' : ''}" data-star-id="${lead.id}" title="${lead.starred ? 'Unstar' : 'Star'}">${lead.starred ? '\u2605' : '\u2606'}</button>`;
+    const valueHtml = lead.deal_value ? `<span class="muted" style="color:var(--success-text); font-weight:600;">${window.LR ? window.LR.formatCurrency(lead.deal_value) : ('$' + lead.deal_value)}</span>` : '';
     button.innerHTML = `
       <div class="lead-item-top">
         <div>
           <strong>${pendingIcon}${escapeHtml(lead.sender_name) || 'Unknown sender'}</strong>
           <p class="muted">${escapeHtml(lead.sender_email)}</p>
         </div>
-        <span class="badge ${statusClass(lead.status)}">${titleCase(lead.status)}</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          ${slaBadge(lead)}
+          ${starHtml}
+          <span class="badge ${statusClass(lead.status)}">${titleCase(lead.status)}</span>
+        </div>
       </div>
       <p class="lead-subject">${escapeHtml(lead.subject) || '(no subject)'}</p>
       <div class="lead-item-bottom">
         <span class="muted">${titleCase(lead.category)} \u2022 ${urgencyLabel(lead.urgency_score)} priority</span>
-        <span class="muted">${titleCase(lead.source)}</span>
+        <div style="display:flex; gap:8px; align-items:center;">
+          ${valueHtml}
+          <span class="muted">${titleCase(lead.source)}</span>
+        </div>
       </div>
     `;
-    button.addEventListener('click', () => selectLead(lead.id));
+    button.addEventListener('click', (e) => {
+      if (e.target.closest('.star-toggle')) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleStar(lead.id);
+        return;
+      }
+      selectLead(lead.id);
+    });
     leadListEl.appendChild(button);
   });
 
@@ -454,6 +486,25 @@ function renderLeadDetail() {
   fill('detailNextStep', titleCase(lead.next_step));
   replyEditorEl.value = lead.recommended_reply || '';
 
+  // Deal tracking
+  const stageEl = document.getElementById('detailPipelineStage');
+  if (stageEl) stageEl.value = lead.pipeline_stage || 'new';
+  const dealValueEl = document.getElementById('detailDealValue');
+  if (dealValueEl) dealValueEl.value = lead.deal_value ?? '';
+  renderTags(lead.tags || '');
+  const starBtn = document.getElementById('starToggleBtn');
+  if (starBtn) {
+    starBtn.classList.toggle('starred', !!lead.starred);
+    starBtn.innerHTML = lead.starred ? '★ Starred' : '☆ Star';
+  }
+  // SLA timer in operator snapshot
+  const slaEl = document.getElementById('detailSlaTimer');
+  if (slaEl && window.LR) {
+    const tier = window.LR.slaTier(lead.created_at, lead.status);
+    const label = tier === 'done' ? 'replied' : (window.LR.timeSince(lead.created_at) || '0m');
+    slaEl.innerHTML = `<span class="sla-badge ${tier}"><span class="sla-dot"></span>${label}</span>`;
+  }
+
   const statusBadge = document.getElementById('detailStatusBadge');
   statusBadge.textContent = titleCase(lead.status);
   statusBadge.className = `status-chip ${statusClass(lead.status)}`;
@@ -501,6 +552,7 @@ function renderLeadDetail() {
   updateQuickActions(lead);
   loadActivities(lead.id);
   loadPhotos(lead.id);
+  loadNotes(lead.id);
 }
 
 async function loadPhotos(leadId) {
@@ -747,6 +799,7 @@ async function checkAuth() {
     const data = await res.json();
     const orgNameEl = document.getElementById('orgName');
     if (orgNameEl) orgNameEl.textContent = data.org.name;
+    window.__lrOrgName = data.org?.name || '';
   } catch {
     window.location.href = '/login';
   }
@@ -991,8 +1044,380 @@ window.insertTemplate = insertTemplate;
 window.backToList = backToList;
 
 
+// --- Tags ---
+
+function renderTags(tagsRaw) {
+  const row = document.getElementById('tagRow');
+  if (!row) return;
+  const input = document.getElementById('tagInput');
+  // Remove existing pills
+  row.querySelectorAll('.tag-pill').forEach(p => p.remove());
+  const tags = (tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
+  tags.forEach(t => {
+    const pill = document.createElement('span');
+    pill.className = 'tag-pill';
+    pill.innerHTML = `${escapeHtml(t)}<button class="tag-x" type="button" aria-label="remove">×</button>`;
+    pill.querySelector('.tag-x').addEventListener('click', () => removeTag(t));
+    row.insertBefore(pill, input);
+  });
+}
+
+async function addTag(tag) {
+  if (!selectedLeadId || !tag) return;
+  const lead = leads.find(l => l.id === selectedLeadId);
+  if (!lead) return;
+  const existing = (lead.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+  if (existing.includes(tag)) return;
+  existing.push(tag);
+  const newTags = existing.join(',');
+  try {
+    await fetch(`/leads/${selectedLeadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: newTags }),
+    });
+    lead.tags = newTags;
+    renderTags(newTags);
+  } catch (e) { window.LR?.error('Failed to add tag'); }
+}
+
+async function removeTag(tag) {
+  if (!selectedLeadId) return;
+  const lead = leads.find(l => l.id === selectedLeadId);
+  if (!lead) return;
+  const next = (lead.tags || '').split(',').map(t => t.trim()).filter(t => t && t !== tag).join(',');
+  try {
+    await fetch(`/leads/${selectedLeadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: next }),
+    });
+    lead.tags = next;
+    renderTags(next);
+  } catch (e) { window.LR?.error('Failed to remove tag'); }
+}
+
+// --- Star ---
+
+async function toggleStar(leadId) {
+  const target = leadId ?? selectedLeadId;
+  if (!target) return;
+  const lead = leads.find(l => l.id === target);
+  if (!lead) return;
+  const newStarred = !lead.starred;
+  try {
+    await fetch(`/leads/${target}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ starred: newStarred }),
+    });
+    lead.starred = newStarred;
+    renderLeadList();
+    if (target === selectedLeadId) renderLeadDetail();
+  } catch (e) { window.LR?.error('Failed to update star'); }
+}
+
+// --- Pipeline stage + deal value ---
+
+async function updatePipelineStage(stage) {
+  if (!selectedLeadId) return;
+  try {
+    await fetch(`/leads/${selectedLeadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pipeline_stage: stage }),
+    });
+    const lead = leads.find(l => l.id === selectedLeadId);
+    if (lead) lead.pipeline_stage = stage;
+    window.LR?.success(`Moved to ${titleCase(stage)}`);
+    loadStats();
+  } catch (e) { window.LR?.error('Failed to update stage'); }
+}
+
+async function saveDealValue() {
+  if (!selectedLeadId) return;
+  const input = document.getElementById('detailDealValue');
+  const value = input.value === '' ? null : parseFloat(input.value);
+  try {
+    await fetch(`/leads/${selectedLeadId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deal_value: value }),
+    });
+    const lead = leads.find(l => l.id === selectedLeadId);
+    if (lead) lead.deal_value = value;
+    renderLeadList();
+    window.LR?.success(value != null ? `Deal value saved: $${value.toLocaleString()}` : 'Deal value cleared');
+    loadStats();
+  } catch (e) { window.LR?.error('Failed to save deal value'); }
+}
+
+// --- Internal notes ---
+
+let noteCache = {};
+
+async function loadNotes(leadId) {
+  const list = document.getElementById('notesList');
+  if (!list) return;
+  try {
+    const res = await fetch(`/leads/${leadId}/notes`);
+    if (!res.ok) { list.innerHTML = ''; return; }
+    const notes = await res.json();
+    noteCache[leadId] = notes;
+    if (!notes.length) {
+      list.innerHTML = '<p class="muted" style="text-align:center; padding: 14px; font-size:0.82rem;">No notes yet — add the first one above.</p>';
+      return;
+    }
+    list.innerHTML = notes.map(n => `
+      <div class="note-item ${n.pinned ? 'pinned' : ''}" data-note-id="${n.id}">
+        ${n.pinned ? '<span class="note-pin-indicator">📌</span>' : ''}
+        <div class="note-item-head">
+          <strong>${escapeHtml(n.author_name || 'Team')}</strong>
+          <span>${formatDate(n.created_at)}</span>
+        </div>
+        <div class="note-item-body">${escapeHtml(n.body)}</div>
+        <div class="note-item-actions">
+          <button data-action="pin">${n.pinned ? 'Unpin' : 'Pin'}</button>
+          <button data-action="delete">Delete</button>
+        </div>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.note-item').forEach(el => {
+      const id = parseInt(el.dataset.noteId, 10);
+      const note = notes.find(n => n.id === id);
+      el.querySelector('[data-action="pin"]').addEventListener('click', () => togglePinNote(id, !note.pinned));
+      el.querySelector('[data-action="delete"]').addEventListener('click', () => deleteNote(id));
+    });
+  } catch (e) {
+    list.innerHTML = '';
+  }
+}
+
+async function addNote() {
+  if (!selectedLeadId) return;
+  const body = document.getElementById('newNoteBody').value.trim();
+  const pinned = document.getElementById('newNotePinned').checked;
+  if (!body) { window.LR?.error('Note can\'t be empty'); return; }
+  try {
+    const res = await fetch(`/leads/${selectedLeadId}/notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body, pinned }),
+    });
+    if (!res.ok) throw new Error('Failed to add note');
+    document.getElementById('newNoteBody').value = '';
+    document.getElementById('newNotePinned').checked = false;
+    window.LR?.success('Note added');
+    loadNotes(selectedLeadId);
+  } catch (e) { window.LR?.error(e.message); }
+}
+
+async function togglePinNote(noteId, pinned) {
+  if (!selectedLeadId) return;
+  try {
+    await fetch(`/leads/${selectedLeadId}/notes/${noteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pinned }),
+    });
+    loadNotes(selectedLeadId);
+  } catch (e) { window.LR?.error('Failed to update note'); }
+}
+
+async function deleteNote(noteId) {
+  if (!selectedLeadId) return;
+  if (!confirm('Delete this note?')) return;
+  try {
+    await fetch(`/leads/${selectedLeadId}/notes/${noteId}`, { method: 'DELETE' });
+    loadNotes(selectedLeadId);
+  } catch (e) { window.LR?.error('Failed to delete note'); }
+}
+
+// --- Templates dropdown ---
+
+let templateCache = null;
+
+async function loadTemplatesIfNeeded() {
+  if (templateCache !== null) return templateCache;
+  try {
+    const res = await fetch('/api/templates');
+    if (!res.ok) { templateCache = []; return []; }
+    templateCache = await res.json();
+  } catch { templateCache = []; }
+  return templateCache;
+}
+
+function fillTemplateVars(body, lead) {
+  const firstName = (lead.sender_name || '').split(' ')[0] || 'there';
+  return body
+    .replaceAll('{{name}}', firstName)
+    .replaceAll('{{full_name}}', lead.sender_name || firstName)
+    .replaceAll('{{phone}}', lead.phone || '')
+    .replaceAll('{{email}}', lead.sender_email || '')
+    .replaceAll('{{location}}', lead.location || '')
+    .replaceAll('{{business}}', (window.__lrOrgName || 'our team'));
+}
+
+async function openTemplateMenu() {
+  const menu = document.getElementById('templateMenu');
+  const tpls = await loadTemplatesIfNeeded();
+  if (!tpls.length) {
+    menu.innerHTML = `<div class="template-menu-empty">
+      No templates yet — <a href="/templates" style="color:var(--accent-cyan);">create some</a> to reuse here.
+    </div>`;
+  } else {
+    menu.innerHTML = tpls.map(t => `
+      <div class="template-menu-item" data-id="${t.id}">
+        <div class="tmi-name">${escapeHtml(t.name)}</div>
+        <div class="tmi-preview">${escapeHtml(t.body.replace(/\n/g, ' ').slice(0, 80))}</div>
+      </div>
+    `).join('');
+    menu.querySelectorAll('.template-menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = parseInt(item.dataset.id, 10);
+        const tpl = tpls.find(t => t.id === id);
+        const lead = leads.find(l => l.id === selectedLeadId);
+        if (tpl && lead) {
+          replyEditorEl.value = fillTemplateVars(tpl.body, lead);
+          replyEditorEl.focus();
+          fetch(`/api/templates/${id}/use`, { method: 'POST' }).catch(()=>{});
+          window.LR?.success(`Inserted "${tpl.name}"`);
+        }
+        closeTemplateMenu();
+      });
+    });
+  }
+  menu.classList.remove('hidden');
+}
+
+function closeTemplateMenu() {
+  document.getElementById('templateMenu')?.classList.add('hidden');
+}
+
+async function saveAsTemplate() {
+  const body = replyEditorEl.value.trim();
+  if (!body) { window.LR?.error('Type a reply first'); return; }
+  const name = prompt('Save this draft as a reusable template. Name?');
+  if (!name) return;
+  try {
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), body }),
+    });
+    if (!res.ok) throw new Error('Failed to save');
+    templateCache = null;
+    window.LR?.success(`Template "${name}" saved`);
+  } catch (e) { window.LR?.error(e.message); }
+}
+
+// --- j/k navigation ---
+
+function selectAdjacent(direction) {
+  const filtered = getFilteredLeads();
+  if (!filtered.length) return;
+  const idx = filtered.findIndex(l => l.id === selectedLeadId);
+  let next;
+  if (idx < 0) next = filtered[0];
+  else if (direction === 'down') next = filtered[Math.min(filtered.length - 1, idx + 1)];
+  else next = filtered[Math.max(0, idx - 1)];
+  if (next) selectLead(next.id);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+  if (e.metaKey || e.ctrlKey || e.altKey) {
+    // Cmd+Enter sends draft
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      const lead = leads.find(l => l.id === selectedLeadId);
+      if (lead && lead.status !== 'sent' && lead.category !== 'spam') {
+        e.preventDefault();
+        sendDraftReply();
+      }
+    }
+    return;
+  }
+  if (e.key === 'j') { e.preventDefault(); selectAdjacent('down'); }
+  else if (e.key === 'k') { e.preventDefault(); selectAdjacent('up'); }
+  else if (e.key === 's' && selectedLeadId) { e.preventDefault(); toggleStar(); }
+  else if (e.key === 'r') { e.preventDefault(); loadLeads(); }
+  else if (e.key === 'w' && selectedLeadId) { e.preventDefault(); updatePipelineStage('won'); document.getElementById('detailPipelineStage').value = 'won'; }
+  else if (e.key === 'l' && selectedLeadId) { e.preventDefault(); updatePipelineStage('lost'); document.getElementById('detailPipelineStage').value = 'lost'; }
+  else if (e.key === 'e' && selectedLeadId) { e.preventDefault(); replyEditorEl?.focus(); }
+});
+
+// --- Wire new event listeners ---
+
+document.getElementById('detailPipelineStage')?.addEventListener('change', (e) => {
+  updatePipelineStage(e.target.value);
+});
+document.getElementById('saveDealValueBtn')?.addEventListener('click', saveDealValue);
+document.getElementById('detailDealValue')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); saveDealValue(); }
+});
+document.getElementById('starToggleBtn')?.addEventListener('click', () => toggleStar());
+
+document.getElementById('tagInput')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    const value = e.target.value.trim().replace(/,$/, '');
+    if (value) { addTag(value); e.target.value = ''; }
+  } else if (e.key === 'Backspace' && !e.target.value) {
+    // Remove last tag on backspace in empty input
+    const lead = leads.find(l => l.id === selectedLeadId);
+    if (!lead) return;
+    const tags = (lead.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    if (tags.length) removeTag(tags[tags.length - 1]);
+  }
+});
+
+document.getElementById('addNoteBtn')?.addEventListener('click', addNote);
+document.getElementById('newNoteBody')?.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); addNote(); }
+});
+
+document.getElementById('templatePickerBtn')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById('templateMenu');
+  if (menu.classList.contains('hidden')) openTemplateMenu();
+  else closeTemplateMenu();
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.template-picker')) closeTemplateMenu();
+});
+document.getElementById('saveAsTemplateBtn')?.addEventListener('click', (e) => { e.preventDefault(); saveAsTemplate(); });
+
+document.getElementById('cmdkBtn')?.addEventListener('click', () => window.LR?.openCmdk());
+
+// Auto-tick SLA badges every 30s so they advance without a refresh
+setInterval(() => {
+  if (!leads.length) return;
+  const lead = leads.find(l => l.id === selectedLeadId);
+  if (lead) {
+    const slaEl = document.getElementById('detailSlaTimer');
+    if (slaEl && window.LR) {
+      const tier = window.LR.slaTier(lead.created_at, lead.status);
+      const label = tier === 'done' ? 'replied' : (window.LR.timeSince(lead.created_at) || '0m');
+      slaEl.innerHTML = `<span class="sla-badge ${tier}"><span class="sla-dot"></span>${label}</span>`;
+    }
+  }
+}, 30000);
+
+// Allow command palette to jump to a lead on this page
+window.__lrSelectLead = (id) => selectLead(id);
+
+// If URL has ?lead=ID, select that lead after load
+function applyLeadFromQuery() {
+  const params = new URLSearchParams(location.search);
+  const lid = params.get('lead');
+  if (lid) selectedLeadId = parseInt(lid, 10);
+}
+
+
 // --- Init ---
 
+applyLeadFromQuery();
 checkAuth();
 loadLeads().catch((error) => {
   showStatus(error.message || 'Failed to load leads', 'error');

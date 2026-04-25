@@ -19,8 +19,25 @@ from app.digest import build_daily_digest, build_weekly_summary, send_daily_dige
 from app.email_parser import parse_lead_fields
 from app.followups import schedule_followups
 from app.mailer import send_email
-from app.models import Lead, LeadActivity, LeadPhoto, OrgSettings, ScheduleAvailability, User
-from app.schemas import DigestResponse, LeadActivityResponse, LeadIngestRequest, LeadOutcomeRequest, LeadPhotoResponse, LeadResponse, LeadUpdateRequest, PaginatedLeadsResponse, SendReviewResponse, StatsResponse
+from app.models import Lead, LeadActivity, LeadNote, LeadPhoto, OrgSettings, ReplyTemplate, ScheduleAvailability, User
+from app.schemas import (
+    DigestResponse,
+    LeadActivityResponse,
+    LeadIngestRequest,
+    LeadNoteCreateRequest,
+    LeadNoteResponse,
+    LeadNoteUpdateRequest,
+    LeadOutcomeRequest,
+    LeadPhotoResponse,
+    LeadResponse,
+    LeadUpdateRequest,
+    PaginatedLeadsResponse,
+    ReplyTemplateCreateRequest,
+    ReplyTemplateResponse,
+    ReplyTemplateUpdateRequest,
+    SendReviewResponse,
+    StatsResponse,
+)
 
 PHOTOS_BASE_DIR = Path(__file__).resolve().parent.parent / "data" / "photos"
 MIME_TO_EXT = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
@@ -291,11 +308,16 @@ def update_lead(lead_id: int, payload: LeadUpdateRequest, db: Session = Depends(
     lead = _scoped_lead(db, lead_id, user.org_id)
 
     changes = []
-    for field in ["subject", "body", "recommended_reply", "status", "next_step"]:
+    for field in ["subject", "body", "recommended_reply", "status", "next_step", "deal_value", "tags", "pipeline_stage", "starred"]:
         value = getattr(payload, field)
         if value is not None:
             setattr(lead, field, value)
             changes.append(field)
+
+    # Mirror pipeline_stage -> outcome when entering terminal stages
+    if payload.pipeline_stage in {"won", "lost"} and lead.outcome != payload.pipeline_stage:
+        lead.outcome = payload.pipeline_stage
+        lead.outcome_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(lead)
@@ -328,6 +350,8 @@ def set_lead_outcome(
     lead.outcome = payload.outcome
     lead.outcome_notes = payload.outcome_notes
     lead.outcome_at = datetime.now(timezone.utc)
+    if payload.outcome in {"won", "lost"}:
+        lead.pipeline_stage = payload.outcome
     db.commit()
     db.refresh(lead)
     log_activity(db, lead.id, lead.org_id, "outcome_set", f"Outcome set to '{payload.outcome}'" + (f": {payload.outcome_notes}" if payload.outcome_notes else ""))
@@ -452,6 +476,32 @@ def get_stats(db: Session = Depends(get_db), user: User = Depends(get_current_us
     else:
         avg_close = None
 
+    # Revenue / pipeline value
+    won_revenue = (
+        db.query(sa_func.coalesce(sa_func.sum(Lead.deal_value), 0.0))
+        .filter(Lead.org_id == org_id, Lead.outcome == "won", Lead.deal_value.isnot(None))
+        .scalar()
+        or 0.0
+    )
+    pipeline_value = (
+        db.query(sa_func.coalesce(sa_func.sum(Lead.deal_value), 0.0))
+        .filter(
+            Lead.org_id == org_id,
+            Lead.deal_value.isnot(None),
+            Lead.pipeline_stage.in_(["new", "contacted", "quoted", "scheduled"]),
+            Lead.category != "spam",
+        )
+        .scalar()
+        or 0.0
+    )
+    won_with_value = (
+        db.query(sa_func.count(Lead.id))
+        .filter(Lead.org_id == org_id, Lead.outcome == "won", Lead.deal_value.isnot(None))
+        .scalar()
+        or 0
+    )
+    avg_deal_size = round(won_revenue / won_with_value, 2) if won_with_value else None
+
     return StatsResponse(
         total_leads=total,
         today_leads=today,
@@ -463,6 +513,9 @@ def get_stats(db: Session = Depends(get_db), user: User = Depends(get_current_us
         by_outcome=by_outcome,
         close_rate=close_rate,
         avg_close_minutes=avg_close,
+        won_revenue=round(float(won_revenue), 2),
+        pipeline_value=round(float(pipeline_value), 2),
+        avg_deal_size=avg_deal_size,
     )
 
 
@@ -757,3 +810,270 @@ def weekly_summary(
     sent, message = send_weekly_summary(summary, org_settings=org_settings)
     status = "sent" if sent else f"failed: {message}"
     return DigestResponse(status=status, summary=summary)
+
+
+# --- Internal team notes ---
+
+
+@router.get("/leads/{lead_id}/notes", response_model=list[LeadNoteResponse])
+def list_lead_notes(lead_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    _scoped_lead(db, lead_id, user.org_id)
+    return (
+        db.query(LeadNote)
+        .filter(LeadNote.lead_id == lead_id, LeadNote.org_id == user.org_id)
+        .order_by(LeadNote.pinned.desc(), LeadNote.created_at.desc())
+        .all()
+    )
+
+
+@router.post("/leads/{lead_id}/notes", response_model=LeadNoteResponse)
+def create_lead_note(
+    lead_id: int,
+    payload: LeadNoteCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _scoped_lead(db, lead_id, user.org_id)
+    body = (payload.body or "").strip()
+    if not body:
+        raise HTTPException(status_code=400, detail="Note body cannot be empty")
+    note = LeadNote(
+        org_id=user.org_id,
+        lead_id=lead_id,
+        user_id=user.id,
+        author_name=user.display_name or user.email,
+        body=body,
+        pinned=payload.pinned,
+    )
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    log_activity(db, lead_id, user.org_id, "note_added", f"{note.author_name} added a note")
+    return note
+
+
+@router.patch("/leads/{lead_id}/notes/{note_id}", response_model=LeadNoteResponse)
+def update_lead_note(
+    lead_id: int,
+    note_id: int,
+    payload: LeadNoteUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _scoped_lead(db, lead_id, user.org_id)
+    note = (
+        db.query(LeadNote)
+        .filter(LeadNote.id == note_id, LeadNote.lead_id == lead_id, LeadNote.org_id == user.org_id)
+        .first()
+    )
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    if payload.body is not None:
+        note.body = payload.body.strip()
+    if payload.pinned is not None:
+        note.pinned = payload.pinned
+    db.commit()
+    db.refresh(note)
+    return note
+
+
+@router.delete("/leads/{lead_id}/notes/{note_id}")
+def delete_lead_note(
+    lead_id: int,
+    note_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    _scoped_lead(db, lead_id, user.org_id)
+    note = (
+        db.query(LeadNote)
+        .filter(LeadNote.id == note_id, LeadNote.lead_id == lead_id, LeadNote.org_id == user.org_id)
+        .first()
+    )
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    db.delete(note)
+    db.commit()
+    return {"ok": True, "deleted_id": note_id}
+
+
+# --- Reply templates ---
+
+
+@router.get("/api/templates", response_model=list[ReplyTemplateResponse])
+def list_templates(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return (
+        db.query(ReplyTemplate)
+        .filter(ReplyTemplate.org_id == user.org_id)
+        .order_by(ReplyTemplate.sort_order.asc(), ReplyTemplate.name.asc())
+        .all()
+    )
+
+
+@router.post("/api/templates", response_model=ReplyTemplateResponse)
+def create_template(
+    payload: ReplyTemplateCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    name = payload.name.strip()
+    body = payload.body.strip()
+    if not name or not body:
+        raise HTTPException(status_code=400, detail="Name and body required")
+    tpl = ReplyTemplate(
+        org_id=user.org_id, name=name, body=body, category=payload.category, sort_order=payload.sort_order,
+    )
+    db.add(tpl)
+    db.commit()
+    db.refresh(tpl)
+    return tpl
+
+
+@router.patch("/api/templates/{template_id}", response_model=ReplyTemplateResponse)
+def update_template(
+    template_id: int,
+    payload: ReplyTemplateUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    tpl = db.query(ReplyTemplate).filter(ReplyTemplate.id == template_id, ReplyTemplate.org_id == user.org_id).first()
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+    for field in ["name", "body", "category", "sort_order"]:
+        value = getattr(payload, field)
+        if value is not None:
+            setattr(tpl, field, value)
+    db.commit()
+    db.refresh(tpl)
+    return tpl
+
+
+@router.delete("/api/templates/{template_id}")
+def delete_template(
+    template_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    tpl = db.query(ReplyTemplate).filter(ReplyTemplate.id == template_id, ReplyTemplate.org_id == user.org_id).first()
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+    db.delete(tpl)
+    db.commit()
+    return {"ok": True, "deleted_id": template_id}
+
+
+@router.post("/api/templates/{template_id}/use")
+def increment_template_usage(
+    template_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    tpl = db.query(ReplyTemplate).filter(ReplyTemplate.id == template_id, ReplyTemplate.org_id == user.org_id).first()
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template not found")
+    tpl.use_count += 1
+    db.commit()
+    return {"ok": True, "use_count": tpl.use_count}
+
+
+# --- Pipeline (kanban) ---
+
+PIPELINE_STAGES = ["new", "contacted", "quoted", "scheduled", "won", "lost"]
+
+
+@router.get("/api/pipeline")
+def get_pipeline(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Return all non-spam leads grouped by pipeline_stage for the kanban view."""
+    leads = (
+        db.query(Lead)
+        .filter(Lead.org_id == user.org_id, Lead.category != "spam")
+        .order_by(Lead.starred.desc(), Lead.created_at.desc())
+        .all()
+    )
+
+    columns: dict[str, list[dict]] = {stage: [] for stage in PIPELINE_STAGES}
+    totals: dict[str, float] = {stage: 0.0 for stage in PIPELINE_STAGES}
+
+    for lead in leads:
+        stage = lead.pipeline_stage if lead.pipeline_stage in columns else "new"
+        columns[stage].append({
+            "id": lead.id,
+            "sender_name": lead.sender_name,
+            "sender_email": lead.sender_email,
+            "phone": lead.phone,
+            "subject": lead.subject,
+            "category": lead.category,
+            "urgency_score": lead.urgency_score,
+            "deal_value": lead.deal_value,
+            "tags": lead.tags or "",
+            "starred": lead.starred,
+            "status": lead.status,
+            "source": lead.source,
+            "created_at": lead.created_at.isoformat() if lead.created_at else None,
+            "summary": (lead.summary or "")[:160],
+        })
+        if lead.deal_value:
+            totals[stage] += float(lead.deal_value)
+
+    return {
+        "stages": PIPELINE_STAGES,
+        "columns": columns,
+        "totals": {k: round(v, 2) for k, v in totals.items()},
+        "counts": {k: len(v) for k, v in columns.items()},
+    }
+
+
+@router.get("/stats/revenue")
+def get_revenue_trend(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    days: int = Query(30, ge=7, le=180),
+):
+    """Daily won revenue + new pipeline value over the period."""
+    org_id = user.org_id
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=days)
+
+    daily: dict[str, dict] = {}
+    for i in range(days):
+        d = (now - timedelta(days=days - 1 - i)).strftime("%Y-%m-%d")
+        daily[d] = {"date": d, "won_revenue": 0.0, "new_pipeline": 0.0}
+
+    won_leads = (
+        db.query(Lead)
+        .filter(
+            Lead.org_id == org_id,
+            Lead.outcome == "won",
+            Lead.outcome_at >= cutoff,
+            Lead.deal_value.isnot(None),
+        )
+        .all()
+    )
+    for lead in won_leads:
+        d = lead.outcome_at.strftime("%Y-%m-%d")
+        if d in daily:
+            daily[d]["won_revenue"] += float(lead.deal_value or 0)
+
+    pipeline_leads = (
+        db.query(Lead)
+        .filter(
+            Lead.org_id == org_id,
+            Lead.created_at >= cutoff,
+            Lead.deal_value.isnot(None),
+            Lead.category != "spam",
+        )
+        .all()
+    )
+    for lead in pipeline_leads:
+        d = lead.created_at.strftime("%Y-%m-%d")
+        if d in daily:
+            daily[d]["new_pipeline"] += float(lead.deal_value or 0)
+
+    return {
+        "daily": [{"date": v["date"], "won_revenue": round(v["won_revenue"], 2), "new_pipeline": round(v["new_pipeline"], 2)} for v in daily.values()],
+        "total_won": round(sum(v["won_revenue"] for v in daily.values()), 2),
+        "total_pipeline": round(sum(v["new_pipeline"] for v in daily.values()), 2),
+    }

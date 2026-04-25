@@ -47,25 +47,33 @@ The full flow works end-to-end: Gmail connects via OAuth, incoming emails are po
 
 ### High Priority — Next Up (priority order — tackle top-to-bottom)
 
-**STATE as of 2026-04-24:** Twilio env vars (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER=+17822121292`, `SMS_ALERT_TO_NUMBER=+18254401394`) are set on Railway. `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` is set. Google OAuth is working on production. SMTP/forgot-password is no longer being pursued.
+**STATE as of 2026-04-25 (post real-Twilio test):** Twilio env vars are set on Railway (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER=+17822121292`, `SMS_ALERT_TO_NUMBER=+18254401394`). `PUBLIC_BASE_URL=https://leadrelay-production-4a37.up.railway.app` is set. Google OAuth works in prod. SMTP/forgot-password not being pursued. The number +17822121292 is adopted in org_id=4 with `owner_phone=+18254401394`. Canada is enabled in Twilio Geo Permissions. Real test call from +17802633390 (verified caller ID) successfully exercised: `/incoming` → dial-owner → owner-no-answer → outreach SMS to caller → caller SMS reply → Lead created in dashboard. **Owner-alert SMS to +18254401394 was NOT received** — uncertain whether send was attempted or skipped silently; investigation deferred (need Railway logs around `process_sms_lead` for `lead_id=2` to determine: sent-but-undelivered vs. send-failed vs. owner_number-resolved-empty).
 
-1. **Remove the temporary `/auth/rescue` endpoint** — added during the Twilio test to bypass broken SMTP. See `app/routes/auth.py` — the block under `# TEMPORARY RESCUE FLOW`. Delete the block + the `HTMLResponse`/`Form` imports if they're unused after removal. Secret is `lr-rescue-2026-04-24-9f3a`, hardcoded, so this is a live backdoor until removed.
+1. **Investigate missing owner-alert SMS** — primary blocker before real launch. Pull Railway logs immediately after the SMS reply that created `lead_id=2` (around 2026-04-25 04:31–04:33 UTC). Look for `sms_lead:`, `SMS sent to +18254401394`, `SMS owner_alert`, or `SMS send failed` lines. Three possibilities:
+   - Send completed (logs say `SMS sent to +18254401394`) → Twilio delivery issue, check Twilio Console → Monitor → Logs → Messages.
+   - Send failed (logs say `SMS send failed`) → most likely another geo-permissions or trial-account quirk; the new error-body logging in `app/sms.py` will show the Twilio error code.
+   - No send line at all → `owner_number` resolved to empty in `process_sms_lead` despite `routing_rule.owner_phone` being set; check `record_and_send_sms` call site at `app/sms_intake.py:309`.
 
-2. **Test Twilio phone capture end-to-end against production** (the code is done + merged to main + deployed via PR #7, Twilio env vars are set, the number +17822121292 is bought). Remaining steps:
-   - Log into `/settings` → "Phone lead capture" card → use the "Already bought a number?" Adopt form → enter `+17822121292` + `+18254401394` → click Adopt. This calls `POST /api/phone/adopt` which configures webhooks on the existing number via Twilio REST.
-   - Verify an additional phone on Twilio → Phone Numbers → Verified Caller IDs (the phone the test call will be placed FROM — trial accounts reject calls from unverified numbers)
-   - Make a test call to +17822121292, don't answer the cell, hang up, verify: (a) cell gets summary SMS within ~10s of any SMS reply; (b) caller gets "we'll text you" SMS; (c) SMS reply creates a Lead in the dashboard with `source="phone"`.
+2. **Remove the temporary `/auth/rescue` endpoint** — added during the Twilio test to bypass broken SMTP. See `app/routes/auth.py` — the block under `# TEMPORARY RESCUE FLOW`. Delete the block + the `HTMLResponse`/`Form` imports if they're unused after removal. Secret is `lr-rescue-2026-04-24-9f3a`, hardcoded, so this is a live backdoor until removed.
 
 3. **Custom domain** — user plans to buy a domain (`leadrelay.app` or `getleadrelay.com`) and point it at Railway via CNAME. After DNS is live, swap `PUBLIC_BASE_URL` + Google OAuth URIs in both Railway env vars and Google Console. Adopted Twilio numbers will need webhook URLs re-pointed (use `POST /api/phone/adopt` again, or update directly in Twilio Console).
 
+### Real-Twilio test — gotchas hit and fixed (2026-04-25)
+- **Twilio auth token had a trailing whitespace** in the Railway env var. Symptom: every webhook returned 403 "signature mismatch" → Twilio plays "we are sorry, an application error has occurred." Strip whitespace; redeploy.
+- **Twilio Geo Permissions default to US-only.** Even though Canada shares country code +1, Twilio gates Canadian SMS as a separate region. Symptom: HTTP 400 error code 21408 "Permission to send an SMS has not been enabled for the region." Fix: Twilio Console → Messaging → Settings → Geo Permissions → enable Canada (and any other regions the customer base needs).
+- **Owner phone == caller phone makes the dial-owner branch self-bridge silently.** During testing if `owner_phone` and the calling phone are both the same physical handset, Twilio "rings the owner" by ringing your own phone, you answer, you hear silence (you're bridged to yourself), `dial_status=completed` fires, no outreach SMS, no lead. Use a separate verified caller ID for the test caller, OR temporarily clear `owner_phone` via `POST /api/phone/routing` to skip the dial-owner branch.
+- **`recent_sms_exists` was counting failed sends** — fixed in commit `16341bd`. Previously a single Twilio rejection (e.g., HTTP 400 from geo-permissions) wrote a row to `sms_notifications` and then blocked all retries to that number for 30 minutes, silently swallowing every subsequent test attempt with `outreach suppressed — recent outreach to ... exists`. Now filters to `status='sent'`. **Architectural rule going forward**: any new dedup window over `sms_notifications` MUST filter `status='sent'` or it'll poison itself the same way.
+- **Twilio HTTP error bodies were being swallowed** — fixed in commit `28b0cb2`. `urlopen` raises `HTTPError` on 4xx/5xx and the default exception handler discards the response body, where Twilio puts the actual error code + message. Now logged at ERROR level. Same pattern applies anywhere we use stdlib `urllib` against a JSON-API — always catch `HTTPError` separately and read the body.
+
 ### What Needs Work Before Launch
-- **Phone lead capture — Week 3 follow-ups** (backend done, not yet shipped):
-  - Admin UI for `phone_numbers`, `phone_routing_rules`, `phone_business_hours` — currently these must be seeded via direct DB inserts
+- **Phone lead capture — Week 3 follow-ups** (backend done, partially verified against real Twilio):
+  - Owner-alert SMS not arriving on real-Twilio test (see High Priority item 1) — investigate before any external user touches the system
+  - Admin UI for `phone_numbers`, `phone_routing_rules`, `phone_business_hours` — adopt/provision flow exists in Settings but routing rule + hours still require direct DB inserts or `POST /api/phone/routing`
   - Dashboard view of `call_events` + `voicemails` with an authenticated recording playback proxy (Twilio recording URLs require the account SID/token to fetch)
   - Sweep job for stuck voicemails — if Twilio's `transcribeCallback` never fires, the Voicemail row is orphaned in `pending` state. Need a periodic task that flips rows older than ~10 min to `failed` and still creates a Lead ("transcript unavailable, please listen")
   - Per-`from_number` rate limit on `/incoming` to defend against spam-dial storms (Twilio Voice Shield is an alternative)
-  - Real end-to-end verification against a live Twilio number (scripted simulation passes; real call hasn't been made yet)
-- **Merge `mobile-responsive-pass` branch** — dashboard enhancements + phone backend are built and tested, need to merge to `main` to deploy
+  - Test the voicemail fallback path against real Twilio (only the SMS-outreach path was exercised on 2026-04-25)
+  - Test the after-hours path against real Twilio (only in-hours dial-owner-no-answer was exercised)
 - **Job queue** — in-process asyncio scheduler needs to be replaced with Celery/Redis for reliability
 - **Email/SMS retry** — currently fire-and-forget, no retry on failure
 - **More test coverage** — only ~280 lines of tests covering happy paths
