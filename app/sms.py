@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -90,6 +91,17 @@ def send_sms_to(
                 logger.info("SMS sent to %s (sid=%s)", to_number, message_sid)
                 return True, "sent", message_sid
             return False, f"Twilio returned status {resp.status}", None
+    except HTTPError as exc:
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", errors="replace")[:500]
+        except Exception:
+            pass
+        logger.error(
+            "SMS send failed: HTTP %s from=%s to=%s body=%s",
+            exc.code, from_number, to_number, body,
+        )
+        return False, f"HTTP {exc.code}: {body}", None
     except Exception as exc:
         logger.exception("SMS send failed")
         return False, str(exc), None
