@@ -42,6 +42,16 @@ class OrgSettingsResponse(BaseModel):
     scheduling_slot_duration: int
     scheduling_buffer_minutes: int
     scheduling_max_days_ahead: int
+    # Calendar sync
+    google_calendar_id: str
+    google_calendar_sync_enabled: bool
+    # Review automation
+    review_request_enabled: bool
+    review_url: str
+    review_delay_hours: int
+    review_request_channel: str
+    review_request_subject: str
+    review_request_body: str
     # Behavior
     human_review: bool
     auto_send_confidence_threshold: float
@@ -81,6 +91,14 @@ class OrgSettingsUpdate(BaseModel):
     scheduling_slot_duration: int | None = None
     scheduling_buffer_minutes: int | None = None
     scheduling_max_days_ahead: int | None = None
+    google_calendar_id: str | None = None
+    google_calendar_sync_enabled: bool | None = None
+    review_request_enabled: bool | None = None
+    review_url: str | None = None
+    review_delay_hours: int | None = None
+    review_request_channel: str | None = None
+    review_request_subject: str | None = None
+    review_request_body: str | None = None
     human_review: bool | None = None
     auto_send_confidence_threshold: float | None = None
     forwarding_token: str | None = None
@@ -121,6 +139,14 @@ def get_settings(
         scheduling_slot_duration=org_settings.scheduling_slot_duration,
         scheduling_buffer_minutes=org_settings.scheduling_buffer_minutes,
         scheduling_max_days_ahead=org_settings.scheduling_max_days_ahead,
+        google_calendar_id=org_settings.google_calendar_id,
+        google_calendar_sync_enabled=org_settings.google_calendar_sync_enabled,
+        review_request_enabled=org_settings.review_request_enabled,
+        review_url=org_settings.review_url,
+        review_delay_hours=org_settings.review_delay_hours,
+        review_request_channel=org_settings.review_request_channel,
+        review_request_subject=org_settings.review_request_subject,
+        review_request_body=org_settings.review_request_body,
         human_review=org_settings.human_review,
         auto_send_confidence_threshold=org_settings.auto_send_confidence_threshold,
         forwarding_token=org_settings.forwarding_token,

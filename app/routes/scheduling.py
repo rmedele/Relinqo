@@ -100,6 +100,12 @@ def update_booking_status(
     booking.status = new_status
     if new_status == "cancelled":
         booking.cancelled_at = datetime.now(timezone.utc)
+        # Best-effort: remove the matching event from Google Calendar.
+        if booking.google_event_id:
+            from app.calendar_sync import calendar_sync_active, delete_booking_event
+            org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
+            if calendar_sync_active(org_settings):
+                delete_booking_event(booking, org_settings, db)
     db.commit()
     db.refresh(booking)
 
@@ -179,6 +185,25 @@ def _generate_available_slots(
         )
         booked_starts = {b.slot_start for b in existing}
         slots = [s for s in slots if s["slot_start"] not in booked_starts]
+
+    # Layer in Google Calendar busy windows (org's external commitments).
+    # Fail-open: if FreeBusy returns nothing or errors, slots are still shown.
+    from app.calendar_sync import busy_windows, calendar_sync_active
+
+    if slots and calendar_sync_active(org_settings):
+        cal_busy = busy_windows(
+            org_settings, db,
+            start=slots[0]["slot_start"],
+            end=slots[-1]["slot_end"],
+        )
+        if cal_busy:
+            slots = [
+                s for s in slots
+                if not any(
+                    s["slot_start"] < busy_end and s["slot_end"] > busy_start
+                    for busy_start, busy_end in cal_busy
+                )
+            ]
 
     return slots
 
@@ -263,6 +288,12 @@ def create_booking(
         db, lead.id, lead.org_id, "booking_created",
         f"{payload.customer_name} booked {time_str}. Phone: {payload.customer_phone or 'n/a'}",
     )
+
+    # Push to Google Calendar (best-effort) before notifications, so the owner
+    # alert email implicitly confirms the calendar entry exists.
+    from app.calendar_sync import calendar_sync_active, push_booking_event
+    if calendar_sync_active(org_settings):
+        push_booking_event(booking, lead, org_settings, db)
 
     # Notifications are handled in Step 9 — wired into this handler
     _send_booking_notifications(db, booking, lead, org_settings)

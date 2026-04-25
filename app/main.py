@@ -22,6 +22,7 @@ from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.email_parser import parse_forwarded_email
 from app.followups import run_followups
+from app.review_requests import run_due_review_requests
 from app.inbox_poll import poll_inbox
 from app.mailer import send_email, smtp_configured
 from app.models import Lead, Organization, OrgSettings, User
@@ -47,6 +48,7 @@ Base.metadata.create_all(bind=engine)
 
 FLUSH_INTERVAL_SECONDS = 30
 FOLLOWUP_INTERVAL_SECONDS = 300
+REVIEW_REQUEST_INTERVAL_SECONDS = 600
 
 
 def _flush_pending(db: Session) -> int:
@@ -91,6 +93,11 @@ async def _scheduler_loop():
                 for org in orgs:
                     org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == org.id).first()
                     run_followups(db, org_id=org.id, org_settings=org_settings)
+            if tick % REVIEW_REQUEST_INTERVAL_SECONDS == 0:
+                orgs = db.query(Organization).all()
+                for org in orgs:
+                    org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == org.id).first()
+                    run_due_review_requests(db, org_id=org.id, org_settings=org_settings)
         except Exception:
             logger.exception("Scheduler tick failed")
         finally:
@@ -100,7 +107,10 @@ async def _scheduler_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     task = asyncio.create_task(_scheduler_loop())
-    logger.info("Background scheduler started (flush=%ds, followups=%ds)", FLUSH_INTERVAL_SECONDS, FOLLOWUP_INTERVAL_SECONDS)
+    logger.info(
+        "Background scheduler started (flush=%ds, followups=%ds, reviews=%ds)",
+        FLUSH_INTERVAL_SECONDS, FOLLOWUP_INTERVAL_SECONDS, REVIEW_REQUEST_INTERVAL_SECONDS,
+    )
     yield
     task.cancel()
     try:
