@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.routes import leads as lead_routes
+from app.routes import phone_provisioning as phone_routes
 
 client = TestClient(app)
 
@@ -210,3 +211,64 @@ def test_settings_crud():
     assert res.status_code == 200
     assert res.json()["business_name"] == "Test Biz"
     assert res.json()["human_review"] is False
+
+
+def test_rescue_setup_buys_number_and_saves_routing(monkeypatch):
+    c, _ = _auth_client()
+
+    monkeypatch.setattr(phone_routes, "_webhook_urls", lambda: (
+        "https://example.test/twilio/voice/incoming",
+        "https://example.test/twilio/voice/call-status",
+    ))
+    monkeypatch.setattr(phone_routes, "search_available_numbers", lambda **kwargs: [{
+        "phone_number": "+14035550123",
+        "friendly_name": "(403) 555-0123",
+        "locality": "Calgary",
+        "region": "AB",
+    }])
+    monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
+        "sid": "PN_TEST_123",
+        "phone_number": phone,
+        "friendly_name": "LeadRelay rescue line",
+    })
+
+    res = c.post("/api/phone/rescue-setup", json={
+        "area_code": "403",
+        "owner_phone": "403-555-9999",
+    })
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["ok"] is True
+    assert data["phone"]["phone_number"] == "+14035550123"
+    assert data["routing"]["owner_phone"] == "+14035559999"
+    assert data["rescue"]["is_live"] is True
+
+    status = c.get("/api/phone/my-number")
+    assert status.status_code == 200
+    assert status.json()["phone"]["phone_number"] == "+14035550123"
+
+
+def test_rescue_setup_existing_number_only_updates_routing(monkeypatch):
+    c, _ = _auth_client()
+    calls = {"provision": 0}
+
+    monkeypatch.setattr(phone_routes, "_webhook_urls", lambda: (
+        "https://example.test/twilio/voice/incoming",
+        "https://example.test/twilio/voice/call-status",
+    ))
+    monkeypatch.setattr(phone_routes, "search_available_numbers", lambda **kwargs: [{
+        "phone_number": "+14035550124",
+        "friendly_name": "(403) 555-0124",
+    }])
+    def fake_provision(phone, **kwargs):
+        calls["provision"] += 1
+        return {"sid": "PN_TEST_124", "phone_number": phone, "friendly_name": "LeadRelay rescue line"}
+    monkeypatch.setattr(phone_routes, "provision_number", fake_provision)
+
+    first = c.post("/api/phone/rescue-setup", json={"area_code": "403", "owner_phone": "4035551111"})
+    assert first.status_code == 200
+    second = c.post("/api/phone/rescue-setup", json={"area_code": "403", "owner_phone": "4035552222"})
+    assert second.status_code == 200
+    assert second.json()["already_had_number"] is True
+    assert second.json()["routing"]["owner_phone"] == "+14035552222"
+    assert calls["provision"] == 1

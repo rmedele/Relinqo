@@ -148,45 +148,45 @@
             <div class="editorial-form section-fields">
               <div id="phoneNotProvisioned">
                 <p class="subhead" style="margin-bottom:1rem;">
-                  Get a phone number that rings your cell, captures every
-                  missed call, and texts you a summary of who called and
-                  what they need. Customers can even reply by text — we'll
-                  handle the back-and-forth.
+                  Turn this on and LeadRelay creates a business line for you. It rings your cell first. If you miss the call, the customer gets a text right away and their reply becomes a lead.
                 </p>
+                <div class="phone-rescue-steps">
+                  <div><strong>1</strong><span>Enter your area code</span></div>
+                  <div><strong>2</strong><span>Enter the cell we should ring</span></div>
+                  <div><strong>3</strong><span>Click once. You're live.</span></div>
+                </div>
                 <div class="field-group field-group-double">
                   <label class="form-field">
-                    <span class="field-label">Preferred area code</span>
+                    <span class="field-label">Business area code</span>
                     <input id="phoneAreaCode" class="filter-input" placeholder="e.g. 403" maxlength="3" />
                   </label>
                   <label class="form-field">
-                    <span class="field-label">Ring my cell</span>
+                    <span class="field-label">Your cell phone</span>
                     <input id="phoneOwnerCell" class="filter-input" placeholder="+1 403 555 0123" />
                   </label>
                 </div>
                 <button type="button" id="phoneSearchBtn" class="primary-btn primary-btn-strong" style="margin-top:0.75rem;">
-                  Find me a number
+                  Turn on missed-call rescue
                 </button>
                 <div id="phoneSearchResults" style="margin-top:1rem;"></div>
 
-                <hr style="margin:1.5rem 0; border:none; border-top:1px solid rgba(255,255,255,0.12);" />
-
-                <p class="muted" style="margin-bottom:0.75rem;">
-                  <strong>Already bought a number in the Twilio console?</strong>
-                  Paste it below and we'll adopt it — no extra charge, we just reconfigure it to point at LeadRelay.
-                </p>
-                <div class="field-group field-group-double">
-                  <label class="form-field">
-                    <span class="field-label">Number you already own (E.164)</span>
-                    <input id="phoneAdoptNumber" class="filter-input" placeholder="+17822121292" />
-                  </label>
-                  <label class="form-field">
-                    <span class="field-label">Ring my cell (optional)</span>
-                    <input id="phoneAdoptCell" class="filter-input" placeholder="+18254401394" />
-                  </label>
-                </div>
-                <button type="button" id="phoneAdoptBtn" class="ghost-btn" style="margin-top:0.5rem;">
-                  Adopt this number
-                </button>
+                <details class="advanced-phone-setup">
+                  <summary>Already have a LeadRelay-compatible number?</summary>
+                  <p class="muted" style="margin-bottom:0.75rem;">Most customers should ignore this. This is only for support-assisted migrations.</p>
+                  <div class="field-group field-group-double">
+                    <label class="form-field">
+                      <span class="field-label">Existing number</span>
+                      <input id="phoneAdoptNumber" class="filter-input" placeholder="+17822121292" />
+                    </label>
+                    <label class="form-field">
+                      <span class="field-label">Ring my cell</span>
+                      <input id="phoneAdoptCell" class="filter-input" placeholder="+18254401394" />
+                    </label>
+                  </div>
+                  <button type="button" id="phoneAdoptBtn" class="ghost-btn" style="margin-top:0.5rem;">
+                    Connect existing number
+                  </button>
+                </details>
               </div>
 
               <div id="phoneProvisionedPanel" class="hidden">
@@ -198,11 +198,15 @@
                   <button type="button" id="phoneReleaseBtn" class="ghost-btn" style="color:var(--clr-error, #f87171);">Release number</button>
                 </div>
                 <p class="muted" style="margin-top:0.5rem;">
-                  Put this number on your website, business cards, and
-                  Google Business Profile. Customers call it. You keep
-                  answering your cell like normal — we only step in when
-                  you can't answer.
+                  Put this number on your website and Google Business Profile.
+                  Customers call it. You answer your cell like normal. If you
+                  miss it, LeadRelay texts them and captures the job.
                 </p>
+                <div class="phone-rescue-stats">
+                  <div><span>Missed calls rescued</span><strong id="phoneStatRescued">0</strong></div>
+                  <div><span>Texts sent</span><strong id="phoneStatTexts">0</strong></div>
+                  <div><span>Phone leads created</span><strong id="phoneStatLeads">0</strong></div>
+                </div>
 
                 <div class="field-group field-group-double" style="margin-top:1rem;">
                   <label class="form-field">
@@ -722,7 +726,7 @@
         phoneStatusMsg.classList.remove('hidden');
       }
 
-      function updatePhoneUI(phone, routing) {
+      function updatePhoneUI(phone, routing, rescue) {
         if (phone) {
           phoneNotProvisioned.classList.add('hidden');
           phoneProvisionedPanel.classList.remove('hidden');
@@ -737,6 +741,11 @@
           document.getElementById('routeRingFirst').checked = !!routing.ring_owner_first;
           document.getElementById('routeSendConfirmation').checked = !!routing.send_caller_confirmation;
         }
+        if (rescue) {
+          document.getElementById('phoneStatRescued').textContent = rescue.rescued_calls ?? 0;
+          document.getElementById('phoneStatTexts').textContent = rescue.outreach_sent ?? 0;
+          document.getElementById('phoneStatLeads').textContent = rescue.phone_leads ?? 0;
+        }
       }
 
       async function loadPhone() {
@@ -744,51 +753,45 @@
           const res = await fetch('/api/phone/my-number');
           if (!res.ok) return;
           const data = await res.json();
-          updatePhoneUI(data.phone, data.routing);
+          updatePhoneUI(data.phone, data.routing, data.rescue);
         } catch { /* best effort */ }
       }
 
       document.getElementById('phoneSearchBtn').addEventListener('click', async () => {
         const areaCode = document.getElementById('phoneAreaCode').value.trim();
+        const ownerPhone = document.getElementById('phoneOwnerCell').value.trim();
         if (!/^\d{3}$/.test(areaCode)) {
-          showPhoneMsg('Enter a 3-digit area code (e.g. 403).', false);
+          showPhoneMsg('Enter a 3-digit area code, like 403.', false);
           return;
         }
-        phoneSearchResults.innerHTML = '<p class="muted">Searching…</p>';
+        if (!ownerPhone) {
+          showPhoneMsg('Enter the cell phone LeadRelay should ring.', false);
+          return;
+        }
+        phoneSearchResults.innerHTML = '<p class="muted">Setting up your missed-call rescue line...</p>';
         try {
-          const res = await fetch('/api/phone/search', {
+          const res = await fetch('/api/phone/rescue-setup', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({area_code: areaCode, limit: 5}),
+            body: JSON.stringify({
+              area_code: areaCode,
+              owner_phone: ownerPhone,
+              ring_timeout_seconds: 20,
+              ring_owner_first: true,
+            }),
           });
           const data = await res.json();
           if (!res.ok) {
             phoneSearchResults.innerHTML = '';
-            showPhoneMsg(data.detail || 'Search failed.', false);
+            showPhoneMsg(data.detail || 'Setup failed.', false);
             return;
           }
-          if (!data.numbers || data.numbers.length === 0) {
-            phoneSearchResults.innerHTML = '<p class="muted">No numbers found in that area code. Try another.</p>';
-            return;
-          }
-          phoneSearchResults.innerHTML = '<p class="muted" style="margin-bottom:0.5rem;">Pick one:</p>' +
-            data.numbers.map(n => `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.08);">
-                <div>
-                  <strong>${n.friendly_name || n.phone_number}</strong>
-                  <span class="muted" style="margin-left:0.5rem;">${[n.locality, n.region].filter(Boolean).join(', ')}</span>
-                </div>
-                <button type="button" class="primary-btn phone-provision-btn" data-number="${n.phone_number}">
-                  Use this
-                </button>
-              </div>
-            `).join('');
-          document.querySelectorAll('.phone-provision-btn').forEach(btn => {
-            btn.addEventListener('click', () => provisionNumber(btn.dataset.number));
-          });
+          phoneSearchResults.innerHTML = '';
+          showPhoneMsg(data.message || `You're live on ${data.phone.phone_number}.`, true);
+          updatePhoneUI(data.phone, data.routing, data.rescue);
         } catch (e) {
           phoneSearchResults.innerHTML = '';
-          showPhoneMsg('Search error: ' + e.message, false);
+          showPhoneMsg('Setup error: ' + e.message, false);
         }
       });
 
