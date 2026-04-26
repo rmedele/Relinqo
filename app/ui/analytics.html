@@ -7,14 +7,14 @@
     <link rel="stylesheet" href="/ui/styles.css" />
     <style>
       .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
-      .kpi-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-sm); }
+      .kpi-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-sm); }
       .kpi-label { font-size: 0.72rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
       .kpi-value { font-size: 1.5rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
       .kpi-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
 
       .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
       .charts-row.full { grid-template-columns: 1fr; }
-      .chart-box { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
+      .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
       .chart-box h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 
       .rt-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
@@ -51,7 +51,7 @@
       .cat-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); }
       .cat-dot { width: 10px; height: 10px; border-radius: 2px; }
 
-      .period-select { background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 0.85rem; cursor: pointer; }
+      .period-select { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 0.85rem; cursor: pointer; }
 
       @media (max-width: 880px) {
         .charts-row { grid-template-columns: 1fr; }

@@ -8,8 +8,9 @@
     <style>
       .demo-nav {
         position: sticky; top: 0; z-index: 50;
-        background: #fff;
-        border-bottom: 1px solid var(--border);
+        background: rgba(8, 12, 21, 0.86);
+        border-bottom: 1px solid rgba(154, 169, 196, 0.14);
+        backdrop-filter: blur(18px);
       }
       .demo-nav-inner {
         max-width: 1080px; margin: 0 auto;
@@ -20,7 +21,7 @@
       .demo-back { font-size: 0.875rem; color: var(--text-secondary); text-decoration: none; padding: 6px 10px; }
       .demo-back:hover { color: var(--text); text-decoration: none; }
 
-      .demo-info { padding: 28px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+      .demo-info { padding: 28px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); backdrop-filter: blur(18px); }
       .demo-info h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin: 6px 0 12px; }
       .demo-info > p { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; margin: 0 0 24px; }
       .demo-feature ul { padding-left: 18px; margin: 0; color: var(--text-secondary); font-size: 0.875rem; line-height: 1.6; }

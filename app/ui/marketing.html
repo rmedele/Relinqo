@@ -225,6 +225,88 @@
         .mk-hero { padding: 48px 24px 32px; }
         .mk-section { padding: 40px 24px; }
       }
+
+      body {
+        color: var(--text);
+        background:
+          radial-gradient(circle at 14% 12%, rgba(77, 208, 225, 0.22), transparent 30vw),
+          radial-gradient(circle at 86% 6%, rgba(255, 111, 145, 0.14), transparent 28vw),
+          radial-gradient(circle at 75% 82%, rgba(255, 184, 107, 0.13), transparent 28vw),
+          #07090f;
+      }
+      .mk-nav {
+        background: rgba(8, 12, 21, 0.82);
+        border-bottom-color: rgba(154, 169, 196, 0.14);
+        backdrop-filter: blur(18px);
+      }
+      .mk-logo { font-weight: 800; }
+      .mk-btn-cta,
+      .mk-btn-hero-primary,
+      .mk-price-btn.solid {
+        color: #061014;
+        background: linear-gradient(135deg, #8af3ff, #4dd0e1 48%, #ffcf94 130%);
+        border-color: rgba(132, 242, 255, 0.5);
+        box-shadow: 0 14px 38px rgba(77, 208, 225, 0.22);
+      }
+      .mk-btn-cta:hover,
+      .mk-btn-hero-primary:hover,
+      .mk-price-btn.solid:hover {
+        color: #061014;
+        background: linear-gradient(135deg, #a7f7ff, #66ddea 48%, #ffdbad 130%);
+      }
+      .mk-btn-hero-secondary,
+      .mk-price-btn.outline {
+        color: var(--text);
+        background: rgba(255,255,255,0.04);
+        border-color: rgba(154,169,196,0.18);
+      }
+      .mk-btn-hero-secondary:hover,
+      .mk-price-btn.outline:hover {
+        background: rgba(77,208,225,0.1);
+        border-color: rgba(77,208,225,0.32);
+      }
+      .mk-hero {
+        min-height: 76vh;
+        display: flex;
+        align-items: center;
+      }
+      .mk-hero h1 {
+        max-width: 850px;
+        font-weight: 820;
+        letter-spacing: 0;
+        background: linear-gradient(90deg, #ffffff, #a7f7ff 54%, #ffdbad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .mk-hero-badge,
+      .mk-section-kicker {
+        color: var(--accent-cyan);
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .mk-stats,
+      .mk-section,
+      .mk-footer {
+        border-top-color: rgba(154, 169, 196, 0.14);
+      }
+      .mk-demo-card,
+      .mk-price-card,
+      .mk-cta-box {
+        background: linear-gradient(180deg, rgba(18, 24, 39, 0.86), rgba(10, 14, 24, 0.78));
+        border-color: rgba(161, 177, 205, 0.18);
+        box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.055);
+        backdrop-filter: blur(18px);
+      }
+      .mk-price-card.featured {
+        border-color: rgba(77,208,225,0.48);
+        box-shadow: var(--shadow-glow-hover);
+      }
+      .mk-step-num {
+        color: #061014;
+        background: linear-gradient(135deg, var(--accent-cyan), #9ff5ff);
+      }
     </style>
   </head>
 
