@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.config import settings
 from app.database import get_db
-from app.models import PhoneNumber, PhoneRoutingRule, User
+from app.models import CallEvent, Lead, PhoneNumber, PhoneRoutingRule, SmsNotification, User
 from app.twilio_client import (
     TwilioError,
     lookup_owned_number,
@@ -64,6 +64,13 @@ class RoutingRequest(BaseModel):
     after_hours_greeting: str | None = None
 
 
+class RescueSetupRequest(BaseModel):
+    area_code: str
+    owner_phone: str
+    ring_timeout_seconds: int = 20
+    ring_owner_first: bool = True
+
+
 def _webhook_urls() -> tuple[str, str]:
     """Absolute URLs for Twilio to hit. Built from PUBLIC_BASE_URL."""
     base = (settings.public_base_url or "").rstrip("/")
@@ -88,6 +95,75 @@ def _normalize_e164(raw: str) -> str:
     if len(digits) == 10:
         return f"+1{digits}"
     return f"+{digits}"
+
+
+def _upsert_routing_rule(
+    db: Session,
+    *,
+    org_id: int,
+    owner_phone: str,
+    ring_owner_first: bool = True,
+    ring_timeout_seconds: int = 20,
+    send_caller_confirmation: bool = True,
+) -> PhoneRoutingRule:
+    owner = _normalize_e164(owner_phone)
+    rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == org_id).first()
+    if rule is None:
+        rule = PhoneRoutingRule(
+            org_id=org_id,
+            owner_phone=owner,
+            ring_owner_first=ring_owner_first,
+            ring_timeout_seconds=ring_timeout_seconds,
+            send_caller_confirmation=send_caller_confirmation,
+        )
+        db.add(rule)
+    else:
+        rule.owner_phone = owner
+        rule.ring_owner_first = ring_owner_first
+        rule.ring_timeout_seconds = ring_timeout_seconds
+        rule.send_caller_confirmation = send_caller_confirmation
+    return rule
+
+
+def _phone_payload(row: PhoneNumber | None, rule: PhoneRoutingRule | None) -> dict:
+    return {
+        "phone": None if row is None else {
+            "id": row.id,
+            "phone_number": row.phone_number,
+            "friendly_name": row.friendly_name,
+            "twilio_sid": row.twilio_sid,
+        },
+        "routing": None if rule is None else {
+            "owner_phone": rule.owner_phone,
+            "ring_owner_first": rule.ring_owner_first,
+            "ring_timeout_seconds": rule.ring_timeout_seconds,
+            "send_caller_confirmation": rule.send_caller_confirmation,
+            "voicemail_greeting": rule.voicemail_greeting,
+            "after_hours_greeting": rule.after_hours_greeting,
+        },
+    }
+
+
+def _rescue_stats(db: Session, org_id: int, row: PhoneNumber | None, rule: PhoneRoutingRule | None) -> dict:
+    rescued_calls = db.query(CallEvent).filter(
+        CallEvent.org_id == org_id,
+        CallEvent.answered_by_owner == False,  # noqa: E712
+    ).count()
+    phone_leads = db.query(Lead).filter(
+        Lead.org_id == org_id,
+        Lead.source == "phone",
+    ).count()
+    outreach_sent = db.query(SmsNotification).filter(
+        SmsNotification.org_id == org_id,
+        SmsNotification.purpose == "outreach",
+        SmsNotification.status == "sent",
+    ).count()
+    return {
+        "is_live": bool(row and rule and rule.owner_phone),
+        "rescued_calls": rescued_calls,
+        "phone_leads": phone_leads,
+        "outreach_sent": outreach_sent,
+    }
 
 
 @router.post("/search")
@@ -168,6 +244,101 @@ def provision(
         "friendly_name": row.friendly_name,
         "voice_url": voice_url,
         "status_callback_url": status_url,
+    }
+
+
+@router.post("/rescue-setup")
+def rescue_setup(
+    payload: RescueSetupRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Grandpa-proof setup: user enters an area code + cell number.
+    LeadRelay finds, buys, configures, and saves routing for a number.
+
+    If the org already has an active number, this endpoint simply updates
+    routing and returns the live setup instead of making the user start over.
+    """
+    area_code = (payload.area_code or "").strip()
+    if not re.match(r"^\d{3}$", area_code):
+        raise HTTPException(status_code=400, detail="Enter a 3-digit area code.")
+
+    owner = _normalize_e164(payload.owner_phone)
+    if len(re.sub(r"\D", "", owner)) < 10:
+        raise HTTPException(status_code=400, detail="Enter the cell phone we should ring.")
+
+    existing = db.query(PhoneNumber).filter(
+        PhoneNumber.org_id == user.org_id,
+        PhoneNumber.is_active == True,  # noqa: E712
+    ).first()
+    if existing:
+        rule = _upsert_routing_rule(
+            db,
+            org_id=user.org_id,
+            owner_phone=owner,
+            ring_owner_first=payload.ring_owner_first,
+            ring_timeout_seconds=payload.ring_timeout_seconds,
+            send_caller_confirmation=True,
+        )
+        db.commit()
+        db.refresh(rule)
+        return {
+            "ok": True,
+            "already_had_number": True,
+            **_phone_payload(existing, rule),
+            "rescue": _rescue_stats(db, user.org_id, existing, rule),
+            "message": "Your missed-call rescue line is live.",
+        }
+
+    voice_url, status_url = _webhook_urls()
+    try:
+        numbers = search_available_numbers(area_code=area_code, country="US", limit=1)
+        if not numbers:
+            # Canadian area codes are common for this product; try CA before failing.
+            numbers = search_available_numbers(area_code=area_code, country="CA", limit=1)
+        if not numbers:
+            raise HTTPException(status_code=404, detail="No numbers found in that area code. Try a nearby area code.")
+
+        chosen = numbers[0]["phone_number"]
+        result = provision_number(
+            chosen,
+            voice_url=voice_url,
+            status_callback_url=status_url,
+            friendly_name=f"LeadRelay rescue line {chosen}",
+        )
+    except HTTPException:
+        raise
+    except TwilioError as e:
+        logger.warning("twilio rescue setup failed area=%s: %s", area_code, e.message)
+        raise HTTPException(status_code=e.status, detail=e.message)
+
+    row = PhoneNumber(
+        org_id=user.org_id,
+        twilio_sid=result["sid"],
+        phone_number=result["phone_number"],
+        friendly_name=result.get("friendly_name") or f"LeadRelay rescue line {chosen}",
+        is_active=True,
+    )
+    db.add(row)
+    rule = _upsert_routing_rule(
+        db,
+        org_id=user.org_id,
+        owner_phone=owner,
+        ring_owner_first=payload.ring_owner_first,
+        ring_timeout_seconds=payload.ring_timeout_seconds,
+        send_caller_confirmation=True,
+    )
+    db.commit()
+    db.refresh(row)
+    db.refresh(rule)
+
+    logger.info("rescue setup live phone_number=%s org_id=%s", row.phone_number, user.org_id)
+    return {
+        "ok": True,
+        "already_had_number": False,
+        **_phone_payload(row, rule),
+        "rescue": _rescue_stats(db, user.org_id, row, rule),
+        "message": "Your missed-call rescue line is live.",
     }
 
 
@@ -280,20 +451,8 @@ def my_number(
     ).first()
     rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == user.org_id).first()
     return {
-        "phone": None if row is None else {
-            "id": row.id,
-            "phone_number": row.phone_number,
-            "friendly_name": row.friendly_name,
-            "twilio_sid": row.twilio_sid,
-        },
-        "routing": None if rule is None else {
-            "owner_phone": rule.owner_phone,
-            "ring_owner_first": rule.ring_owner_first,
-            "ring_timeout_seconds": rule.ring_timeout_seconds,
-            "send_caller_confirmation": rule.send_caller_confirmation,
-            "voicemail_greeting": rule.voicemail_greeting,
-            "after_hours_greeting": rule.after_hours_greeting,
-        },
+        **_phone_payload(row, rule),
+        "rescue": _rescue_stats(db, user.org_id, row, rule),
     }
 
 
@@ -310,16 +469,16 @@ def set_routing(
 
     rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == user.org_id).first()
     if rule is None:
-        rule = PhoneRoutingRule(
+        rule = _upsert_routing_rule(
+            db,
             org_id=user.org_id,
             owner_phone=owner,
             ring_owner_first=payload.ring_owner_first,
             ring_timeout_seconds=payload.ring_timeout_seconds,
             send_caller_confirmation=payload.send_caller_confirmation,
-            voicemail_greeting=payload.voicemail_greeting,
-            after_hours_greeting=payload.after_hours_greeting,
         )
-        db.add(rule)
+        rule.voicemail_greeting = payload.voicemail_greeting
+        rule.after_hours_greeting = payload.after_hours_greeting
     else:
         rule.owner_phone = owner
         rule.ring_owner_first = payload.ring_owner_first

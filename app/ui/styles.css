@@ -3369,6 +3369,61 @@ select option {
   opacity: 0.88;
 }
 
+.phone-rescue-steps,
+.phone-rescue-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 14px 0 18px;
+}
+
+.phone-rescue-steps div,
+.phone-rescue-stats div {
+  padding: 12px;
+  border: 1px solid rgba(190,197,193,0.14);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.035);
+}
+
+.phone-rescue-steps strong {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  color: #071010;
+  background: var(--accent-cyan);
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.phone-rescue-steps span,
+.phone-rescue-stats span {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.phone-rescue-stats strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 1.45rem;
+}
+
+.advanced-phone-setup {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid rgba(190,197,193,0.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.025);
+}
+
+.advanced-phone-setup summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 @keyframes relayPathMorph {
   0% {
     d: path("M130 13 C190 20 247 68 240 132 C233 196 184 247 121 239 C59 232 16 184 18 124 C20 64 70 6 130 13 Z");
