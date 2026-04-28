@@ -54,11 +54,14 @@ class OrgSettingsResponse(BaseModel):
     review_request_body: str
     # Behavior
     human_review: bool
+    automation_paused: bool
     auto_send_confidence_threshold: float
     forwarding_token: str
     owner_alert_email: str
     digest_to_email: str
     default_timezone: str
+    subscription_status: str
+    plan: str
 
 
 class OrgSettingsUpdate(BaseModel):
@@ -100,6 +103,7 @@ class OrgSettingsUpdate(BaseModel):
     review_request_subject: str | None = None
     review_request_body: str | None = None
     human_review: bool | None = None
+    automation_paused: bool | None = None
     auto_send_confidence_threshold: float | None = None
     forwarding_token: str | None = None
     owner_alert_email: str | None = None
@@ -148,11 +152,14 @@ def get_settings(
         review_request_subject=org_settings.review_request_subject,
         review_request_body=org_settings.review_request_body,
         human_review=org_settings.human_review,
+        automation_paused=org_settings.automation_paused,
         auto_send_confidence_threshold=org_settings.auto_send_confidence_threshold,
         forwarding_token=org_settings.forwarding_token,
         owner_alert_email=org_settings.owner_alert_email,
         digest_to_email=org_settings.digest_to_email,
         default_timezone=org_settings.default_timezone,
+        subscription_status=user.org.subscription_status,
+        plan=user.org.plan,
     )
 
 

@@ -41,6 +41,13 @@ def pending_followups(db: Session, org_id: int | None = None) -> list[FollowUp]:
 
 def run_followups(db: Session, org_id: int | None = None, org_settings: OrgSettings | None = None) -> dict:
     """Process all due follow-ups: send emails and mark as sent or failed."""
+    if org_settings and org_settings.automation_paused:
+        logger.info("Follow-up run skipped for org_id=%s because automation is paused", org_settings.org_id)
+        return {"processed": 0, "sent": 0, "failed": 0, "skipped": 0}
+    if org_settings and org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+        logger.info("Follow-up run skipped for inactive org_id=%s", org_settings.org_id)
+        return {"processed": 0, "sent": 0, "failed": 0, "skipped": 0}
+
     now = datetime.now(timezone.utc)
     q = db.query(FollowUp).filter(FollowUp.status == "scheduled", FollowUp.scheduled_for <= now)
     if org_id is not None:
@@ -59,6 +66,13 @@ def run_followups(db: Session, org_id: int | None = None, org_settings: OrgSetti
             continue
 
         if not lead.recommended_reply:
+            followup.status = "skipped"
+            db.commit()
+            results["skipped"] += 1
+            results["processed"] += 1
+            continue
+
+        if lead.status not in {"sent", "review_required"}:
             followup.status = "skipped"
             db.commit()
             results["skipped"] += 1

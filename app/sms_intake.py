@@ -172,6 +172,12 @@ def send_outreach_sms(call_event_id: int) -> None:
             return
 
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == call.org_id).first()
+        if org_settings and (
+            org_settings.automation_paused
+            or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+        ):
+            logger.info("send_outreach_sms skipped for org_id=%s", call.org_id)
+            return
         biz_name = (org_settings.business_name if org_settings else "") or "the team"
 
         if call.is_after_hours:
@@ -236,6 +242,13 @@ def process_sms_lead(
             return None
 
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == call.org_id).first()
+        automation_allowed = not (
+            org_settings
+            and (
+                org_settings.automation_paused
+                or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+            )
+        )
         routing_rule = db.query(PhoneRoutingRule).filter(
             PhoneRoutingRule.org_id == call.org_id,
         ).first()
@@ -306,7 +319,7 @@ def process_sms_lead(
         owner_number = (routing_rule.owner_phone if routing_rule else "") or (
             org_settings.sms_alert_to_number if org_settings else ""
         )
-        if owner_number:
+        if automation_allowed and owner_number:
             record_and_send_sms(
                 db,
                 org_id=call.org_id,

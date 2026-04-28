@@ -1,6 +1,8 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.database import SessionLocal
+from app.models import Lead, Organization, OrgSettings, PhoneNumber, SmsOptOut, User
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
 
@@ -87,6 +89,18 @@ def test_forwarded_email_ingest_via_api_key():
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is True
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        assert org.api_key != api_key
+        assert org.api_key_hash is not None
+    finally:
+        db.close()
+
+
+def test_rescue_endpoint_removed():
+    assert client.get("/auth/rescue").status_code == 404
 
 
 def test_contact_form_submission_redirects_to_success():
@@ -211,6 +225,78 @@ def test_settings_crud():
     assert res.status_code == 200
     assert res.json()["business_name"] == "Test Biz"
     assert res.json()["human_review"] is False
+
+
+def test_automation_paused_blocks_auto_send(monkeypatch):
+    c, _ = _auth_client()
+    c.patch("/api/settings", json={"human_review": False, "automation_paused": True})
+
+    created = c.post(
+        "/ingest-lead",
+        json={
+            "source": "test",
+            "sender_name": "Auto Pause",
+            "sender_email": "pause@example.com",
+            "subject": "General question",
+            "body": "Can someone tell me what services you offer?",
+        },
+    )
+    assert created.status_code == 200, created.text
+    data = created.json()
+    assert data["status"] == "ready_to_send"
+    assert data["send_at"] is None
+
+
+def test_inactive_org_blocks_phone_provisioning():
+    c, info = _auth_client()
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        org.subscription_status = "disabled"
+        db.commit()
+    finally:
+        db.close()
+
+    res = c.post("/api/phone/search", json={"area_code": "403"})
+    assert res.status_code == 402
+
+
+def test_member_cannot_change_phone_routing():
+    owner, _ = _auth_client()
+    invite = owner.post("/auth/invite", json={"email": "member-phone@example.com"})
+    assert invite.status_code == 200
+    token = invite.json()["invite_url"].split("invite=")[1]
+
+    member = TestClient(app)
+    accepted = member.post("/auth/accept-invite", json={"token": token, "password": "MemberPass123"})
+    assert accepted.status_code == 200
+
+    res = member.post("/api/phone/routing", json={"owner_phone": "4035559999"})
+    assert res.status_code == 403
+
+
+def test_sms_stop_creates_opt_out():
+    c, info = _auth_client()
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        db.add(PhoneNumber(org_id=org.id, twilio_sid="PN_STOP", phone_number="+14035550111", is_active=True))
+        db.commit()
+        org_id = org.id
+    finally:
+        db.close()
+
+    res = client.post("/sms/webhook", data={"Body": "STOP", "From": "+14035559999", "To": "+14035550111"})
+    assert res.status_code == 200
+    assert "unsubscribed" in res.text
+
+    db = SessionLocal()
+    try:
+        row = db.query(SmsOptOut).filter(SmsOptOut.org_id == org_id, SmsOptOut.phone_number == "+14035559999").first()
+        assert row is not None
+        assert row.opted_in_at is None
+    finally:
+        db.close()
 
 
 def test_rescue_setup_buys_number_and_saves_routing(monkeypatch):

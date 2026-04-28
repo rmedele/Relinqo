@@ -20,14 +20,18 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.mailer import send_email
-from app.models import Lead, OrgSettings
+from app.models import Lead, OrgSettings, PhoneNumber, SmsOptOut
 from app.sms_intake import find_recent_call_for_sender, process_sms_lead
+from app.twilio_signature import verify_twilio_signature
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 APPROVE_RE = re.compile(r"^\s*(yes)\s*(\d+)\s*$", re.IGNORECASE)
 REJECT_RE = re.compile(r"^\s*(no)\s*(\d+)\s*$", re.IGNORECASE)
+STOP_WORDS = {"stop", "stopall", "unsubscribe", "cancel", "end", "quit"}
+START_WORDS = {"start", "unstop"}
+HELP_WORDS = {"help", "info"}
 
 
 def _twiml_response(message: str | None = None) -> Response:
@@ -50,7 +54,42 @@ def _find_org_by_phone(db: Session, from_number: str) -> tuple[int | None, OrgSe
     return None, None
 
 
-@router.post("/sms/webhook")
+def _normalize_phone(raw: str) -> str:
+    return re.sub(r"[^\d+]", "", raw or "")
+
+
+def _find_org_by_twilio_to(db: Session, to_number: str) -> tuple[int | None, OrgSettings | None]:
+    normalized = _normalize_phone(to_number)
+    phone = db.query(PhoneNumber).filter(
+        PhoneNumber.phone_number == normalized,
+        PhoneNumber.is_active == True,  # noqa: E712
+    ).first()
+    if not phone:
+        return None, None
+    settings = db.query(OrgSettings).filter(OrgSettings.org_id == phone.org_id).first()
+    return phone.org_id, settings
+
+
+def _record_opt_out(db: Session, org_id: int, from_number: str, opted_out: bool) -> None:
+    normalized = _normalize_phone(from_number)
+    row = db.query(SmsOptOut).filter(
+        SmsOptOut.org_id == org_id,
+        SmsOptOut.phone_number == normalized,
+    ).first()
+    if opted_out:
+        if row is None:
+            db.add(SmsOptOut(org_id=org_id, phone_number=normalized, source="sms"))
+        else:
+            row.opted_in_at = None
+        db.commit()
+        return
+    if row is not None:
+        from datetime import datetime, timezone
+        row.opted_in_at = datetime.now(timezone.utc)
+        db.commit()
+
+
+@router.post("/sms/webhook", dependencies=[Depends(verify_twilio_signature)])
 async def sms_webhook(
     request: Request,
     Body: str = Form(""),
@@ -66,11 +105,26 @@ async def sms_webhook(
     except (TypeError, ValueError):
         num_media = 0
     media_urls = [form.get(f"MediaUrl{i}") for i in range(num_media) if form.get(f"MediaUrl{i}")]
+    to_number = form.get("To", "")
+    command = body.lower()
 
     logger.info(
         "SMS webhook from=%s num_media=%s body_len=%s",
         From, num_media, len(body),
     )
+
+    if command in STOP_WORDS | START_WORDS | HELP_WORDS:
+        org_id, _org_settings = _find_org_by_twilio_to(db, to_number)
+        if org_id is not None:
+            if command in STOP_WORDS:
+                _record_opt_out(db, org_id, From, opted_out=True)
+                return _twiml_response("You have been unsubscribed. Reply START to resubscribe.")
+            if command in START_WORDS:
+                _record_opt_out(db, org_id, From, opted_out=False)
+                return _twiml_response("You have been resubscribed.")
+        if command in HELP_WORDS:
+            return _twiml_response("LeadRelay helps this business respond to service requests. Reply STOP to opt out.")
+        return _twiml_response(None)
 
     # --- 1. Recent-caller reply flow ---
     recent_call = find_recent_call_for_sender(db, From)

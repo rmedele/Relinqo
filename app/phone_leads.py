@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import CallEvent, Lead, OrgSettings, SmsNotification
+from app.models import CallEvent, Lead, OrgSettings, SmsNotification, SmsOptOut
 from app.sms import send_sms_to
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,15 @@ def recent_sms_exists(
     ).first() is not None
 
 
+def sms_opted_out(db: Session, org_id: int, to_number: str) -> bool:
+    normalized = re.sub(r"[^\d+]", "", to_number or "")
+    return db.query(SmsOptOut).filter(
+        SmsOptOut.org_id == org_id,
+        SmsOptOut.phone_number == normalized,
+        SmsOptOut.opted_in_at.is_(None),
+    ).first() is not None
+
+
 def record_and_send_sms(
     db: Session,
     *,
@@ -111,6 +120,12 @@ def record_and_send_sms(
     )
     db.add(notification)
     db.flush()
+
+    if sms_opted_out(db, org_id, to_number):
+        notification.status = "skipped"
+        notification.error_message = "recipient opted out"
+        db.commit()
+        return notification
 
     ok, msg, twilio_sid = send_sms_to(body, to_number, org_settings)
     notification.twilio_message_sid = twilio_sid

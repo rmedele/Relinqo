@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user
+from app.auth import get_current_user, require_owner_active
 from app.config import settings
 from app.database import get_db
 from app.models import CallEvent, Lead, PhoneNumber, PhoneRoutingRule, SmsNotification, User
@@ -169,7 +169,7 @@ def _rescue_stats(db: Session, org_id: int, row: PhoneNumber | None, rule: Phone
 @router.post("/search")
 def search_numbers(
     payload: SearchRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_owner_active),
 ):
     """Find available Twilio numbers in the requested area code."""
     if not re.match(r"^\d{3}$", (payload.area_code or "").strip()):
@@ -189,7 +189,7 @@ def search_numbers(
 @router.post("/provision")
 def provision(
     payload: ProvisionRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_owner_active),
     db: Session = Depends(get_db),
 ):
     """Buy the number on Twilio, configure webhooks, and save it to
@@ -250,7 +250,7 @@ def provision(
 @router.post("/rescue-setup")
 def rescue_setup(
     payload: RescueSetupRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_owner_active),
     db: Session = Depends(get_db),
 ):
     """Grandpa-proof setup: user enters an area code + cell number.
@@ -345,7 +345,7 @@ def rescue_setup(
 @router.post("/adopt")
 def adopt(
     payload: AdoptRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_owner_active),
     db: Session = Depends(get_db),
 ):
     """Take over a number the user already bought in the Twilio console.
@@ -459,7 +459,7 @@ def my_number(
 @router.post("/routing")
 def set_routing(
     payload: RoutingRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_owner_active),
     db: Session = Depends(get_db),
 ):
     """Upsert the org's routing rule. This is what gets Bob live —
@@ -494,7 +494,7 @@ def set_routing(
 @router.post("/release/{phone_id}")
 def release(
     phone_id: int,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_owner_active),
     db: Session = Depends(get_db),
 ):
     """Release a provisioned number (DELETE on Twilio, soft-delete locally).

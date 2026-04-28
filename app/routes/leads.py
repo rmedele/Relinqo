@@ -11,7 +11,7 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.alerts import send_owner_alert, send_sms_approval_request
-from app.auth import get_current_user, get_org_settings
+from app.auth import get_current_user, get_org_settings, org_can_use_automation
 from app.classifier import classify_lead
 from app.config import settings
 from app.database import get_db
@@ -59,10 +59,22 @@ def log_activity(db: Session, lead_id: int, org_id: int, activity_type: str, mes
 
 
 UNDO_SEND_SECONDS = 60
+AUTO_SEND_BLOCK_TERMS = {
+    "price", "pricing", "quote", "estimate", "cost", "insurance", "claim",
+    "lawyer", "legal", "angry", "complaint", "refund", "emergency",
+    "asap", "urgent", "burst", "flood", "gas smell", "electrical hazard",
+}
 
 
 def _make_thread_id(email: str) -> str:
     return hashlib.sha256(email.strip().lower().encode()).hexdigest()[:16]
+
+
+def _safe_for_auto_send(lead: Lead) -> bool:
+    text = f"{lead.subject or ''}\n{lead.body or ''}\n{lead.summary or ''}".lower()
+    if lead.category not in {"general_inquiry", "existing_customer"}:
+        return False
+    return not any(term in text for term in AUTO_SEND_BLOCK_TERMS)
 
 
 def _save_lead_photos(
@@ -185,16 +197,20 @@ def ingest_lead(
         _save_lead_photos(db, lead, lead.org_id, attachments, ai_analysis=classification.photo_analysis)
         log_activity(db, lead.id, lead.org_id, "photos_attached", f"{len(attachments)} photo(s) attached and analyzed.")
 
-    if lead.owner_alert_needed:
+    automation_allowed = org_can_use_automation(lead.org, org_settings)
+
+    if automation_allowed and lead.owner_alert_needed:
         send_owner_alert(db, lead, org_settings=org_settings)
 
     log_activity(db, lead.id, lead.org_id, "ingested", f"Lead created from {lead.source} with status {lead.status}.")
 
     can_auto_send = (
         not human_review
+        and automation_allowed
         and lead.category not in {"spam", "urgent_request"}
         and lead.confidence >= auto_threshold
         and lead.recommended_reply
+        and _safe_for_auto_send(lead)
     )
     if can_auto_send:
         lead.send_at = datetime.now(timezone.utc) + timedelta(seconds=UNDO_SEND_SECONDS)
@@ -204,10 +220,11 @@ def ingest_lead(
         logger.info("Scheduled auto-send lead_id=%s at %s", lead.id, lead.send_at)
 
     # Send SMS approval request for drafted leads when human review is on
-    if lead.status == "drafted" and lead.category != "spam":
+    if automation_allowed and lead.status == "drafted" and lead.category != "spam":
         send_sms_approval_request(db, lead, org_settings=org_settings)
 
-    schedule_followups(db, lead)
+    if automation_allowed:
+        schedule_followups(db, lead)
     logger.info("Ingested lead_id=%s category=%s urgency=%s", lead.id, lead.category, lead.urgency_score)
     return lead
 
@@ -430,6 +447,8 @@ def flush_pending_sends(
     org_settings: OrgSettings = Depends(get_org_settings),
 ):
     """Send all leads whose send_at has passed for the current org."""
+    if not org_can_use_automation(user.org, org_settings):
+        raise HTTPException(status_code=403, detail="Automation is paused or workspace is inactive")
     now = datetime.now(timezone.utc)
     pending = db.query(Lead).filter(Lead.org_id == user.org_id, Lead.status == "pending_send", Lead.send_at <= now).all()
     results = []

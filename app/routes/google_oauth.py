@@ -60,6 +60,7 @@ def google_callback(
     request: Request,
     code: str | None = None,
     error: str | None = None,
+    state: str | None = None,
     db: Session = Depends(get_db),
 ):
     if error:
@@ -69,6 +70,11 @@ def google_callback(
 
     if not code:
         raise HTTPException(status_code=400, detail="Missing authorization code")
+
+    expected_state = request.session.get("google_oauth_state")
+    if not expected_state or not state or state != expected_state:
+        request.session.pop("google_oauth_state", None)
+        raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
     user_id = request.session.get("user_id")
     if not user_id:

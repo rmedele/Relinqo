@@ -24,6 +24,10 @@ def smtp_configured(org_settings: OrgSettings | None = None) -> bool:
 def send_email(*, to_email: str, subject: str, body: str, org_settings: OrgSettings | None = None) -> tuple[bool, str]:
     logger.info("Email send attempt to=%s subject=%s", to_email, subject)
 
+    if org_settings and org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+        logger.warning("Email send blocked for inactive org_id=%s", org_settings.org_id)
+        return False, "Workspace is not active"
+
     from app.gmail import gmail_configured, gmail_send_email
     if org_settings and gmail_configured(org_settings):
         return gmail_send_email(to_email, subject, body, org_settings)
