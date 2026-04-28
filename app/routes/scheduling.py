@@ -260,7 +260,8 @@ def create_booking(
         .filter(
             Booking.org_id == lead.org_id,
             Booking.status == "confirmed",
-            Booking.slot_start == payload.slot_start,
+            Booking.slot_start < slot_end,
+            Booking.slot_end > payload.slot_start,
         )
         .first()
     )
@@ -306,6 +307,12 @@ def _send_booking_notifications(db: Session, booking: Booking, lead: Lead, org_s
     """Send owner + customer notifications for a new booking."""
     from app.mailer import send_email, smtp_configured
     from app.sms import send_sms
+
+    if org_settings and (
+        org_settings.automation_paused
+        or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+    ):
+        return
 
     time_str = booking.slot_start.strftime("%b %d at %I:%M %p")
 

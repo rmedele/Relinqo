@@ -1,4 +1,5 @@
 import secrets
+import hashlib
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -12,6 +13,10 @@ def _generate_api_key() -> str:
     return secrets.token_hex(32)
 
 
+def hash_api_key(api_key: str) -> str:
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+
+
 class Organization(Base):
     __tablename__ = "organizations"
 
@@ -19,6 +24,9 @@ class Organization(Base):
     name = Column(String(255), nullable=False)
     slug = Column(String(100), nullable=False, unique=True, index=True)
     api_key = Column(String(64), nullable=False, unique=True, index=True, default=_generate_api_key)
+    api_key_hash = Column(String(64), nullable=True, unique=True, index=True)
+    subscription_status = Column(String(20), nullable=False, default="trialing", index=True)
+    plan = Column(String(50), nullable=False, default="beta")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     users = relationship("User", back_populates="org", cascade="all, delete-orphan")
@@ -105,6 +113,7 @@ class OrgSettings(Base):
 
     # Behavior
     human_review = Column(Boolean, nullable=False, default=True)
+    automation_paused = Column(Boolean, nullable=False, default=False)
     auto_send_confidence_threshold = Column(Float, nullable=False, default=0.85)
     forwarding_token = Column(String(100), nullable=False, default="")
     owner_alert_email = Column(String(255), nullable=False, default="")
@@ -391,6 +400,17 @@ class SmsNotification(Base):
     purpose = Column(String(40), nullable=False, index=True)  # owner_alert | caller_confirmation | approval_request
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+
+class SmsOptOut(Base):
+    __tablename__ = "sms_opt_outs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    phone_number = Column(String(32), nullable=False, index=True)
+    opted_out_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    opted_in_at = Column(DateTime(timezone=True), nullable=True)
+    source = Column(String(50), nullable=False, default="sms")
 
 
 class LeadNote(Base):

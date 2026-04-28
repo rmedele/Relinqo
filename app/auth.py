@@ -3,7 +3,10 @@ from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Organization, OrgSettings, User
+from app.models import Organization, OrgSettings, User, hash_api_key
+
+
+ACTIVE_SUBSCRIPTION_STATUSES = {"active", "trialing"}
 
 
 def hash_password(plain: str) -> str:
@@ -30,6 +33,26 @@ def require_owner(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+def org_can_use_automation(org: Organization | None, org_settings: OrgSettings | None) -> bool:
+    if not org or org.subscription_status not in ACTIVE_SUBSCRIPTION_STATUSES:
+        return False
+    if org_settings and org_settings.automation_paused:
+        return False
+    return True
+
+
+def require_active_org(user: User = Depends(get_current_user)) -> User:
+    if user.org.subscription_status not in ACTIVE_SUBSCRIPTION_STATUSES:
+        raise HTTPException(status_code=402, detail="Workspace is not active")
+    return user
+
+
+def require_owner_active(user: User = Depends(require_owner)) -> User:
+    if user.org.subscription_status not in ACTIVE_SUBSCRIPTION_STATUSES:
+        raise HTTPException(status_code=402, detail="Workspace is not active")
+    return user
+
+
 def get_org_settings(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> OrgSettings:
     org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
     if not org_settings:
@@ -53,8 +76,15 @@ def get_org_from_session_or_api_key(
     # Try API key header
     api_key = request.headers.get("X-API-Key")
     if api_key:
-        org = db.query(Organization).filter(Organization.api_key == api_key).first()
+        digest = hash_api_key(api_key)
+        org = db.query(Organization).filter(Organization.api_key_hash == digest).first()
+        # Legacy fallback for databases not yet migrated. New/regenerated keys
+        # only use api_key_hash and never store the raw key.
+        if not org:
+            org = db.query(Organization).filter(Organization.api_key == api_key).first()
         if org:
+            if org.subscription_status not in ACTIVE_SUBSCRIPTION_STATUSES:
+                raise HTTPException(status_code=402, detail="Workspace is not active")
             org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == org.id).first()
             if org_settings:
                 return org, org_settings

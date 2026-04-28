@@ -16,7 +16,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.auth import get_current_user, get_org_from_session_or_api_key, get_org_settings
+from app.auth import get_current_user, get_org_from_session_or_api_key, get_org_settings, org_can_use_automation
 from app.classifier import classify_lead
 from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
@@ -51,6 +51,23 @@ FOLLOWUP_INTERVAL_SECONDS = 300
 REVIEW_REQUEST_INTERVAL_SECONDS = 600
 
 
+def _validate_startup_settings() -> None:
+    if settings.app_env != "production":
+        return
+    errors = []
+    if not settings.public_base_url or settings.public_base_url.startswith("http://127.0.0.1"):
+        errors.append("PUBLIC_BASE_URL must be set to the production URL")
+    if not settings.session_secret or settings.session_secret == "change-me-to-random-secret":
+        errors.append("SESSION_SECRET must be set to a random production secret")
+    if settings.llm_provider == "anthropic" and not settings.llm_api_key:
+        errors.append("LLM_API_KEY is required when LLM_PROVIDER=anthropic")
+    if errors:
+        raise RuntimeError("; ".join(errors))
+
+
+_validate_startup_settings()
+
+
 def _flush_pending(db: Session) -> int:
     """Send all leads whose undo window has passed, grouped by org."""
     now = datetime.now(timezone.utc)
@@ -64,6 +81,10 @@ def _flush_pending(db: Session) -> int:
     total = 0
     for org_id, leads in by_org.items():
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == org_id).first()
+        org = db.query(Organization).filter(Organization.id == org_id).first()
+        if not org_can_use_automation(org, org_settings):
+            logger.info("Pending send flush skipped for org_id=%s", org_id)
+            continue
         for lead in leads:
             sent, message = send_email(
                 to_email=lead.sender_email,

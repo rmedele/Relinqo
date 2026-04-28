@@ -59,6 +59,8 @@ def send_sms_to(
 ) -> tuple[bool, str, str | None]:
     """Send an SMS to an arbitrary destination. Returns (ok, message, twilio_message_sid).
     The caller is responsible for recording the send in sms_notifications."""
+    if org_settings and org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+        return False, "Workspace is not active", None
     creds = _twilio_credentials(org_settings)
     if creds is None:
         return False, "Twilio SMS not configured", None

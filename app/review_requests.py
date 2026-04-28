@@ -50,6 +50,10 @@ def schedule_review_request(
     an existing scheduled/sent request for the same lead."""
     if not org_settings or not org_settings.review_request_enabled:
         return None
+    if org_settings.automation_paused:
+        return None
+    if org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+        return None
     if not org_settings.review_url:
         logger.info("review_request skipped lead_id=%s — no review_url set", lead.id)
         return None
@@ -131,7 +135,13 @@ def run_due_review_requests(
             results["skipped"] += 1
             continue
 
-        if not org_settings or not org_settings.review_request_enabled or not org_settings.review_url:
+        if (
+            not org_settings
+            or not org_settings.review_request_enabled
+            or not org_settings.review_url
+            or org_settings.automation_paused
+            or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+        ):
             req.status = "skipped"
             req.error_message = "review automation disabled at send time"
             db.commit()

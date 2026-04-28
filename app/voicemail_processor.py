@@ -158,6 +158,13 @@ async def process_voicemail(voicemail_id: int) -> None:
             return
 
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == call.org_id).first()
+        automation_allowed = not (
+            org_settings
+            and (
+                org_settings.automation_paused
+                or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+            )
+        )
         routing_rule = db.query(PhoneRoutingRule).filter(
             PhoneRoutingRule.org_id == call.org_id,
         ).first()
@@ -225,7 +232,7 @@ async def process_voicemail(voicemail_id: int) -> None:
         owner_number = (routing_rule.owner_phone if routing_rule else "") or (
             org_settings.sms_alert_to_number if org_settings else ""
         )
-        if owner_number:
+        if automation_allowed and owner_number:
             record_and_send_sms(
                 db,
                 org_id=call.org_id,
@@ -240,7 +247,7 @@ async def process_voicemail(voicemail_id: int) -> None:
         # Caller confirmation SMS — only if we did NOT already outreach them
         # via the SMS-intake flow (outreach carries the same "we got your
         # request" message).
-        send_confirmation = routing_rule.send_caller_confirmation if routing_rule else True
+        send_confirmation = automation_allowed and (routing_rule.send_caller_confirmation if routing_rule else True)
         if send_confirmation and call.from_number and call.from_number != owner_number:
             already_reached = (
                 recent_sms_exists(db, call.org_id, call.from_number, "caller_confirmation")

@@ -1,8 +1,7 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
 import re as _re
 
 from pydantic import BaseModel, EmailStr, field_validator
@@ -13,7 +12,7 @@ from app.config import settings
 from app.database import get_db
 from app.rate_limit import login_limiter, register_limiter
 from app.mailer import send_email
-from app.models import InviteToken, Organization, OrgSettings, PasswordResetToken, User
+from app.models import InviteToken, Organization, OrgSettings, PasswordResetToken, User, hash_api_key
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -90,10 +89,20 @@ def _user_dict(user: User) -> dict:
 
 
 def _org_dict(org: Organization, include_api_key: bool = False) -> dict:
-    d = {"id": org.id, "name": org.name, "slug": org.slug}
+    d = {
+        "id": org.id,
+        "name": org.name,
+        "slug": org.slug,
+        "subscription_status": org.subscription_status,
+        "plan": org.plan,
+    }
     if include_api_key:
         d["api_key"] = org.api_key
     return d
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
 @router.post("/login")
@@ -125,7 +134,13 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
         slug = f"{base_slug}-{counter}"
         counter += 1
 
-    org = Organization(name=payload.org_name.strip(), slug=slug)
+    raw_api_key = secrets.token_hex(32)
+    org = Organization(
+        name=payload.org_name.strip(),
+        slug=slug,
+        api_key=f"deprecated-new-{raw_api_key[:16]}",
+        api_key_hash=hash_api_key(raw_api_key),
+    )
     db.add(org)
     db.flush()
 
@@ -144,7 +159,7 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
     db.refresh(org)
 
     request.session["user_id"] = user.id
-    return {"ok": True, "user": _user_dict(user), "org": _org_dict(org, include_api_key=True)}
+    return {"ok": True, "user": _user_dict(user), "org": {**_org_dict(org), "api_key": raw_api_key}}
 
 
 @router.get("/me")
@@ -154,9 +169,11 @@ def me(user: User = Depends(get_current_user)):
 
 @router.post("/regenerate-api-key")
 def regenerate_api_key(user: User = Depends(require_owner), db: Session = Depends(get_db)):
-    user.org.api_key = secrets.token_hex(32)
+    raw_api_key = secrets.token_hex(32)
+    user.org.api_key = f"deprecated-{user.org_id}-{raw_api_key[:16]}"
+    user.org.api_key_hash = hash_api_key(raw_api_key)
     db.commit()
-    return {"ok": True, "api_key": user.org.api_key}
+    return {"ok": True, "api_key": raw_api_key}
 
 
 INVITE_EXPIRY_HOURS = 72
@@ -215,7 +232,7 @@ def accept_invite(request: Request, payload: AcceptInviteRequest, db: Session = 
     ).first()
     if not invite:
         raise HTTPException(status_code=404, detail="Invalid or already-used invite")
-    if datetime.now(timezone.utc) > invite.expires_at:
+    if datetime.now(timezone.utc) > _as_utc(invite.expires_at):
         raise HTTPException(status_code=410, detail="Invite has expired")
     if db.query(User).filter(User.email == invite.email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -307,7 +324,7 @@ def reset_password(request: Request, payload: ResetPasswordRequest, db: Session 
     ).first()
     if not reset:
         raise HTTPException(status_code=404, detail="Invalid or already-used reset link")
-    if datetime.now(timezone.utc) > reset.expires_at:
+    if datetime.now(timezone.utc) > _as_utc(reset.expires_at):
         raise HTTPException(status_code=410, detail="Reset link has expired")
 
     user = db.query(User).filter(User.id == reset.user_id, User.is_active.is_(True)).first()
@@ -322,7 +339,6 @@ def reset_password(request: Request, payload: ResetPasswordRequest, db: Session 
     return {"ok": True, "message": "Password has been reset. You are now logged in."}
 
 
-# ---------------------------------------------------------------------------
 # TEMPORARY RESCUE FLOW — remove after initial owner completes password reset.
 #
 # Why this exists: SMTP isn't configured on the Railway deployment, so the
@@ -336,71 +352,3 @@ def reset_password(request: Request, payload: ResetPasswordRequest, db: Session 
 # remove. Delete this block + the import changes above once the initial
 # owner is back in.
 # ---------------------------------------------------------------------------
-
-_RESCUE_SECRET = "lr-rescue-2026-04-24-9f3a"  # one-time token, shared in chat
-
-
-@router.get("/rescue", include_in_schema=False)
-async def rescue_page():
-    return HTMLResponse(
-        """<!DOCTYPE html>
-<html><head><title>Password rescue</title></head>
-<body style="font-family: system-ui, sans-serif; padding: 2rem; max-width: 500px; margin: auto; background:#0b1020; color:#e2e8f0;">
-  <h2>Password rescue (temporary)</h2>
-  <p style="opacity:0.7;">
-    SMTP isn't configured on this deployment, so <code>/forgot-password</code>
-    emails won't arrive. Use this form to generate a reset link directly.
-  </p>
-  <form method="POST" action="/auth/rescue" style="display:flex; flex-direction:column; gap:1rem;">
-    <label>
-      Email:<br>
-      <input name="email" style="width:100%; padding:0.5rem; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:4px;" required />
-    </label>
-    <label>
-      Rescue secret:<br>
-      <input name="secret" style="width:100%; padding:0.5rem; background:#1e293b; color:#fff; border:1px solid #334155; border-radius:4px;" required />
-    </label>
-    <button type="submit" style="padding:0.75rem; background:#3b82f6; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:600;">
-      Generate reset link
-    </button>
-  </form>
-</body></html>"""
-    )
-
-
-@router.post("/rescue", include_in_schema=False)
-async def rescue_generate(
-    email: str = Form(...),
-    secret: str = Form(...),
-    db: Session = Depends(get_db),
-):
-    if secret != _RESCUE_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid rescue secret")
-
-    user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
-    if not user:
-        raise HTTPException(status_code=404, detail=f"No active user with email {email}")
-
-    token = secrets.token_urlsafe(32)
-    db.add(
-        PasswordResetToken(
-            user_id=user.id,
-            token=token,
-            expires_at=datetime.now(timezone.utc) + timedelta(minutes=30),
-        )
-    )
-    db.commit()
-
-    base = (settings.public_base_url or "").rstrip("/")
-    reset_url = f"{base}/reset-password?token={token}"
-    return HTMLResponse(
-        f"""<!DOCTYPE html>
-<html><head><title>Reset link</title></head>
-<body style="font-family: system-ui, sans-serif; padding: 2rem; max-width: 600px; margin: auto; background:#0b1020; color:#e2e8f0;">
-  <h2>Click your reset link</h2>
-  <p>Valid for 30 minutes. Open it and set a new password:</p>
-  <p>
-    <a href="{reset_url}" style="color:#60a5fa; word-break:break-all;">{reset_url}</a>
-  </p>
-</body></html>"""
-    )
