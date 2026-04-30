@@ -47,7 +47,7 @@ LeadRelay is a production-minded MVP for local service businesses that need help
 
 ## Environment variables
 Copy `.env.example` to `.env` and adjust:
-- `DATABASE_URL` SQLite path for local DB
+- `DATABASE_URL` database connection string. SQLite is fine for local dev; use PostgreSQL for production.
 - `HUMAN_REVIEW` defaults to true and should stay true for MVP
 - `OWNER_ALERT_EMAIL` where urgent/hot lead alerts go
 - `DIGEST_TO_EMAIL` daily digest target
@@ -123,6 +123,13 @@ python scripts/seed_demo.py
 ```bash
 pytest -q
 ```
+
+## PostgreSQL
+Production deployments should use PostgreSQL:
+```env
+DATABASE_URL=postgresql+psycopg://leadrelay:strong-password@postgres:5432/leadrelay
+```
+See `POSTGRES_MIGRATION.md` for Docker Compose setup and SQLite-to-Postgres migration steps.
 
 ## Deployment notes for MVP
 - Keep this app on a dedicated VM, Pi, or small container.

@@ -1,4 +1,20 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: leadrelay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: leadrelay
+      POSTGRES_USER: leadrelay
+      POSTGRES_PASSWORD: leadrelay
+    volumes:
+      - leadrelay-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U leadrelay -d leadrelay"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   leadrelay:
     build: .
     container_name: leadrelay
@@ -7,8 +23,13 @@ services:
       - "8081:8081"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://leadrelay:leadrelay@postgres:5432/leadrelay
     volumes:
       - leadrelay-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8081/health')"]
       interval: 30s
@@ -22,6 +43,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://leadrelay:leadrelay@postgres:5432/leadrelay
     volumes:
       - leadrelay-data:/app/data
     entrypoint: ["python", "scripts/poll_inbox_loop.py"]
@@ -31,3 +54,4 @@ services:
 
 volumes:
   leadrelay-data:
+  leadrelay-postgres:

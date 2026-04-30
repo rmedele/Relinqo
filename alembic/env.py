@@ -4,12 +4,13 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-from app.config import settings
+from app.config import normalized_database_url
 from app.database import Base
 from app import models  # noqa: F401 — ensure all models are registered
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+database_url = normalized_database_url()
+config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -24,7 +25,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=True,
+        render_as_batch=database_url.startswith("sqlite"),
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -40,7 +41,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True,
+            render_as_batch=database_url.startswith("sqlite"),
         )
         with context.begin_transaction():
             context.run_migrations()

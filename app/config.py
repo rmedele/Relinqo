@@ -57,3 +57,17 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def normalized_database_url(url: str | None = None) -> str:
+    """Return a SQLAlchemy-compatible database URL.
+
+    Some hosts expose Postgres URLs as postgres://..., while SQLAlchemy expects
+    postgresql://... or postgresql+psycopg://....
+    """
+    value = url or settings.database_url
+    if value.startswith("postgres://"):
+        return value.replace("postgres://", "postgresql+psycopg://", 1)
+    if value.startswith("postgresql://"):
+        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+    return value

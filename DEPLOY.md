@@ -33,7 +33,7 @@ In Railway → Variables, add:
 APP_ENV=production
 PUBLIC_BASE_URL=https://your-app.up.railway.app
 SESSION_SECRET=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
-DATABASE_URL=sqlite:///./data/leadrelay.db
+DATABASE_URL=${{Postgres.DATABASE_URL}}
 
 # Google OAuth (required for Gmail integration)
 GOOGLE_CLIENT_ID=your-google-client-id
@@ -79,7 +79,7 @@ APP_HOST=127.0.0.1
 APP_PORT=8081
 PUBLIC_BASE_URL=https://your-domain.example
 SESSION_SECRET=<random 64-char hex>
-DATABASE_URL=sqlite:///./data/leadrelay.db
+DATABASE_URL=postgresql+psycopg://leadrelay:<password>@localhost:5432/leadrelay
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 LLM_PROVIDER=anthropic
@@ -96,7 +96,7 @@ This starts:
 - `leadrelay` — main app on port 8081
 - `inbox-poller` — polls Gmail every 60s (if using IMAP fallback)
 
-Data persists in the `leadrelay-data` Docker volume.
+Database data persists in the `leadrelay-postgres` Docker volume. Photos and local artifacts persist in `leadrelay-data`.
 
 ### Reverse proxy
 
