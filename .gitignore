@@ -18,6 +18,7 @@ venv/
 
 # Data (runtime generated)
 data/leadrelay.db
+data/*.bak
 data/contact_requests.jsonl
 data/photos/
 
