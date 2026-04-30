@@ -43,7 +43,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 
-Base.metadata.create_all(bind=engine)
+if settings.app_env != "production":
+    Base.metadata.create_all(bind=engine)
 
 
 FLUSH_INTERVAL_SECONDS = 30

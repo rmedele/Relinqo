@@ -13,7 +13,7 @@ import xml.sax.saxutils as saxutils
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request, Response
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -107,6 +107,13 @@ def _fire_outreach(call_event_id: int) -> None:
     loop.run_in_executor(None, send_outreach_sms, call_event_id)
 
 
+def _commit_idempotent(db: Session) -> None:
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+
+
 @router.post("/incoming", dependencies=[Depends(verify_twilio_signature)])
 async def incoming_call(request: Request, db: Session = Depends(get_db)) -> Response:
     """Call entrypoint. Branches:
@@ -138,19 +145,19 @@ async def incoming_call(request: Request, db: Session = Depends(get_db)) -> Resp
     is_after_hours = not in_hours
     dial_owner = should_dial_owner(rule, in_hours)
 
-    stmt = sqlite_insert(CallEvent).values(
-        org_id=phone.org_id,
-        twilio_call_sid=call_sid,
-        from_number=from_num,
-        to_number=to_num,
-        from_city=from_city,
-        from_state=from_state,
-        direction="inbound",
-        status="ringing",
-        is_after_hours=is_after_hours,
-    ).on_conflict_do_nothing(index_elements=["twilio_call_sid"])
-    db.execute(stmt)
-    db.commit()
+    if not db.query(CallEvent.id).filter(CallEvent.twilio_call_sid == call_sid).first():
+        db.add(CallEvent(
+            org_id=phone.org_id,
+            twilio_call_sid=call_sid,
+            from_number=from_num,
+            to_number=to_num,
+            from_city=from_city,
+            from_state=from_state,
+            direction="inbound",
+            status="ringing",
+            is_after_hours=is_after_hours,
+        ))
+        _commit_idempotent(db)
 
     # Re-fetch for the id (idempotent insert doesn't return it on conflict).
     call = db.query(CallEvent).filter(CallEvent.twilio_call_sid == call_sid).first()
@@ -230,15 +237,15 @@ async def recording_complete(request: Request, db: Session = Depends(get_db)) ->
         logger.info("recording-complete: skipping %ss recording (likely hangup)", duration)
         return _twiml("<Response/>")
 
-    stmt = sqlite_insert(Voicemail).values(
-        call_event_id=call.id,
-        twilio_recording_sid=rec_sid,
-        recording_url=rec_url,
-        recording_duration=duration,
-        transcription_status="pending",
-    ).on_conflict_do_nothing(index_elements=["twilio_recording_sid"])
-    db.execute(stmt)
-    db.commit()
+    if not db.query(Voicemail.id).filter(Voicemail.twilio_recording_sid == rec_sid).first():
+        db.add(Voicemail(
+            call_event_id=call.id,
+            twilio_recording_sid=rec_sid,
+            recording_url=rec_url,
+            recording_duration=duration,
+            transcription_status="pending",
+        ))
+        _commit_idempotent(db)
 
     logger.info(
         "twilio recording complete call_sid=%s rec_sid=%s duration=%ss",
