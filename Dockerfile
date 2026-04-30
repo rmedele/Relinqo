@@ -18,7 +18,7 @@ COPY scripts ./scripts
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 
-# Data directory — mount a Railway volume here to persist SQLite + photos
+# Data directory stores photos and local artifacts. Production DB is Postgres.
 RUN mkdir -p /app/data /app/data/photos
 
 EXPOSE 8081

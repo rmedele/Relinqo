@@ -45,7 +45,7 @@ def upgrade() -> None:
         sa.Column('display_name', sa.String(255), nullable=True),
         sa.Column('role', sa.String(20), nullable=False, server_default='member'),
         sa.Column('org_id', sa.Integer(), sa.ForeignKey('organizations.id'), nullable=False),
-        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('1')),
+        sa.Column('is_active', sa.Boolean(), nullable=False, server_default=sa.text('true')),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         if_not_exists=True,
     )
@@ -62,7 +62,7 @@ def upgrade() -> None:
         sa.Column('smtp_port', sa.Integer(), nullable=False, server_default='587'),
         sa.Column('smtp_username', sa.String(255), nullable=False, server_default=''),
         sa.Column('smtp_password', sa.String(255), nullable=False, server_default=''),
-        sa.Column('smtp_use_tls', sa.Boolean(), nullable=False, server_default=sa.text('1')),
+        sa.Column('smtp_use_tls', sa.Boolean(), nullable=False, server_default=sa.text('true')),
         sa.Column('smtp_from_email', sa.String(255), nullable=False, server_default=''),
         # IMAP
         sa.Column('imap_host', sa.String(255), nullable=False, server_default='imap.gmail.com'),
@@ -71,7 +71,7 @@ def upgrade() -> None:
         sa.Column('imap_password', sa.String(255), nullable=False, server_default=''),
         sa.Column('imap_mailbox', sa.String(100), nullable=False, server_default='INBOX'),
         sa.Column('imap_search_criteria', sa.String(100), nullable=False, server_default='UNSEEN'),
-        sa.Column('inbox_poll_enabled', sa.Boolean(), nullable=False, server_default=sa.text('0')),
+        sa.Column('inbox_poll_enabled', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         # Business profile
         sa.Column('business_name', sa.String(255), nullable=False, server_default=''),
         sa.Column('business_services', sa.Text(), nullable=False, server_default=''),
@@ -86,7 +86,7 @@ def upgrade() -> None:
         sa.Column('twilio_from_number', sa.String(50), nullable=False, server_default=''),
         sa.Column('sms_alert_to_number', sa.String(50), nullable=False, server_default=''),
         # Behavior
-        sa.Column('human_review', sa.Boolean(), nullable=False, server_default=sa.text('1')),
+        sa.Column('human_review', sa.Boolean(), nullable=False, server_default=sa.text('true')),
         sa.Column('auto_send_confidence_threshold', sa.Float(), nullable=False, server_default='0.85'),
         sa.Column('forwarding_token', sa.String(100), nullable=False, server_default=''),
         sa.Column('owner_alert_email', sa.String(255), nullable=False, server_default=''),

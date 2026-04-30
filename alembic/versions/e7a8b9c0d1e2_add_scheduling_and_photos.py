@@ -68,7 +68,7 @@ def upgrade() -> None:
         batch_op.create_index('ix_leads_booking_token', ['booking_token'], unique=True)
 
     with op.batch_alter_table('org_settings') as batch_op:
-        batch_op.add_column(sa.Column('scheduling_enabled', sa.Boolean(), nullable=False, server_default=sa.text('0')))
+        batch_op.add_column(sa.Column('scheduling_enabled', sa.Boolean(), nullable=False, server_default=sa.text('false')))
         batch_op.add_column(sa.Column('scheduling_slot_duration', sa.Integer(), nullable=False, server_default=sa.text('60')))
         batch_op.add_column(sa.Column('scheduling_buffer_minutes', sa.Integer(), nullable=False, server_default=sa.text('0')))
         batch_op.add_column(sa.Column('scheduling_max_days_ahead', sa.Integer(), nullable=False, server_default=sa.text('7')))
