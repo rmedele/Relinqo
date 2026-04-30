@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import argparse
 
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import create_engine, inspect, select, text
 from sqlalchemy.engine import Engine
 
 from app.config import normalized_database_url
@@ -51,6 +51,8 @@ def _reset_sequence(pg: Engine, table_name: str, pk_name: str) -> None:
 def migrate(sqlite_url: str, postgres_url: str, truncate: bool) -> None:
     sqlite = _engine(sqlite_url)
     pg = _engine(postgres_url)
+    source_inspector = inspect(sqlite)
+    source_tables = set(source_inspector.get_table_names())
 
     if truncate:
         table_names = ", ".join(f'"{table.name}"' for table in reversed(Base.metadata.sorted_tables))
@@ -59,14 +61,24 @@ def migrate(sqlite_url: str, postgres_url: str, truncate: bool) -> None:
                 conn.execute(text(f"TRUNCATE {table_names} RESTART IDENTITY CASCADE"))
 
     for table in Base.metadata.sorted_tables:
+        if table.name not in source_tables:
+            print(f"{table.name}: source table missing, skipped")
+            continue
+
         if _table_has_rows(pg, table.name):
             raise RuntimeError(
                 f"Postgres table {table.name!r} already has rows. "
                 "Use --truncate if you intentionally want to replace target data."
             )
 
+        source_columns = {col["name"] for col in source_inspector.get_columns(table.name)}
+        copy_columns = [col for col in table.columns if col.name in source_columns]
+        if not copy_columns:
+            print(f"{table.name}: no matching source columns, skipped")
+            continue
+
         with sqlite.connect() as source:
-            rows = [dict(row._mapping) for row in source.execute(select(table)).all()]
+            rows = [dict(row._mapping) for row in source.execute(select(*copy_columns)).all()]
 
         if not rows:
             print(f"{table.name}: 0 rows")
