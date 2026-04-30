@@ -37,7 +37,7 @@ def upgrade() -> None:
         sa.Column('urgency_score', sa.Integer(), nullable=False, server_default='1'),
         sa.Column('summary', sa.Text(), nullable=True),
         sa.Column('recommended_reply', sa.Text(), nullable=True),
-        sa.Column('owner_alert_needed', sa.Boolean(), nullable=False, server_default=sa.text('0')),
+        sa.Column('owner_alert_needed', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         sa.Column('status', sa.String(50), nullable=False, server_default='new'),
         sa.Column('confidence', sa.Float(), nullable=False, server_default='0.0'),
         sa.Column('next_step', sa.String(255), nullable=True),
