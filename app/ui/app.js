@@ -30,12 +30,17 @@ const searchInput = document.getElementById('searchInput');
 const filterCategory = document.getElementById('filterCategory');
 const filterStatus = document.getElementById('filterStatus');
 const filterUrgency = document.getElementById('filterUrgency');
+const leadMapEl = document.getElementById('leadMap');
+const leadMapCountEl = document.getElementById('leadMapCount');
+const backfillMapBtn = document.getElementById('backfillMapBtn');
 
 let leads = [];
 let threads = {};
 let selectedLeadId = null;
 let pollInterval = null;
 let undoTimer = null;
+let leadMap = null;
+let leadMapMarkers = null;
 let currentView = 'leads'; // 'leads' or 'threads'
 let currentPage = 1;
 let totalPages = 1;
@@ -599,6 +604,17 @@ function selectLead(id) {
   }
 }
 
+async function selectLeadById(id) {
+  if (!leads.some((lead) => lead.id === id)) {
+    const response = await fetch(`/leads/${id}`);
+    if (response.ok) {
+      const lead = await response.json();
+      leads = [lead, ...leads.filter((item) => item.id !== lead.id)];
+    }
+  }
+  selectLead(id);
+}
+
 // --- Data Loading ---
 
 async function loadLeads() {
@@ -608,7 +624,8 @@ async function loadLeads() {
     leadDetailEl.classList.add('hidden');
   }
 
-  const response = await fetch(`/leads?page=${currentPage}&page_size=${pageSize}`);
+  const showSpam = filterCategory.value === 'spam' || filterStatus.value === 'spam';
+  const response = await fetch(`/leads?page=${currentPage}&page_size=${pageSize}${showSpam ? '&include_spam=true' : ''}`);
   if (!response.ok) {
     loadingStateEl.classList.add('hidden');
     throw new Error('Failed to load leads');
@@ -626,6 +643,84 @@ async function loadLeads() {
   renderLeadDetail();
   renderPriorityLeads();
   loadStats();
+  loadLeadMap();
+}
+
+// --- Lead Map ---
+
+function mapMarkerClass(item) {
+  if (item.outcome === 'won') return 'won';
+  if (item.urgency_score >= 4) return 'urgent';
+  if (item.status === 'sent') return 'sent';
+  return 'active';
+}
+
+function initLeadMap() {
+  if (!leadMapEl || leadMap || !window.L) return;
+  leadMap = L.map(leadMapEl, { scrollWheelZoom: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(leadMap);
+  leadMapMarkers = L.layerGroup().addTo(leadMap);
+  leadMap.setView([53.5461, -113.4938], 10);
+}
+
+async function loadLeadMap() {
+  if (!leadMapEl || !window.L) return;
+  initLeadMap();
+  try {
+    const response = await fetch('/api/lead-map');
+    if (!response.ok) return;
+    const data = await response.json();
+    leadMapMarkers.clearLayers();
+    const bounds = [];
+    data.items.forEach((item) => {
+      const icon = L.divIcon({
+        className: `lead-map-marker ${mapMarkerClass(item)}`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      });
+      const marker = L.marker([item.lat, item.lng], { icon }).addTo(leadMapMarkers);
+      marker.bindPopup(`
+        <strong>${escapeHtml(item.subject) || 'Lead'}</strong><br>
+        <span>${escapeHtml(item.location) || escapeHtml(item.sender_email) || ''}</span><br>
+        <button type="button" class="map-popup-btn" data-lead-id="${item.id}">Open inquiry</button>
+      `);
+      marker.on('popupopen', () => {
+        document.querySelector(`.map-popup-btn[data-lead-id="${item.id}"]`)?.addEventListener('click', () => {
+          selectLeadById(item.id);
+        });
+      });
+      bounds.push([item.lat, item.lng]);
+    });
+    if (leadMapCountEl) {
+      leadMapCountEl.textContent = `${data.items.length} mapped lead${data.items.length === 1 ? '' : 's'}`;
+    }
+    if (bounds.length) {
+      leadMap.fitBounds(bounds, { padding: [28, 28], maxZoom: 13 });
+    }
+  } catch (e) {
+    if (leadMapCountEl) leadMapCountEl.textContent = 'Map unavailable';
+  }
+}
+
+async function backfillLeadMap() {
+  if (!backfillMapBtn) return;
+  backfillMapBtn.disabled = true;
+  backfillMapBtn.textContent = 'Mapping...';
+  try {
+    const response = await fetch('/api/lead-map/backfill', { method: 'POST' });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Failed to map past leads');
+    showStatus(`Mapped ${data.updated} past lead${data.updated === 1 ? '' : 's'}`, 'success');
+    await loadLeadMap();
+  } catch (error) {
+    showStatus(error.message || 'Failed to map past leads', 'error');
+  } finally {
+    backfillMapBtn.disabled = false;
+    backfillMapBtn.textContent = 'Map Past Leads';
+  }
 }
 
 // --- Actions ---
@@ -786,9 +881,10 @@ autoPollToggle.addEventListener('change', () => {
 
 // Filters — re-render on change
 searchInput.addEventListener('input', renderLeadList);
-filterCategory.addEventListener('change', renderLeadList);
-filterStatus.addEventListener('change', renderLeadList);
+filterCategory.addEventListener('change', () => { currentPage = 1; loadLeads(); });
+filterStatus.addEventListener('change', () => { currentPage = 1; loadLeads(); });
 filterUrgency.addEventListener('change', renderLeadList);
+backfillMapBtn?.addEventListener('click', backfillLeadMap);
 
 // --- Auth ---
 
@@ -1423,4 +1519,5 @@ loadLeads().catch((error) => {
   showStatus(error.message || 'Failed to load leads', 'error');
 });
 loadCharts();
+loadLeadMap();
 startPolling();

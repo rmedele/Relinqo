@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LeadRelay Review Queue</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/ui/styles.css" />
   </head>
   <body>
@@ -55,6 +56,20 @@
           <span class="stat-label">Avg Response</span>
           <strong id="statAvgTime">&mdash;</strong>
         </div>
+      </section>
+
+      <section class="lead-map-section">
+        <div class="lead-map-header">
+          <div>
+            <p class="section-kicker">Service area</p>
+            <h2>Business Map</h2>
+          </div>
+          <div class="lead-map-actions">
+            <span id="leadMapCount" class="muted">No mapped leads yet</span>
+            <button id="backfillMapBtn" class="ghost-btn compact-link">Map Past Leads</button>
+          </div>
+        </div>
+        <div id="leadMap" class="lead-map"></div>
       </section>
 
       <!-- Charts -->
@@ -409,6 +424,7 @@
       </a>
     </nav>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/ui/shell.js"></script>
     <script src="/ui/app.js"></script>
   </body>

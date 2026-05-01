@@ -25,6 +25,9 @@ class LeadResponse(BaseModel):
     body: str
     phone: str | None
     location: str | None
+    latitude: float | None = None
+    longitude: float | None = None
+    geocoded_location: str | None = None
     category: str
     urgency_score: int
     summary: str | None

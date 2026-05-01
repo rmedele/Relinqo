@@ -18,6 +18,7 @@ from app.database import get_db
 from app.digest import build_daily_digest, build_weekly_summary, send_daily_digest, send_weekly_summary
 from app.email_parser import parse_lead_fields
 from app.followups import schedule_followups
+from app.geocoding import geocode_location, polite_geocode_delay
 from app.mailer import send_email
 from app.models import Lead, LeadActivity, LeadNote, LeadPhoto, OrgSettings, ReplyTemplate, ReviewRequest, ScheduleAvailability, User
 from app.schemas import (
@@ -139,6 +140,13 @@ def ingest_lead(
 
     phone = classification.extracted_phone or enriched.get("phone")
     location = classification.extracted_location or enriched.get("location")
+    geocode_target = None
+    coordinates = None
+    if classification.category != "spam" and location:
+        geocode_target = location
+        if org_settings and org_settings.business_area:
+            geocode_target = f"{geocode_target}, {org_settings.business_area}"
+        coordinates = geocode_location(geocode_target)
 
     human_review = org_settings.human_review if org_settings else True
     auto_threshold = org_settings.auto_send_confidence_threshold if org_settings else 0.85
@@ -175,6 +183,9 @@ def ingest_lead(
         body=payload.body,
         phone=phone,
         location=location,
+        latitude=coordinates[0] if coordinates else None,
+        longitude=coordinates[1] if coordinates else None,
+        geocoded_location=geocode_target if coordinates else None,
         category=classification.category,
         urgency_score=classification.urgency_score,
         summary=summary,
@@ -248,11 +259,17 @@ def list_leads(
     user: User = Depends(get_current_user),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
+    include_spam: bool = Query(False),
 ):
-    total = db.query(sa_func.count(Lead.id)).filter(Lead.org_id == user.org_id).scalar() or 0
+    filters = [Lead.org_id == user.org_id]
+    if not include_spam:
+        filters.append(Lead.category != "spam")
+        filters.append(Lead.status != "spam")
+
+    total = db.query(sa_func.count(Lead.id)).filter(*filters).scalar() or 0
     items = (
         db.query(Lead)
-        .filter(Lead.org_id == user.org_id)
+        .filter(*filters)
         .order_by(Lead.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -260,6 +277,80 @@ def list_leads(
     )
     pages = (total + page_size - 1) // page_size if total else 1
     return PaginatedLeadsResponse(items=items, total=total, page=page, page_size=page_size, pages=pages)
+
+
+@router.get("/api/lead-map")
+def lead_map(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    rows = (
+        db.query(Lead)
+        .filter(
+            Lead.org_id == user.org_id,
+            Lead.latitude.isnot(None),
+            Lead.longitude.isnot(None),
+            Lead.category != "spam",
+            Lead.status != "spam",
+        )
+        .order_by(Lead.created_at.desc())
+        .limit(500)
+        .all()
+    )
+    return {
+        "items": [
+            {
+                "id": lead.id,
+                "lat": lead.latitude,
+                "lng": lead.longitude,
+                "subject": lead.subject,
+                "sender_name": lead.sender_name,
+                "sender_email": lead.sender_email,
+                "location": lead.location,
+                "category": lead.category,
+                "status": lead.status,
+                "urgency_score": lead.urgency_score,
+                "outcome": lead.outcome,
+                "deal_value": lead.deal_value,
+                "created_at": lead.created_at,
+            }
+            for lead in rows
+        ]
+    }
+
+
+@router.post("/api/lead-map/backfill")
+def backfill_lead_map(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+    org_settings: OrgSettings = Depends(get_org_settings),
+    limit: int = Query(25, ge=1, le=50),
+):
+    candidates = (
+        db.query(Lead)
+        .filter(
+            Lead.org_id == user.org_id,
+            Lead.location.isnot(None),
+            Lead.latitude.is_(None),
+            Lead.longitude.is_(None),
+            Lead.category != "spam",
+            Lead.status != "spam",
+        )
+        .order_by(Lead.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    updated = []
+    for idx, lead in enumerate(candidates):
+        target = lead.location
+        if org_settings.business_area:
+            target = f"{target}, {org_settings.business_area}"
+        coordinates = geocode_location(target)
+        if coordinates:
+            lead.latitude, lead.longitude = coordinates
+            lead.geocoded_location = target
+            updated.append(lead.id)
+        if idx < len(candidates) - 1:
+            polite_geocode_delay()
+    db.commit()
+    return {"ok": True, "checked": len(candidates), "updated": len(updated), "lead_ids": updated}
 
 
 @router.get("/leads/{lead_id}", response_model=LeadResponse)
