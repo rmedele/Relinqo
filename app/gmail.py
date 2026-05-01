@@ -56,8 +56,12 @@ def get_gmail_service(org_settings: OrgSettings, db: Session | None = None):
 def gmail_poll_inbox(db: Session, org_id: int, org_settings: OrgSettings, limit: int = 10) -> dict:
     try:
         service = get_gmail_service(org_settings, db)
+        query = (
+            "is:unread in:inbox category:primary "
+            "-category:social -category:promotions -category:updates -category:forums"
+        )
         results = service.users().messages().list(
-            userId="me", q="is:unread", maxResults=limit
+            userId="me", q=query, maxResults=limit
         ).execute()
 
         messages = results.get("messages", [])

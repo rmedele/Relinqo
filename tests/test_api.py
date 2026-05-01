@@ -99,6 +99,72 @@ def test_forwarded_email_ingest_via_api_key():
         db.close()
 
 
+def test_leads_hide_spam_by_default():
+    c, _ = _auth_client()
+    spam = c.post(
+        "/ingest-lead",
+        json={
+            "source": "gmail_api",
+            "sender_name": "Pitch Bot",
+            "sender_email": "pitch@example.com",
+            "subject": "Guaranteed SEO backlinks",
+            "body": "We sell SEO backlinks and marketing package services.",
+        },
+    )
+    assert spam.status_code == 200, spam.text
+    assert spam.json()["status"] == "spam"
+
+    legit = c.post(
+        "/ingest-lead",
+        json={
+            "source": "gmail_api",
+            "sender_name": "Real Lead",
+            "sender_email": "real@example.com",
+            "subject": "Plumbing estimate",
+            "body": "My sink is leaking and I need a quote.",
+        },
+    )
+    assert legit.status_code == 200, legit.text
+
+    default_list = c.get("/leads")
+    assert default_list.status_code == 200
+    default_ids = {item["id"] for item in default_list.json()["items"]}
+    assert legit.json()["id"] in default_ids
+    assert spam.json()["id"] not in default_ids
+
+    spam_list = c.get("/leads?include_spam=true")
+    assert spam_list.status_code == 200
+    spam_ids = {item["id"] for item in spam_list.json()["items"]}
+    assert legit.json()["id"] in spam_ids
+    assert spam.json()["id"] in spam_ids
+
+
+def test_lead_map_returns_geocoded_leads(monkeypatch):
+    c, _ = _auth_client()
+    monkeypatch.setattr(lead_routes, "geocode_location", lambda location: (53.5461, -113.4938))
+
+    created = c.post(
+        "/ingest-lead",
+        json={
+            "source": "gmail_api",
+            "sender_name": "Map Lead",
+            "sender_email": "map@example.com",
+            "subject": "Plumbing estimate",
+            "body": "My sink is leaking in Edmonton and I need a quote.",
+            "location": "Edmonton",
+        },
+    )
+    assert created.status_code == 200, created.text
+
+    response = c.get("/api/lead-map")
+    assert response.status_code == 200
+    items = response.json()["items"]
+    mapped = [item for item in items if item["id"] == created.json()["id"]]
+    assert mapped
+    assert mapped[0]["lat"] == 53.5461
+    assert mapped[0]["lng"] == -113.4938
+
+
 def test_rescue_endpoint_removed():
     assert client.get("/auth/rescue").status_code == 404
 
