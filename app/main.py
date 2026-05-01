@@ -284,7 +284,7 @@ def _create_contact_lead(payload: dict[str, str]) -> int:
 @app.get("/", include_in_schema=False)
 @limiter.limit("30/minute")
 def marketing_page(request: Request):
-    return FileResponse(UI_DIR / "marketing.html")
+    return FileResponse(UI_DIR / "marketing.html", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/book-demo", include_in_schema=False)
