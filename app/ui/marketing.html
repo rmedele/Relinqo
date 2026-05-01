@@ -3,584 +3,1011 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LeadRelay — Lead response for trades</title>
-    <meta name="description" content="LeadRelay replies to every email and missed call for plumbers, HVAC techs, electricians, and roofers — usually in under a minute. Track every job from inbox to invoice." />
+    <title>LeadRelay | Professional lead response for trades</title>
+    <meta name="description" content="LeadRelay helps local service businesses reply to email and missed-call leads faster, with owner approval controls, SMS alerts, scheduling, pipeline tracking, and review automation." />
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <meta http-equiv="Pragma" content="no-cache" />
     <link rel="stylesheet" href="/ui/styles.css?v=20260426-ui9" />
     <style>
       :root {
-        --mk-max: 1080px;
-      }
-      body { background: #ffffff; color: #18181b; }
-
-      .mk-nav {
-        position: sticky; top: 0; z-index: 50;
-        background: #ffffff;
-        border-bottom: 1px solid var(--border);
-      }
-      .mk-nav-inner {
-        max-width: var(--mk-max); margin: 0 auto;
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 14px 24px;
-      }
-      .mk-logo { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); text-decoration: none; }
-      .mk-nav-links { display: flex; align-items: center; gap: 24px; list-style: none; margin: 0; padding: 0; }
-      .mk-nav-links a { font-size: 0.875rem; color: var(--text-secondary); text-decoration: none; }
-      .mk-nav-links a:hover { color: var(--text); }
-      .mk-nav-actions { display: flex; align-items: center; gap: 10px; }
-      .mk-btn-login { font-size: 0.875rem; color: var(--text-secondary); text-decoration: none; padding: 6px 10px; }
-      .mk-btn-login:hover { color: var(--text); }
-      .mk-btn-cta {
-        font-size: 0.875rem; font-weight: 500; color: #fff;
-        text-decoration: none; padding: 7px 14px;
-        background: var(--accent); border: 1px solid var(--accent);
-        border-radius: var(--radius);
-      }
-      .mk-btn-cta:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
-
-      .mk-hero {
-        max-width: var(--mk-max); margin: 0 auto;
-        padding: 72px 24px 48px;
-      }
-      .mk-hero-inner { max-width: 720px; }
-      .mk-hero-badge {
-        display: inline-block;
-        font-size: 0.78rem; color: var(--muted);
-        margin-bottom: 18px;
-      }
-      .mk-hero h1 {
-        font-size: clamp(2rem, 4.5vw, 2.875rem);
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        line-height: 1.15;
-        color: var(--text);
-        margin: 0 0 18px;
-      }
-      .mk-hero-sub {
-        font-size: 1.0625rem; line-height: 1.6; color: var(--text-secondary);
-        margin: 0 0 28px; max-width: 600px;
-      }
-      .mk-hero-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 32px; }
-      .mk-btn-hero-primary {
-        font-size: 0.9rem; font-weight: 500; color: #fff;
-        text-decoration: none; padding: 10px 20px;
-        background: var(--accent); border: 1px solid var(--accent);
-        border-radius: var(--radius);
-      }
-      .mk-btn-hero-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
-      .mk-btn-hero-secondary {
-        font-size: 0.9rem; font-weight: 500; color: var(--text);
-        text-decoration: none; padding: 10px 20px;
-        background: #fff; border: 1px solid var(--border);
-        border-radius: var(--radius);
-      }
-      .mk-btn-hero-secondary:hover { background: var(--surface); border-color: var(--border-strong); }
-      .mk-hero-pills { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
-      .mk-hero-pill { display: inline-flex; align-items: center; gap: 6px; }
-      .mk-hero-pill::before { content: ''; width: 4px; height: 4px; background: var(--text-secondary); border-radius: 50%; }
-
-      /* Stat strip */
-      .mk-stats {
-        max-width: var(--mk-max); margin: 0 auto;
-        padding: 0 24px 56px;
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 24px;
-        border-top: 1px solid var(--border);
-        padding-top: 36px;
-      }
-      .mk-stat strong { display: block; font-size: 1.75rem; font-weight: 600; color: var(--text); margin-bottom: 4px; letter-spacing: -0.02em; }
-      .mk-stat p { font-size: 0.85rem; color: var(--text-secondary); margin: 0; line-height: 1.5; }
-
-      /* Demo cards */
-      .mk-demo-grid {
-        max-width: var(--mk-max); margin: 0 auto;
-        padding: 0 24px 64px;
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 14px;
-      }
-      .mk-demo-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 18px;
-      }
-      .mk-demo-head {
-        display: flex; align-items: center; justify-content: space-between;
-        font-size: 0.78rem; color: var(--muted);
-        margin-bottom: 10px;
-      }
-      .mk-demo-tag {
-        font-size: 0.72rem; font-weight: 500; padding: 2px 8px;
-        border-radius: var(--radius-sm); border: 1px solid var(--border);
-      }
-      .mk-demo-tag.green { background: var(--success-soft); color: var(--success); border-color: var(--success-border); }
-      .mk-demo-tag.red { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-border); }
-      .mk-demo-card h3 { font-size: 0.95rem; margin: 0 0 8px; }
-      .mk-demo-card p { font-size: 0.875rem; color: var(--text-secondary); margin: 0; line-height: 1.55; }
-
-      /* Sections */
-      .mk-section {
-        max-width: var(--mk-max); margin: 0 auto;
-        padding: 56px 24px;
-        border-top: 1px solid var(--border);
-      }
-      .mk-section-inner { max-width: 100%; }
-      .mk-section-kicker {
-        font-size: 0.78rem; font-weight: 500; color: var(--muted);
-        margin: 0 0 8px;
-      }
-      .mk-section-title {
-        font-size: clamp(1.5rem, 3vw, 1.875rem);
-        font-weight: 600; letter-spacing: -0.02em;
-        max-width: 640px; margin: 0 0 32px;
+        --site-max: 1160px;
+        --bg: #f7f8fa;
+        --paper: #ffffff;
+        --ink: #101820;
+        --ink-soft: #43515c;
+        --muted: #6d7b86;
+        --line: #dbe2e8;
+        --line-soft: #e9eef2;
+        --blue: #1769e0;
+        --blue-dark: #0f4fb5;
+        --cyan: #0e9fb5;
+        --green: #15835b;
+        --amber: #a66300;
+        --shadow: 0 18px 50px rgba(16, 24, 32, 0.08);
+        --shadow-strong: 0 28px 80px rgba(16, 24, 32, 0.14);
       }
 
-      .mk-benefits-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 24px;
-      }
-      .mk-benefit { padding: 0; }
-      .mk-benefit h3 { font-size: 0.95rem; margin: 0 0 6px; color: var(--text); }
-      .mk-benefit p { font-size: 0.875rem; color: var(--text-secondary); margin: 0; line-height: 1.55; }
-
-      .mk-steps-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 24px;
-      }
-      .mk-step { padding: 0; }
-      .mk-step-num {
-        display: inline-flex; align-items: center; justify-content: center;
-        width: 24px; height: 24px;
-        font-size: 0.78rem; font-weight: 600;
-        background: var(--surface-2); color: var(--text-secondary);
-        border-radius: 50%;
-        margin-bottom: 10px;
-      }
-      .mk-step h3 { font-size: 0.95rem; margin: 0 0 6px; }
-      .mk-step p { font-size: 0.875rem; color: var(--text-secondary); margin: 0; line-height: 1.55; }
-
-      /* Pricing */
-      .mk-pricing-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 16px; max-width: 720px;
-      }
-      .mk-price-card {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 24px;
-      }
-      .mk-price-card.featured { border-color: var(--accent); }
-      .mk-price-tier { font-size: 0.78rem; font-weight: 500; color: var(--muted); margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-      .mk-price-amount { display: flex; align-items: baseline; gap: 4px; margin-bottom: 8px; }
-      .mk-price-amount strong { font-size: 2rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
-      .mk-price-amount span { font-size: 0.85rem; color: var(--muted); }
-      .mk-price-desc { font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 16px; line-height: 1.55; }
-      .mk-price-features { list-style: none; padding: 0; margin: 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
-      .mk-price-features li { font-size: 0.875rem; color: var(--text-secondary); padding-left: 18px; position: relative; }
-      .mk-price-features li::before {
-        content: ''; position: absolute; left: 0; top: 0.55em;
-        width: 8px; height: 4px; border-left: 1.5px solid var(--success); border-bottom: 1.5px solid var(--success);
-        transform: rotate(-45deg);
-      }
-      .mk-price-btn { display: inline-block; width: 100%; text-align: center; padding: 9px 18px; font-size: 0.875rem; font-weight: 500; border-radius: var(--radius); text-decoration: none; }
-      .mk-price-btn.outline { color: var(--text); background: #fff; border: 1px solid var(--border); }
-      .mk-price-btn.outline:hover { background: var(--surface-2); border-color: var(--border-strong); }
-      .mk-price-btn.solid { color: #fff; background: var(--accent); border: 1px solid var(--accent); }
-      .mk-price-btn.solid:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #fff; }
-
-      /* FAQ */
-      .mk-faq-grid {
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 24px;
-      }
-      @media (max-width: 720px) { .mk-faq-grid { grid-template-columns: 1fr; } }
-      .mk-faq h3 { font-size: 0.95rem; margin: 0 0 6px; }
-      .mk-faq p { font-size: 0.875rem; color: var(--text-secondary); margin: 0; line-height: 1.55; }
-
-      /* CTA */
-      .mk-cta-box {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 32px;
-      }
-      .mk-cta-inner {
-        display: flex; justify-content: space-between; align-items: center;
-        gap: 24px; flex-wrap: wrap;
-      }
-      .mk-cta-inner h2 { font-size: 1.375rem; margin: 0 0 6px; }
-      .mk-cta-inner p { font-size: 0.9rem; color: var(--text-secondary); margin: 0; }
-
-      /* Footer */
-      .mk-footer {
-        max-width: var(--mk-max); margin: 0 auto;
-        padding: 24px;
-        border-top: 1px solid var(--border);
-        font-size: 0.82rem; color: var(--muted);
-      }
-      .mk-footer a { color: var(--text-secondary); }
-
-      @media (max-width: 720px) {
-        .mk-nav-links { display: none; }
-        .mk-hero { padding: 48px 24px 32px; }
-        .mk-section { padding: 40px 24px; }
-      }
-
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; background: var(--bg); overflow-x: hidden; }
       body {
-        color: var(--text);
+        margin: 0;
+        color: var(--ink);
         background:
-          radial-gradient(circle at 14% 12%, rgba(77, 208, 225, 0.22), transparent 30vw),
-          radial-gradient(circle at 86% 6%, rgba(255, 111, 145, 0.14), transparent 28vw),
-          radial-gradient(circle at 75% 82%, rgba(255, 184, 107, 0.13), transparent 28vw),
-          #07090f;
+          linear-gradient(180deg, #ffffff 0%, #f7f8fa 46%, #ffffff 100%);
+        overflow-x: hidden;
       }
-      .mk-nav {
-        background: rgba(8, 12, 21, 0.82);
-        border-bottom-color: rgba(154, 169, 196, 0.14);
+
+      .site-nav {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        background: rgba(255, 255, 255, 0.92);
+        border-bottom: 1px solid var(--line-soft);
         backdrop-filter: blur(18px);
       }
-      .mk-logo { font-weight: 800; }
-      .mk-btn-cta,
-      .mk-btn-hero-primary,
-      .mk-price-btn.solid {
-        color: #061014;
-        background: linear-gradient(135deg, #8af3ff, #4dd0e1 48%, #ffcf94 130%);
-        border-color: rgba(132, 242, 255, 0.5);
-        box-shadow: 0 14px 38px rgba(77, 208, 225, 0.22);
-      }
-      .mk-btn-cta:hover,
-      .mk-btn-hero-primary:hover,
-      .mk-price-btn.solid:hover {
-        color: #061014;
-        background: linear-gradient(135deg, #a7f7ff, #66ddea 48%, #ffdbad 130%);
-      }
-      .mk-btn-hero-secondary,
-      .mk-price-btn.outline {
-        color: var(--text);
-        background: rgba(255,255,255,0.04);
-        border-color: rgba(154,169,196,0.18);
-      }
-      .mk-btn-hero-secondary:hover,
-      .mk-price-btn.outline:hover {
-        background: rgba(77,208,225,0.1);
-        border-color: rgba(77,208,225,0.32);
-      }
-      .mk-hero {
-        min-height: 76vh;
+
+      .site-nav-inner {
+        width: min(var(--site-max), calc(100% - 32px));
+        min-height: 72px;
+        margin: 0 auto;
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        gap: 20px;
       }
-      .mk-hero h1 {
-        max-width: 850px;
-        font-weight: 820;
-        letter-spacing: 0;
-        background: linear-gradient(90deg, #ffffff, #a7f7ff 54%, #ffdbad);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-      .mk-hero-badge,
-      .mk-section-kicker {
-        color: var(--accent-cyan);
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--ink);
         font-weight: 800;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        color: #fff;
+        background: linear-gradient(135deg, var(--blue), var(--cyan));
+        box-shadow: 0 10px 26px rgba(23, 105, 224, 0.22);
+      }
+
+      .nav-links, .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .nav-links a, .nav-actions a {
+        color: var(--ink-soft);
+        font-size: 0.92rem;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .nav-links a:hover, .nav-actions a:hover {
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      .btn-primary, .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 11px 18px;
+        border-radius: 8px;
+        font-weight: 750;
+        text-decoration: none;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+      }
+
+      .btn-primary {
+        color: #fff !important;
+        background: var(--blue);
+        box-shadow: 0 12px 30px rgba(23, 105, 224, 0.2);
+      }
+
+      .btn-primary:hover {
+        background: var(--blue-dark);
+        transform: translateY(-1px);
+      }
+
+      .btn-secondary {
+        color: var(--ink) !important;
+        border: 1px solid var(--line);
+        background: #fff;
+      }
+
+      .btn-secondary:hover {
+        border-color: #c6d0d8;
+        box-shadow: 0 10px 24px rgba(16, 24, 32, 0.08);
+        transform: translateY(-1px);
+      }
+
+      .hero {
+        width: min(var(--site-max), calc(100% - 32px));
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(440px, 1.1fr);
+        gap: clamp(36px, 6vw, 76px);
+        align-items: center;
+        padding: 76px 0 70px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 16px;
+        color: var(--blue);
+        font-size: 0.78rem;
+        font-weight: 850;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+      }
+
+      h1, h2, h3, p { letter-spacing: 0; }
+
+      .hero h1 {
+        margin: 0;
+        max-width: 620px;
+        color: var(--ink);
+        font-size: clamp(3rem, 5.8vw, 5.7rem);
+        line-height: 0.96;
+        font-weight: 850;
+      }
+
+      .hero-lede {
+        max-width: 610px;
+        margin: 24px 0 0;
+        color: var(--ink-soft);
+        font-size: 1.12rem;
+        line-height: 1.7;
+      }
+
+      .hero-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 30px 0 24px;
+      }
+
+      .trust-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .trust-row span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 10px;
+        color: var(--ink-soft);
+        font-size: 0.86rem;
+        font-weight: 600;
+        border: 1px solid var(--line-soft);
+        border-radius: 999px;
+        background: #fff;
+      }
+
+      .trust-row span::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--cyan);
+      }
+
+      .product-preview {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--paper);
+        box-shadow: var(--shadow-strong);
+        overflow: hidden;
+      }
+
+      .preview-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line-soft);
+        background: #fbfcfd;
+      }
+
+      .preview-dots {
+        display: flex;
+        gap: 7px;
+      }
+
+      .preview-dots span {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ff6b7a;
+      }
+      .preview-dots span:nth-child(2) { background: #f5c451; }
+      .preview-dots span:nth-child(3) { background: #33bfd0; }
+
+      .preview-top strong {
+        color: var(--ink);
+        font-size: 0.9rem;
+      }
+
+      .preview-body {
+        display: grid;
+        grid-template-columns: 1fr 1.15fr;
+        gap: 18px;
+        padding: 20px;
+        background:
+          linear-gradient(135deg, rgba(23, 105, 224, 0.045), transparent 42%),
+          #fff;
+      }
+
+      .lead-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .lead-card {
+        padding: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: #fff;
+      }
+
+      .lead-card.active {
+        border-color: rgba(23, 105, 224, 0.34);
+        box-shadow: 0 12px 30px rgba(23, 105, 224, 0.12);
+      }
+
+      .lead-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .tag {
+        color: var(--blue);
+      }
+
+      .tag.hot {
+        color: #b4233a;
+      }
+
+      .lead-card strong {
+        display: block;
+        color: var(--ink);
+        font-size: 0.94rem;
+      }
+
+      .lead-card p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.45;
+      }
+
+      .reply-panel {
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+      }
+
+      .reply-panel h3 {
+        margin: 0 0 8px;
+        color: var(--ink);
+        font-size: 1.05rem;
+      }
+
+      .reply-panel p {
+        color: var(--ink-soft);
+        line-height: 1.6;
+      }
+
+      .reply-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .mini-btn {
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        color: var(--ink-soft);
+        background: #fff;
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+
+      .mini-btn.primary {
+        color: #fff;
+        border-color: var(--blue);
+        background: var(--blue);
+      }
+
+      .metrics {
+        width: min(var(--site-max), calc(100% - 32px));
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .metric-card {
+        padding: 20px;
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: var(--shadow);
+      }
+
+      .metric-card strong {
+        display: block;
+        color: var(--ink);
+        font-size: 1.85rem;
+      }
+
+      .metric-card span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      .section {
+        width: min(var(--site-max), calc(100% - 32px));
+        margin: 0 auto;
+        padding: 92px 0 0;
+      }
+
+      .section-heading {
+        max-width: 760px;
+        margin-bottom: 30px;
+      }
+
+      .section-heading h2 {
+        margin: 0;
+        color: var(--ink);
+        font-size: clamp(2rem, 4vw, 3.6rem);
+        line-height: 1.03;
+        font-weight: 820;
+      }
+
+      .section-heading p:not(.eyebrow) {
+        margin: 16px 0 0;
+        color: var(--ink-soft);
+        font-size: 1.05rem;
+        line-height: 1.65;
+      }
+
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .feature-card, .flow-card, .price-card, .faq-card {
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: var(--shadow);
+      }
+
+      .feature-card {
+        min-height: 210px;
+        padding: 22px;
+      }
+
+      .feature-icon {
+        display: grid;
+        place-items: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        color: #fff;
+        font-weight: 850;
+        background: var(--blue);
+      }
+
+      .feature-card h3, .flow-card h3, .price-card h3, .faq-card h3 {
+        margin: 18px 0 8px;
+        color: var(--ink);
+        font-size: 1.08rem;
+      }
+
+      .feature-card p, .flow-card p, .price-card p, .faq-card p {
+        color: var(--ink-soft);
+        line-height: 1.58;
+      }
+
+      .flow-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .flow-card {
+        min-height: 220px;
+        padding: 22px;
+      }
+
+      .flow-card span {
+        color: var(--blue);
+        font-size: 0.76rem;
+        font-weight: 850;
         letter-spacing: 0.1em;
         text-transform: uppercase;
       }
-      .mk-stats,
-      .mk-section,
-      .mk-footer {
-        border-top-color: rgba(154, 169, 196, 0.14);
+
+      .pricing-grid, .faq-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
       }
-      .mk-demo-card,
-      .mk-price-card,
-      .mk-cta-box {
-        background: linear-gradient(180deg, rgba(18, 24, 39, 0.86), rgba(10, 14, 24, 0.78));
-        border-color: rgba(161, 177, 205, 0.18);
-        box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.055);
-        backdrop-filter: blur(18px);
+
+      .price-card, .faq-card {
+        padding: 26px;
       }
-      .mk-price-card.featured {
-        border-color: rgba(77,208,225,0.48);
-        box-shadow: var(--shadow-glow-hover);
+
+      .price-card {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        font-size: 1rem;
       }
-      .mk-step-num {
-        color: #061014;
-        background: linear-gradient(135deg, var(--accent-cyan), #9ff5ff);
+
+      .price-card.featured {
+        border-color: rgba(23, 105, 224, 0.22);
+        box-shadow: 0 22px 60px rgba(23, 105, 224, 0.13);
+      }
+
+      .price {
+        display: flex;
+        align-items: baseline;
+        gap: 5px;
+        margin: 10px 0 12px;
+      }
+
+      .price strong {
+        color: var(--ink);
+        font-size: 3rem;
+      }
+
+      .price span {
+        color: var(--muted);
+      }
+
+      .price-card ul {
+        display: grid;
+        gap: 8px;
+        margin: 20px 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .price-card li {
+        position: relative;
+        padding-left: 22px;
+        color: var(--ink-soft);
+      }
+
+      .price-card li::before {
+        content: "";
+        position: absolute;
+        left: 1px;
+        top: 0.46em;
+        width: 10px;
+        height: 5px;
+        border-left: 2px solid var(--green);
+        border-bottom: 2px solid var(--green);
+        transform: rotate(-45deg);
+      }
+
+      .final-cta {
+        width: min(var(--site-max), calc(100% - 32px));
+        margin: 0 auto;
+        padding: 96px 0 54px;
+        text-align: center;
+      }
+
+      .final-cta h2 {
+        max-width: 740px;
+        margin: 0 auto 16px;
+        color: var(--ink);
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        line-height: 1.04;
+      }
+
+      .final-cta p {
+        max-width: 630px;
+        margin: 0 auto 26px;
+        color: var(--ink-soft);
+        font-size: 1.06rem;
+        line-height: 1.65;
+      }
+
+      .site-footer {
+        width: min(var(--site-max), calc(100% - 32px));
+        margin: 0 auto;
+        padding: 24px 0 42px;
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        border-top: 1px solid var(--line-soft);
+        color: var(--muted);
+      }
+
+      .site-footer strong {
+        margin-right: auto;
+        color: var(--ink);
+      }
+
+      .site-footer a {
+        color: var(--ink-soft);
+        text-decoration: none;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+
+      .js .reveal {
+        opacity: 0;
+        transform: translateY(14px);
+        transition: opacity 0.45s ease, transform 0.45s ease;
+      }
+
+      .js .reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 980px) {
+        .nav-links { display: none; }
+        .hero {
+          grid-template-columns: 1fr;
+          padding-top: 52px;
+        }
+        .metrics, .feature-grid, .flow-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 640px) {
+        .site-nav-inner {
+          width: calc(100% - 24px);
+          min-height: 68px;
+        }
+        .nav-actions a:first-child { display: none; }
+        .hero {
+          width: calc(100% - 32px);
+          gap: 32px;
+          padding: 44px 0 52px;
+        }
+        .hero h1 {
+          font-size: clamp(2.75rem, 13vw, 4.15rem);
+        }
+        .hero-lede {
+          font-size: 1rem;
+        }
+        .preview-body {
+          grid-template-columns: 1fr;
+          padding: 14px;
+        }
+        .reply-panel {
+          display: none;
+        }
+        .metrics, .feature-grid, .flow-grid, .pricing-grid, .faq-grid {
+          grid-template-columns: 1fr;
+        }
+        .section {
+          padding-top: 68px;
+        }
+        .site-footer strong {
+          width: 100%;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+
+      /* Dark black theme layer: preserves the approved layout and motion. */
+      body {
+        background:
+          radial-gradient(circle at 18% -8%, rgba(84, 216, 232, 0.11), transparent 30rem),
+          radial-gradient(circle at 86% 0%, rgba(91, 157, 255, 0.1), transparent 32rem),
+          linear-gradient(180deg, #05070a 0%, #080c12 48%, #05070a 100%);
+        color: #f4f8fb;
+      }
+
+      .site-nav {
+        background: rgba(5, 7, 10, 0.9);
+        border-bottom-color: rgba(223, 236, 245, 0.1);
+      }
+
+      .brand,
+      .hero h1,
+      .section-heading h2,
+      .reply-panel h3,
+      .feature-card h3,
+      .flow-card h3,
+      .price-card h3,
+      .faq-card h3,
+      .final-cta h2,
+      .site-footer strong,
+      .lead-card strong,
+      .metric-card strong,
+      .price strong {
+        color: #f4f8fb;
+      }
+
+      .hero-lede,
+      .lead-card p,
+      .reply-panel p,
+      .metric-card span,
+      .feature-card p,
+      .flow-card p,
+      .price-card p,
+      .price-card li,
+      .price span,
+      .faq-card p,
+      .final-cta p,
+      .nav-links a,
+      .nav-actions a,
+      .site-footer,
+      .site-footer a,
+      .lead-meta,
+      .flow-card span {
+        color: #aebdca;
+      }
+
+      .section-heading p:not(.eyebrow) {
+        color: #b8c6d1;
+      }
+
+      .nav-links a:hover,
+      .nav-actions a:hover,
+      .site-footer a:hover {
+        color: #ffffff;
+      }
+
+      .brand-mark,
+      .feature-icon {
+        background: linear-gradient(135deg, #54d8e8, #5b9dff);
+        color: #041018;
+        box-shadow: 0 14px 34px rgba(84, 216, 232, 0.22);
+      }
+
+      .eyebrow,
+      .tag,
+      .flow-card span {
+        color: #54d8e8;
+      }
+
+      .tag.hot {
+        color: #ff8fa0;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #54d8e8 0%, #5b9dff 100%);
+        color: #041018 !important;
+        box-shadow: 0 18px 46px rgba(84, 216, 232, 0.22);
+      }
+
+      .btn-primary:hover {
+        box-shadow: 0 22px 56px rgba(91, 157, 255, 0.28);
+      }
+
+      .btn-secondary,
+      .trust-row span,
+      .mini-btn {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(223, 236, 245, 0.15);
+        color: #d6e2eb !important;
+      }
+
+      .product-preview,
+      .lead-card,
+      .reply-panel,
+      .metric-card,
+      .feature-card,
+      .flow-card,
+      .price-card,
+      .faq-card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.028));
+        border-color: rgba(223, 236, 245, 0.12);
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.3);
+      }
+
+      .product-preview {
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
+      }
+
+      .preview-top {
+        background: rgba(15, 21, 29, 0.92);
+        border-bottom-color: rgba(223, 236, 245, 0.11);
+        color: #f4f8fb;
+      }
+
+      .preview-top strong {
+        color: #dbe7f0;
+      }
+
+      .preview-dots span {
+        background: #41515f;
+      }
+
+      .preview-dots span:nth-child(2) {
+        background: #5b9dff;
+      }
+
+      .preview-dots span:nth-child(3) {
+        background: #54d8e8;
+      }
+
+      .preview-body {
+        background:
+          linear-gradient(135deg, rgba(84, 216, 232, 0.08), transparent 44%),
+          linear-gradient(315deg, rgba(91, 157, 255, 0.08), transparent 44%),
+          #0b1017;
+      }
+
+      .lead-card.active,
+      .price-card.featured {
+        border-color: rgba(84, 216, 232, 0.34);
+        box-shadow: 0 20px 60px rgba(84, 216, 232, 0.12), 0 22px 70px rgba(0, 0, 0, 0.3);
+      }
+
+      .price-card.featured {
+        background:
+          linear-gradient(135deg, rgba(84, 216, 232, 0.11), transparent 44%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.032));
+        font-weight: 400;
+      }
+
+      .price-card.featured .price strong {
+        color: #ffffff;
+      }
+
+      .price-card.featured .price span {
+        color: #c7d5df;
+      }
+
+      .price-card .btn-primary,
+      .price-card .btn-secondary {
+        margin-top: auto;
+      }
+
+      .price-card li::before {
+        border-color: #54d8e8;
+      }
+
+      .reply-panel {
+        background:
+          linear-gradient(180deg, rgba(84, 216, 232, 0.09), rgba(255, 255, 255, 0.035)),
+          #0d131b;
+      }
+
+      .mini-btn.primary {
+        background: linear-gradient(135deg, #54d8e8, #5b9dff);
+        border-color: transparent;
+        color: #041018 !important;
+      }
+
+      .section,
+      .metrics,
+      .final-cta,
+      .site-footer {
+        border-color: rgba(223, 236, 245, 0.1);
+      }
+
+      .final-cta {
+        background:
+          linear-gradient(135deg, rgba(84, 216, 232, 0.11), rgba(91, 157, 255, 0.07)),
+          rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(223, 236, 245, 0.12);
       }
     </style>
-    <link rel="stylesheet" href="/ui/styles.css?v=20260426-ui9" />
+    <script>document.documentElement.classList.add("js");</script>
   </head>
 
   <body>
-    <nav class="mk-nav">
-      <div class="mk-nav-inner">
-        <a href="/" class="mk-logo">LeadRelay</a>
-        <ul class="mk-nav-links">
-          <li><a href="#features">Features</a></li>
-          <li><a href="#how-it-works">How it works</a></li>
-          <li><a href="#pricing">Pricing</a></li>
-          <li><a href="#faq">FAQ</a></li>
-        </ul>
-        <div class="mk-nav-actions">
-          <a href="/login" class="mk-btn-login">Sign in</a>
-          <a href="/book-demo" class="mk-btn-cta">Book a demo</a>
+    <nav class="site-nav">
+      <div class="site-nav-inner">
+        <a href="/" class="brand">
+          <span class="brand-mark">LR</span>
+          <span>LeadRelay</span>
+        </a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#workflow">Workflow</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+        </div>
+        <div class="nav-actions">
+          <a href="/login">Sign in</a>
+          <a href="/book-demo" class="btn-primary">Book demo</a>
         </div>
       </div>
     </nav>
 
     <main>
-      <section class="mk-hero">
-        <div class="mk-hero-inner">
-          <p class="mk-hero-badge">Built for plumbers, HVAC, electricians, and roofers</p>
-          <h1>Reply to every lead before your competitor does.</h1>
-          <p class="mk-hero-sub">LeadRelay reads inbound emails and missed calls, drafts a first reply in your voice, alerts you only when it's actually urgent, and tracks every job from inquiry to invoice.</p>
-          <div class="mk-hero-actions">
-            <a href="/book-demo" class="mk-btn-hero-primary">Book a demo</a>
-            <a href="#how-it-works" class="mk-btn-hero-secondary">See how it works</a>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Lead response for local service teams</p>
+          <h1>Reply first. Win more jobs.</h1>
+          <p class="hero-lede">LeadRelay reads inbound emails and missed calls, drafts a professional first reply, alerts the owner on urgent work, and tracks every opportunity from inbox to invoice.</p>
+          <div class="hero-actions">
+            <a href="/book-demo" class="btn-primary">Book a demo</a>
+            <a href="#features" class="btn-secondary">See features</a>
           </div>
-          <div class="mk-hero-pills">
-            <span class="mk-hero-pill">Replies under a minute</span>
-            <span class="mk-hero-pill">Missed-call SMS rescue</span>
-            <span class="mk-hero-pill">Pipeline &amp; revenue tracking</span>
-            <span class="mk-hero-pill">You approve before sending</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="mk-stats">
-        <div class="mk-stat">
-          <strong>78%</strong>
-          <p>of customers hire the first business that responds.</p>
-        </div>
-        <div class="mk-stat">
-          <strong>5 min</strong>
-          <p>After five minutes, your odds of qualifying a lead drop 80%.</p>
-        </div>
-        <div class="mk-stat">
-          <strong>62%</strong>
-          <p>of after-hours callers won't leave a voicemail. Most won't call back.</p>
-        </div>
-        <div class="mk-stat">
-          <strong>$0</strong>
-          <p>spent on every lead you didn't reply to. Plus the customer you never got back.</p>
-        </div>
-      </section>
-
-      <section class="mk-demo-grid">
-        <article class="mk-demo-card">
-          <div class="mk-demo-head">
-            <span>2:14 AM</span>
-            <span class="mk-demo-tag green">Auto-replied</span>
-          </div>
-          <h3>Quote for hot water tank replacement</h3>
-          <p>Reply sent: "Hi Daniel — happy to take a look. Could you share your address and a photo of the current unit? We'll get a quote over to you."</p>
-        </article>
-
-        <article class="mk-demo-card">
-          <div class="mk-demo-head">
-            <span>2:47 AM</span>
-            <span class="mk-demo-tag red">Urgent</span>
-          </div>
-          <h3>Burst pipe flooding basement</h3>
-          <p>Owner texted immediately. Customer received confirmation reply asking for the address and a contact number.</p>
-        </article>
-
-        <article class="mk-demo-card">
-          <div class="mk-demo-head">
-            <span>7:00 AM</span>
-            <span>Daily summary</span>
-          </div>
-          <h3>Overnight: 4 leads handled</h3>
-          <p>2 auto-replied, 1 urgent (you were alerted), 1 spam filtered. Nothing waiting on your review.</p>
-        </article>
-      </section>
-
-      <section id="features" class="mk-section">
-        <p class="mk-section-kicker">What's in the box</p>
-        <h2 class="mk-section-title">A full lead operations system, not just an autoresponder.</h2>
-        <div class="mk-benefits-grid">
-          <div class="mk-benefit">
-            <h3>AI-drafted replies</h3>
-            <p>Every inbound lead gets read, classified, and answered with a tone-matched reply. You approve once or set rules to send automatically.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Missed-call SMS rescue</h3>
-            <p>Caller doesn't reach you? They get an instant text — "we got your call, what do you need?" — and that reply becomes a tracked lead.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Pipeline kanban</h3>
-            <p>New, Contacted, Quoted, Scheduled, Won, Lost. Drag a lead between stages, see revenue tally in real time.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Revenue tracking</h3>
-            <p>Tag leads with deal value. See open pipeline, won revenue, and average deal size at a glance.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Photo intake</h3>
-            <p>Customer attaches a picture of the broken unit — the AI describes what's there so you walk into the job prepared.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Smart scheduling</h3>
-            <p>Replies embed a booking link tied to your real availability and your Google Calendar. The customer picks a slot, you get a confirmation.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Reply templates</h3>
-            <p>Save your best replies. Pick one, drop it in, the customer's name and details fill in automatically.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Urgent alerts</h3>
-            <p>Burst pipe at 2 AM, roof leak before a storm — you get a text within seconds with the customer's number, address, and summary.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Review automation</h3>
-            <p>Mark a job won and a Google review request goes out three days later, automatically. Build the review count that drives the next ten leads.</p>
+          <div class="trust-row">
+            <span>Google OAuth</span>
+            <span>Owner approval controls</span>
+            <span>No email passwords stored</span>
           </div>
         </div>
-      </section>
 
-      <section id="how-it-works" class="mk-section">
-        <p class="mk-section-kicker">How it works</p>
-        <h2 class="mk-section-title">Connect once, then it runs in the background.</h2>
-        <div class="mk-steps-grid">
-          <div class="mk-step">
-            <div class="mk-step-num">1</div>
-            <h3>Connect Gmail</h3>
-            <p>Two clicks through Google's standard sign-in. We never see or store your password.</p>
+        <div class="product-preview" aria-label="LeadRelay dashboard preview">
+          <div class="preview-top">
+            <div class="preview-dots"><span></span><span></span><span></span></div>
+            <strong>Lead command center</strong>
           </div>
-          <div class="mk-step">
-            <div class="mk-step-num">2</div>
-            <h3>Set your business profile</h3>
-            <p>Services, area, hours, tone of voice. Takes about three minutes.</p>
-          </div>
-          <div class="mk-step">
-            <div class="mk-step-num">3</div>
-            <h3>Replies start going out</h3>
-            <p>Inbound leads get read and answered. You see drafts in your dashboard before they send if you want.</p>
-          </div>
-          <div class="mk-step">
-            <div class="mk-step-num">4</div>
-            <h3>You see the summary</h3>
-            <p>Morning digest tells you what was handled and what needs your eyes. That's it.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="mk-section">
-        <p class="mk-section-kicker">Why it matters</p>
-        <h2 class="mk-section-title">Every hour a lead sits unanswered, the chance of winning that job drops.</h2>
-        <div class="mk-benefits-grid">
-          <div class="mk-benefit">
-            <h3>Replies in minutes, not hours</h3>
-            <p>Your AI assistant responds 24/7 — weekends, holidays, 2 AM. The customer hears back fast.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Emergencies get flagged</h3>
-            <p>Burst pipe at midnight? You get alerted immediately. The AI knows the difference between urgent and routine.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Spam gets filtered</h3>
-            <p>SEO pitches, marketing junk, and bots get screened out. You only see real customers.</p>
-          </div>
-          <div class="mk-benefit">
-            <h3>Nothing falls through</h3>
-            <p>Every lead is tracked, replied to, and followed up on. No more "sorry I missed your email."</p>
-          </div>
-        </div>
-      </section>
-
-      <section id="pricing" class="mk-section">
-        <p class="mk-section-kicker">Pricing</p>
-        <h2 class="mk-section-title">One job pays for the year.</h2>
-        <div class="mk-pricing-grid">
-          <div class="mk-price-card">
-            <p class="mk-price-tier">Starter</p>
-            <div class="mk-price-amount">
-              <strong>$49</strong>
-              <span>per month</span>
+          <div class="preview-body">
+            <div class="lead-list">
+              <article class="lead-card active">
+                <div class="lead-meta"><span class="tag hot">Urgent</span><span>2:14 AM</span></div>
+                <strong>Burst pipe in basement</strong>
+                <p>Owner alerted with customer summary and callback number.</p>
+              </article>
+              <article class="lead-card">
+                <div class="lead-meta"><span class="tag">Quote</span><span>7:42 AM</span></div>
+                <strong>Water heater replacement</strong>
+                <p>Draft reply is ready for review with next-step questions.</p>
+              </article>
+              <article class="lead-card">
+                <div class="lead-meta"><span class="tag">Missed call</span><span>8:03 AM</span></div>
+                <strong>SMS reply captured</strong>
+                <p>Caller responded by text and became a tracked lead.</p>
+              </article>
             </div>
-            <p class="mk-price-desc">For solo operators and small crews who want leads handled automatically.</p>
-            <ul class="mk-price-features">
+            <article class="reply-panel">
+              <h3>Draft reply ready</h3>
+              <p>Hi Daniel, thanks for reaching out. We can help with the burst pipe. Please send your address and a photo if safe, and we will call you shortly.</p>
+              <div class="reply-actions">
+                <span class="mini-btn primary">Send reply</span>
+                <span class="mini-btn">Edit draft</span>
+                <span class="mini-btn">Call customer</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="metrics">
+        <div class="metric-card reveal"><strong>60s</strong><span>first-response target for new inquiries</span></div>
+        <div class="metric-card reveal"><strong>24/7</strong><span>email and missed-call intake coverage</span></div>
+        <div class="metric-card reveal"><strong>OAuth</strong><span>secure Gmail connection without passwords</span></div>
+        <div class="metric-card reveal"><strong>1 view</strong><span>pipeline from lead to won revenue</span></div>
+      </section>
+
+      <section id="features" class="section">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Everything in one lead desk</p>
+          <h2>Built for the moments where slow response costs real money.</h2>
+          <p>LeadRelay gives local service teams a dependable way to catch, reply to, and track new opportunities without adding another complicated CRM.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card reveal"><span class="feature-icon">1</span><h3>AI-drafted replies</h3><p>Inbound leads are classified and answered with a practical, professional first response.</p></article>
+          <article class="feature-card reveal"><span class="feature-icon">2</span><h3>Missed-call SMS rescue</h3><p>If a caller hangs up, LeadRelay texts back and turns their reply into a tracked lead.</p></article>
+          <article class="feature-card reveal"><span class="feature-icon">3</span><h3>Urgent owner alerts</h3><p>Emergency jobs trigger an SMS summary with the customer details and next action.</p></article>
+          <article class="feature-card reveal"><span class="feature-icon">4</span><h3>Pipeline tracking</h3><p>Move jobs through New, Contacted, Quoted, Scheduled, Won, and Lost.</p></article>
+          <article class="feature-card reveal"><span class="feature-icon">5</span><h3>Booking links</h3><p>Replies can include scheduling links tied to real Google Calendar availability.</p></article>
+          <article class="feature-card reveal"><span class="feature-icon">6</span><h3>Review automation</h3><p>Won jobs can automatically trigger a review request after the configured delay.</p></article>
+        </div>
+      </section>
+
+      <section id="workflow" class="section">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Workflow</p>
+          <h2>A clean handoff from first message to booked job.</h2>
+        </div>
+        <div class="flow-grid">
+          <article class="flow-card reveal"><span>01 Intake</span><h3>Email or call arrives</h3><p>LeadRelay watches the inbox and missed-call flow around the clock.</p></article>
+          <article class="flow-card reveal"><span>02 Triage</span><h3>Urgency is scored</h3><p>Routine quotes, spam, existing customers, and emergencies are separated.</p></article>
+          <article class="flow-card reveal"><span>03 Response</span><h3>Draft is ready</h3><p>The customer gets a fast answer while the team keeps approval controls.</p></article>
+          <article class="flow-card reveal"><span>04 Revenue</span><h3>Job moves forward</h3><p>The team tracks pipeline, bookings, revenue, and reviews in one place.</p></article>
+        </div>
+      </section>
+
+      <section id="pricing" class="section">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Pricing</p>
+          <h2>Simple pilot pricing while you prove it on real leads.</h2>
+        </div>
+        <div class="pricing-grid">
+          <article class="price-card reveal">
+            <h3>Starter</h3>
+            <div class="price"><strong>$49</strong><span>/mo</span></div>
+            <p>For solo operators who need faster email lead response.</p>
+            <ul>
               <li>AI lead reading and reply drafts</li>
-              <li>Email and web form intake</li>
-              <li>Urgent job alerts</li>
-              <li>Daily summary email</li>
+              <li>Urgent lead alerts</li>
+              <li>Daily summaries</li>
               <li>Spam filtering</li>
-              <li>Up to 50 leads per month</li>
             </ul>
-            <a href="/book-demo" class="mk-price-btn outline">Book a demo</a>
-          </div>
-
-          <div class="mk-price-card featured">
-            <p class="mk-price-tier">Pro</p>
-            <div class="mk-price-amount">
-              <strong>$99</strong>
-              <span>per month</span>
-            </div>
-            <p class="mk-price-desc">For growing teams with higher volume and multiple lead sources.</p>
-            <ul class="mk-price-features">
+            <a href="/book-demo" class="btn-secondary">Book demo</a>
+          </article>
+          <article class="price-card featured reveal">
+            <h3>Pro pilot</h3>
+            <div class="price"><strong>$99</strong><span>/mo</span></div>
+            <p>For teams that want email, missed calls, booking, pipeline, and reviews together.</p>
+            <ul>
               <li>Everything in Starter</li>
-              <li>Unlimited leads</li>
               <li>Missed-call SMS rescue</li>
               <li>Pipeline and revenue tracking</li>
-              <li>Calendar sync and booking links</li>
-              <li>Priority setup and support</li>
+              <li>Calendar sync and review automation</li>
             </ul>
-            <a href="/book-demo" class="mk-price-btn solid">Book a demo</a>
-          </div>
+            <a href="/book-demo" class="btn-primary">Run my pilot</a>
+          </article>
         </div>
       </section>
 
-      <section id="faq" class="mk-section">
-        <p class="mk-section-kicker">FAQ</p>
-        <h2 class="mk-section-title">Common questions.</h2>
-        <div class="mk-faq-grid">
-          <div class="mk-faq">
-            <h3>Will the AI reply without my approval?</h3>
-            <p>Only for routine leads it's confident about. Urgent or unusual leads always get flagged for your review. You can also turn on manual review for everything.</p>
-          </div>
-          <div class="mk-faq">
-            <h3>What if it gets something wrong?</h3>
-            <p>The AI never quotes pricing, schedules appointments, or commits to timelines. It sends a professional first response and gathers info. You handle the actual business decisions.</p>
-          </div>
-          <div class="mk-faq">
-            <h3>Do I need to share my email password?</h3>
-            <p>No. We connect through Google's official OAuth — the same way Slack or HubSpot would. No passwords stored, revocable in one click.</p>
-          </div>
-          <div class="mk-faq">
-            <h3>How does the missed-call rescue work?</h3>
-            <p>You buy a tracking number through us in about 30 seconds. When someone calls and you don't answer, they get an instant text: "we got your call, what do you need?" Their reply becomes a lead in your dashboard.</p>
-          </div>
-          <div class="mk-faq">
-            <h3>Who is this for?</h3>
-            <p>Plumbing, HVAC, electrical, roofing, garage doors, restoration, and similar local service businesses that get leads by email, web form, or ad platforms.</p>
-          </div>
-          <div class="mk-faq">
-            <h3>How long does setup take?</h3>
-            <p>Most businesses are live the same day. We help you connect Gmail, tune the AI to your services, and run a test before going live.</p>
-          </div>
-          <div class="mk-faq">
-            <h3>Can I cancel anytime?</h3>
-            <p>Yes. No contracts, no setup fees. Cancel from the billing page.</p>
-          </div>
+      <section id="faq" class="section">
+        <div class="section-heading reveal">
+          <p class="eyebrow">FAQ</p>
+          <h2>Professional where customers see it. Controlled where it matters.</h2>
+        </div>
+        <div class="faq-grid">
+          <article class="faq-card reveal"><h3>Will AI send without approval?</h3><p>Only when you allow it. You can review drafts, require approval for urgent leads, or keep everything manual.</p></article>
+          <article class="faq-card reveal"><h3>Does it need my email password?</h3><p>No. Gmail connects through Google's OAuth flow, so passwords are not stored in LeadRelay.</p></article>
+          <article class="faq-card reveal"><h3>What if the AI is wrong?</h3><p>It does not quote firm pricing or make business commitments. It responds quickly and gathers the details you need.</p></article>
+          <article class="faq-card reveal"><h3>Who is this for?</h3><p>Plumbing, HVAC, roofing, electrical, restoration, garage doors, and similar local service businesses.</p></article>
         </div>
       </section>
 
-      <section class="mk-section">
-        <div class="mk-cta-box">
-          <div class="mk-cta-inner">
-            <div>
-              <h2>See it run on your actual leads.</h2>
-              <p>Fifteen-minute demo. We'll show the AI handling real lead scenarios from your trade.</p>
-            </div>
-            <a href="/book-demo" class="mk-btn-hero-primary">Book a demo</a>
-          </div>
-        </div>
+      <section class="final-cta">
+        <h2>See LeadRelay run on your actual lead flow.</h2>
+        <p>Fifteen-minute walkthrough. Bring a real lead scenario and we will show how the system handles it from first message to follow-up.</p>
+        <a href="/book-demo" class="btn-primary">Book a demo</a>
       </section>
     </main>
 
-    <footer class="mk-footer">
-      <p>&copy; 2026 LeadRelay. <a href="/login">Sign in</a> &middot; <a href="/book-demo">Book a demo</a></p>
+    <footer class="site-footer">
+      <strong>LeadRelay</strong>
+      <a href="/login">Sign in</a>
+      <a href="/book-demo">Book demo</a>
+      <a href="/register">Create account</a>
     </footer>
-    <script src="/ui/shell.js?v=20260426-ui9"></script>
+    <script src="/ui/marketing-motion.js?v=20260430-clean1"></script>
   </body>
 </html>
