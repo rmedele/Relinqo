@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import CallEvent, Lead, OrgSettings, SmsNotification, SmsOptOut
+from app.models import CallEvent, Lead, OrgSettings, PhoneRoutingRule, SmsNotification, SmsOptOut
 from app.sms import send_sms_to
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,70 @@ def recent_sms_exists(
         SmsNotification.status == "sent",
         SmsNotification.created_at >= cutoff,
     ).first() is not None
+
+
+def owner_alert_number(
+    org_settings: OrgSettings | None,
+    routing_rule: PhoneRoutingRule | None,
+) -> str:
+    """Resolve the destination for phone-lead owner alerts."""
+    candidates = (
+        routing_rule.owner_phone if routing_rule else "",
+        org_settings.sms_alert_to_number if org_settings else "",
+        settings.sms_alert_to_number,
+    )
+    for candidate in candidates:
+        normalized = (candidate or "").strip()
+        if normalized:
+            return normalized
+    return ""
+
+
+def send_owner_alert_sms(
+    db: Session,
+    *,
+    org_id: int,
+    lead: Lead,
+    call: CallEvent,
+    org_settings: OrgSettings | None,
+    routing_rule: PhoneRoutingRule | None,
+    channel_label: str,
+    automation_allowed: bool,
+) -> SmsNotification | None:
+    """Send the launch-critical owner alert with explicit logging."""
+    to_number = owner_alert_number(org_settings, routing_rule)
+    if not to_number:
+        logger.error(
+            "SMS owner_alert skipped: no owner number org_id=%s lead_id=%s call_event_id=%s",
+            org_id, lead.id, call.id,
+        )
+        return None
+    if not automation_allowed:
+        logger.warning(
+            "SMS owner_alert skipped: automation gated org_id=%s lead_id=%s call_event_id=%s to=%s",
+            org_id, lead.id, call.id, to_number,
+        )
+        return None
+    notification = record_and_send_sms(
+        db,
+        org_id=org_id,
+        to_number=to_number,
+        body=format_owner_summary(lead, call, org_settings, channel_label=channel_label),
+        purpose="owner_alert",
+        lead_id=lead.id,
+        call_event_id=call.id,
+        org_settings=org_settings,
+    )
+    logger.info(
+        "SMS owner_alert %s org_id=%s lead_id=%s call_event_id=%s to=%s sid=%s",
+        notification.status,
+        org_id,
+        lead.id,
+        call.id,
+        to_number,
+        notification.twilio_message_sid,
+    )
+    return notification
 
 
 def sms_opted_out(db: Session, org_id: int, to_number: str) -> bool:
