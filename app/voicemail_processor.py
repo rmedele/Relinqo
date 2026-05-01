@@ -14,9 +14,9 @@ from app.database import SessionLocal
 from app.models import CallEvent, Lead, OrgSettings, PhoneRoutingRule, Voicemail
 from app.phone_leads import (
     business_context,
-    format_owner_summary,
     record_and_send_sms,
     recent_sms_exists,
+    send_owner_alert_sms,
     synthetic_sender_email,
 )
 
@@ -229,20 +229,17 @@ async def process_voicemail(voicemail_id: int) -> None:
             voicemail_id, lead.id, lead.category, lead.urgency_score,
         )
 
-        owner_number = (routing_rule.owner_phone if routing_rule else "") or (
-            org_settings.sms_alert_to_number if org_settings else ""
+        owner_alert = send_owner_alert_sms(
+            db,
+            org_id=call.org_id,
+            lead=lead,
+            call=call,
+            org_settings=org_settings,
+            routing_rule=routing_rule,
+            channel_label="voicemail",
+            automation_allowed=automation_allowed,
         )
-        if automation_allowed and owner_number:
-            record_and_send_sms(
-                db,
-                org_id=call.org_id,
-                to_number=owner_number,
-                body=format_owner_summary(lead, call, org_settings, channel_label="voicemail"),
-                purpose="owner_alert",
-                lead_id=lead.id,
-                call_event_id=call.id,
-                org_settings=org_settings,
-            )
+        owner_number = owner_alert.to_number if owner_alert else ""
 
         # Caller confirmation SMS — only if we did NOT already outreach them
         # via the SMS-intake flow (outreach carries the same "we got your
