@@ -591,16 +591,20 @@ function closeLightbox() {
   document.getElementById('lightboxImage').src = '';
 }
 
-function selectLead(id) {
+function scrollToLeadDetail() {
+  requestAnimationFrame(() => {
+    leadDetailEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function selectLead(id, options = {}) {
   selectedLeadId = id;
   renderLeadList();
   renderLeadDetail();
   // On mobile (stacked layout), scroll the detail panel into view so the user
   // doesn't have to scroll past the entire lead list after tapping.
-  if (window.matchMedia('(max-width: 1180px)').matches) {
-    requestAnimationFrame(() => {
-      leadDetailEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+  if (options.scrollToDetail || window.matchMedia('(max-width: 1180px)').matches) {
+    scrollToLeadDetail();
   }
 }
 
@@ -612,7 +616,7 @@ async function selectLeadById(id) {
       leads = [lead, ...leads.filter((item) => item.id !== lead.id)];
     }
   }
-  selectLead(id);
+  selectLead(id, { scrollToDetail: true });
 }
 
 // --- Data Loading ---
