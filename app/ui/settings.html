@@ -59,7 +59,10 @@
             <p class="section-kicker">API key</p>
             <p class="muted">Use this in the <code>X-API-Key</code> header for ingestion endpoints.</p>
             <code id="apiKeyDisplay" class="api-key-display">Loading...</code>
-            <button id="regenKeyBtn" class="ghost-btn">Regenerate</button>
+            <div class="api-key-actions">
+              <button id="copyKeyBtn" type="button" class="ghost-btn" disabled>Copy</button>
+              <button id="regenKeyBtn" type="button" class="ghost-btn">Regenerate</button>
+            </div>
           </div>
         </aside>
 
@@ -520,6 +523,8 @@
       const form = document.getElementById('settingsForm');
       const statusMsg = document.getElementById('statusMsg');
       const passwordFields = ['smtp_password', 'imap_password', 'twilio_auth_token'];
+      const saveBtn = form.querySelector('button[type="submit"]');
+      let revealedApiKey = '';
 
       function showMsg(text, ok) {
         statusMsg.textContent = text;
@@ -573,8 +578,12 @@
         }
       }
 
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+      function setSaving(isSaving) {
+        saveBtn.disabled = isSaving;
+        saveBtn.textContent = isSaving ? 'Saving...' : 'Save settings';
+      }
+
+      async function saveSettings() {
         const payload = {};
         for (const el of form.elements) {
           if (!el.name) continue;
@@ -589,10 +598,23 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (res.ok) showMsg('Settings saved.', true);
-        else {
+        if (!res.ok) {
           const data = await res.json();
-          showMsg(data.detail || 'Failed to save.', false);
+          throw new Error(data.detail || 'Failed to save settings.');
+        }
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        try {
+          await saveSettings();
+          await saveAvailability();
+          showMsg('Settings saved.', true);
+        } catch (err) {
+          showMsg(err.message || 'Failed to save settings.', false);
+        } finally {
+          setSaving(false);
         }
       });
 
@@ -601,10 +623,22 @@
         const res = await fetch('/auth/regenerate-api-key', { method: 'POST' });
         if (res.ok) {
           const data = await res.json();
+          revealedApiKey = data.api_key;
           document.getElementById('apiKeyDisplay').textContent = data.api_key;
+          document.getElementById('copyKeyBtn').disabled = false;
           showMsg('API key regenerated.', true);
         } else {
           showMsg('Failed to regenerate key.', false);
+        }
+      });
+
+      document.getElementById('copyKeyBtn').addEventListener('click', async () => {
+        if (!revealedApiKey) return;
+        try {
+          await navigator.clipboard.writeText(revealedApiKey);
+          showMsg('API key copied.', true);
+        } catch {
+          showMsg('Copy failed. Select the key and copy it manually.', false);
         }
       });
 
@@ -700,18 +734,24 @@
         } catch { renderAvailabilityGrid([]); }
       }
 
-      // Hook into the main form submit to also save availability
-      const origSubmitHandler = form.onsubmit;
-      form.addEventListener('submit', async () => {
-        try {
-          const slots = collectAvailability();
-          await fetch('/api/schedule/availability', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(slots),
-          });
-        } catch { /* availability save failed silently */ }
-      });
+      async function saveAvailability() {
+        const slots = collectAvailability();
+        for (const slot of slots) {
+          if (slot.start_time >= slot.end_time) {
+            const day = DAY_NAMES[slot.day_of_week];
+            throw new Error(`${day} availability must start before it ends.`);
+          }
+        }
+        const res = await fetch('/api/schedule/availability', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(slots),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.detail || 'Failed to save weekly availability.');
+        }
+      }
 
       // --- Phone provisioning ---
       const phoneNotProvisioned = document.getElementById('phoneNotProvisioned');
