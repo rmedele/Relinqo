@@ -1,8 +1,9 @@
 from fastapi.testclient import TestClient
+from datetime import timedelta
 
 from app.main import app
 from app.database import SessionLocal
-from app.models import Lead, Organization, OrgSettings, PhoneNumber, SmsOptOut, User
+from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, PhoneRoutingRule, SmsOptOut, User
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
 
@@ -424,3 +425,89 @@ def test_rescue_setup_existing_number_only_updates_routing(monkeypatch):
     assert second.json()["already_had_number"] is True
     assert second.json()["routing"]["owner_phone"] == "+14035552222"
     assert calls["provision"] == 1
+
+
+def test_rescue_forwarding_setup_returns_activation_code(monkeypatch):
+    c, _ = _auth_client()
+
+    monkeypatch.setattr(phone_routes, "_webhook_urls", lambda: (
+        "https://example.test/twilio/voice/incoming",
+        "https://example.test/twilio/voice/call-status",
+    ))
+    monkeypatch.setattr(phone_routes, "search_available_numbers", lambda **kwargs: [{
+        "phone_number": "+14035550155",
+        "friendly_name": "(403) 555-0155",
+    }])
+    monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
+        "sid": "PN_FORWARD_155",
+        "phone_number": phone,
+        "friendly_name": "LeadRelay missed-call rescue",
+    })
+
+    res = c.post("/api/phone/rescue-forwarding/setup", json={
+        "current_business_number": "403-555-0100",
+        "owner_phone": "403-555-9999",
+        "area_code": "403",
+        "carrier": "telus",
+    })
+
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["phone"]["phone_number"] == "+14035550155"
+    assert data["routing"]["current_business_number"] == "+14035550100"
+    assert data["forwarding"]["status"] == "activation_shown"
+    assert data["forwarding"]["activation"]["activation_code"] == "*61*+14035550155#"
+    assert data["forwarding"]["activation"]["tel_link"].endswith("%23")
+
+
+def test_rescue_forwarding_test_status_marks_live(monkeypatch):
+    c, info = _auth_client()
+    org_slug = info["data"]["org"]["slug"]
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == org_slug).first()
+        db.add(PhoneNumber(
+            org_id=org.id,
+            twilio_sid="PN_FORWARD_EXISTING",
+            phone_number="+14035550177",
+            is_active=True,
+        ))
+        db.add(PhoneRoutingRule(
+            org_id=org.id,
+            owner_phone="+14035559999",
+            current_business_number="+14035550100",
+            forwarding_carrier="telus",
+            forwarding_setup_status="activation_shown",
+            forwarding_code_used="*61*+14035550177#",
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    started = c.post("/api/phone/rescue-forwarding/test/start")
+    assert started.status_code == 200, started.text
+    assert started.json()["forwarding"]["status"] == "testing"
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == org_slug).first()
+        rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == org.id).first()
+        db.add(CallEvent(
+            org_id=org.id,
+            twilio_call_sid="CA_FORWARD_TEST",
+            from_number="+14035551234",
+            to_number="+14035550177",
+            status="completed",
+            answered_by_owner=False,
+            started_at=rule.forwarding_test_started_at + timedelta(seconds=1),
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    status = c.get("/api/phone/rescue-forwarding/test/status")
+    assert status.status_code == 200
+    data = status.json()["forwarding"]
+    assert data["status"] == "live"
+    assert data["test_call"]["from_number"] == "+14035551234"

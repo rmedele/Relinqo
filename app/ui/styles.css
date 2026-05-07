@@ -3514,6 +3514,37 @@ select option {
   font-weight: 700;
 }
 
+.forwarding-card {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(190,197,193,0.14);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.035);
+}
+
+.forwarding-card h3 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.forwarding-code {
+  display: block;
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid rgba(169,185,214,0.14);
+  border-radius: 8px;
+  background: rgba(6,10,18,0.46);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 @keyframes relayPathMorph {
   0% {
     d: path("M130 13 C190 20 247 68 240 132 C233 196 184 247 121 239 C59 232 16 184 18 124 C20 64 70 6 130 13 Z");

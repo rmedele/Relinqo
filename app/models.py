@@ -343,6 +343,13 @@ class PhoneRoutingRule(Base):
     send_caller_confirmation = Column(Boolean, nullable=False, default=True)
     voicemail_greeting = Column(Text, nullable=True)
     after_hours_greeting = Column(Text, nullable=True)
+    current_business_number = Column(String(32), nullable=False, default="")
+    forwarding_carrier = Column(String(50), nullable=False, default="unknown")
+    forwarding_code_used = Column(String(100), nullable=False, default="")
+    forwarding_setup_status = Column(String(30), nullable=False, default="not_started")
+    forwarding_test_started_at = Column(DateTime(timezone=True), nullable=True)
+    forwarding_test_call_event_id = Column(Integer, ForeignKey("call_events.id"), nullable=True)
+    forwarding_verified_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
