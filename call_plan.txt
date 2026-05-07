@@ -1,0 +1,353 @@
+LeadRelay missed-call rescue plan
+=================================
+
+Goal
+----
+Make this promise true:
+
+"Keep your current public business number. LeadRelay rescues missed calls automatically."
+
+Important framing
+-----------------
+LeadRelay does not need to replace the customer's phone carrier and does not need
+to port their existing number for V1.
+
+The simple version uses conditional call forwarding:
+
+- Customers keep calling the business's existing public number.
+- If the owner answers, nothing changes.
+- If the owner misses the call, the carrier forwards that unanswered call to a
+  LeadRelay/Twilio rescue number.
+- LeadRelay receives the forwarded call, texts the caller, captures their reply,
+  creates a lead, and alerts the owner.
+
+This is not fully one-click because carriers control forwarding. The product job
+is to make the setup feel like a guided 5-minute flow.
+
+
+User pathway
+------------
+1. Owner opens Settings -> Missed-call rescue.
+
+2. LeadRelay shows one simple promise:
+   "Keep your current number. Rescue missed calls in 5 minutes."
+
+3. Owner enters:
+   - Current public business number
+   - Owner cell / line to ring
+   - Carrier, if known
+   - Preferred area code for the rescue number
+
+4. Owner clicks:
+   "Turn on missed-call rescue"
+
+5. LeadRelay provisions a rescue number through Twilio, for example:
+   +1 782 212 1292
+
+6. LeadRelay shows the activation step:
+   "From the phone that owns your business number, tap this button."
+
+   Primary button:
+   "Activate missed-call rescue"
+
+   Example tel link:
+   tel:*61*+17822121292%23
+
+   Visible fallback:
+   *61*+17822121292#
+
+7. Owner taps the button from their phone. Their dialer opens with the forwarding
+   code. They press call.
+
+8. LeadRelay shows the test step:
+   "Call your business number from another phone and do not answer."
+
+9. Owner clicks:
+   "I'm testing now"
+
+10. Owner calls their current business number from a second phone and lets it ring
+    out.
+
+11. Carrier forwards the unanswered call to the LeadRelay rescue number.
+
+12. LeadRelay detects the incoming forwarded call and shows:
+    "You're live. Missed calls will now be rescued."
+
+13. LeadRelay sends the caller an SMS:
+    "Hi, sorry we missed you. What can we help with?"
+
+14. When the caller replies, LeadRelay creates a phone lead in the dashboard and
+    sends the owner alert.
+
+
+Business positioning
+--------------------
+Use this wording:
+
+"Keep your current number. We turn on missed-call rescue in 5 minutes."
+
+Avoid saying:
+
+- "Replace your phone system"
+- "Port your number"
+- "Configure Twilio"
+- "Set up webhooks"
+
+For the first customers, sell it as a concierge setup:
+
+"I'll stay on the phone with you and turn it on together."
+
+
+What exists today
+-----------------
+Already built or mostly built:
+
+- LeadRelay can provision a Twilio number from Settings.
+- LeadRelay can adopt an existing Twilio-owned number.
+- Twilio voice webhooks receive calls at /twilio/voice/incoming.
+- LeadRelay can dial the owner first.
+- If the call is missed or after-hours, LeadRelay sends SMS outreach.
+- Caller SMS replies can create phone leads.
+- Phone leads are deduped by call_event_id.
+- Dashboard can show phone leads.
+
+Current limitation:
+
+- The app does not yet guide an owner through forwarding missed calls from their
+  existing business number to the LeadRelay rescue number.
+- The app does not yet have a polished "test forwarding" state.
+- Owner-alert SMS reliability still needs to be verified/fixed before external
+  pilots.
+
+
+Build plan
+----------
+Phase 1: Product copy and UI shape
+
+1. Rename/reposition the phone settings section around:
+   "Keep your current number. Rescue missed calls."
+
+2. Hide technical terms from the main flow:
+   - Do not mention Twilio in the primary UI.
+   - Do not expose webhook URLs.
+   - Keep "advanced existing number" details behind a support-only details block.
+
+3. Add a guided setup card with five states:
+   - Not started
+   - Rescue number provisioning
+   - Activate forwarding
+   - Testing
+   - Live
+
+
+Phase 2: Data model additions
+
+Add fields to persist forwarding setup state. These can live on PhoneRoutingRule
+or a new PhoneForwardingSetup table.
+
+Suggested fields:
+
+- current_business_number
+- carrier
+- forwarding_code_used
+- forwarding_setup_status
+  values: not_started, provisioned, activation_shown, testing, live, failed
+- forwarding_test_started_at
+- forwarding_test_call_event_id
+- forwarding_verified_at
+
+Keep it simple. Do not model every carrier deeply in V1.
+
+
+Phase 3: Carrier instruction presets
+
+Start with a small carrier list:
+
+- Telus
+- Rogers
+- Bell
+- AT&T
+- Verizon
+- T-Mobile
+- Other / I don't know
+
+For V1, store instruction templates in code or a small JSON structure.
+
+Each carrier preset should include:
+
+- display_name
+- unanswered_forwarding_code_template
+- cancel_forwarding_code_template, if known
+- plain_language_steps
+- notes
+
+Example template:
+
+*61*{{rescue_number}}#
+
+Use a tel-safe encoded version for links:
+
+tel:*61*{{rescue_number_encoded}}%23
+
+Important: carrier codes vary by country, line type, and carrier. The UI should
+say "If this does not work, choose Other and we'll help you manually."
+
+
+Phase 4: Backend endpoints
+
+Add or extend endpoints under /api/phone:
+
+1. POST /api/phone/rescue-forwarding/setup
+   Input:
+   - current_business_number
+   - owner_phone
+   - area_code
+   - carrier
+
+   Behavior:
+   - Provision rescue number if none exists.
+   - Save routing owner_phone.
+   - Save forwarding setup state.
+   - Return rescue number, carrier instructions, activation tel link.
+
+2. POST /api/phone/rescue-forwarding/test/start
+   Behavior:
+   - Mark forwarding_setup_status=testing.
+   - Save forwarding_test_started_at=now.
+   - Return instructions: call current number from another phone and do not answer.
+
+3. GET /api/phone/rescue-forwarding/test/status
+   Behavior:
+   - Look for recent CallEvent rows for the org after forwarding_test_started_at.
+   - Prefer calls to the rescue number.
+   - If found, set status=live and forwarding_verified_at.
+   - Return live / waiting / failed plus troubleshooting copy.
+
+4. POST /api/phone/rescue-forwarding/reset
+   Behavior:
+   - Clear test state so support can retry.
+
+
+Phase 5: Frontend behavior
+
+In Settings:
+
+1. Show simple setup form:
+   - Current business number
+   - Carrier dropdown
+   - Owner cell
+   - Area code
+
+2. On submit:
+   - Call /api/phone/rescue-forwarding/setup.
+   - Show rescue number.
+   - Show tap-to-call activation button.
+   - Show copy code fallback.
+   - Offer "Text setup link to my phone" later if useful.
+
+3. Activation screen:
+   - Primary: Activate missed-call rescue
+   - Secondary: Copy setup code
+   - Tertiary: I need help
+
+4. Test screen:
+   - Button: I'm testing now
+   - Instruction: "Call your business number from another phone and do not answer."
+   - Poll /api/phone/rescue-forwarding/test/status every few seconds for 2 minutes.
+
+5. Success screen:
+   - "You're live."
+   - Show rescue number.
+   - Show what happens next:
+     "When you miss a call, LeadRelay texts the caller and creates a lead."
+
+6. Failure screen:
+   - "We did not see the test call yet."
+   - Show:
+     - Try the alternate setup code.
+     - Confirm you ran the code from the phone that owns the business number.
+     - Confirm call forwarding is supported by your carrier.
+     - Contact support / book setup help.
+
+
+Phase 6: Must-fix before pilot
+
+1. Fix or verify owner-alert SMS.
+   The real Twilio test created a phone lead, but the owner alert SMS was not
+   received. This must be solid before a real customer uses phone rescue.
+
+2. Confirm Twilio account is no longer in trial restrictions for customer-facing
+   testing. Trial accounts require verified recipient numbers.
+
+3. Confirm SMS compliance path:
+   - US: A2P 10DLC if using local long codes.
+   - Canada: verify current Twilio requirements and geo permissions.
+   - Toll-free verification may be an alternative.
+
+4. Test at least:
+   - In-hours missed call -> forwarded to LeadRelay -> SMS outreach -> lead.
+   - After-hours call -> forwarded to LeadRelay -> SMS outreach -> lead.
+   - Caller replies by SMS -> owner alert.
+
+
+What not to build yet
+---------------------
+Do not build these for V1:
+
+- Number porting.
+- Full carrier automation.
+- Multi-owner ring groups.
+- Complex phone admin panel.
+- Per-carrier deep diagnostics.
+- Bring-your-own SIP provider.
+- Replacing Twilio.
+- Call recording playback UI unless needed for pilot learning.
+- Billing tied to phone usage.
+
+
+Economic model
+--------------
+This should be inexpensive enough for the business model.
+
+Expected rough cost per customer:
+
+- Twilio number: roughly low single-digit dollars per month.
+- Voice minutes: cents per minute.
+- SMS: cents per message.
+- Compliance/admin: some setup friction, not huge per active customer.
+
+Likely light-usage phone rescue cost: about $3-$15/month per customer, depending
+on missed-call and SMS volume.
+
+At $199/month or $299/month pricing, the gross margin should be healthy.
+
+
+Pilot setup script
+------------------
+"You keep your current number. I'm going to give you a rescue number that only
+gets calls you miss.
+
+Open this setup link from the phone that owns your business number. It will open
+your dialer with a forwarding code. Press call.
+
+Then call your business number from another phone and don't answer. If LeadRelay
+sees the forwarded call, you're live.
+
+From then on, when you miss a call, LeadRelay texts the customer immediately and
+turns their reply into a lead."
+
+
+Definition of done
+------------------
+This feature is ready for a first pilot when:
+
+- Owner can provision a rescue number from Settings.
+- Owner can see and tap an activation forwarding code.
+- Owner can start a test.
+- LeadRelay detects the forwarded test call.
+- UI shows Live only after detection.
+- Missed caller gets SMS outreach.
+- Caller reply creates a lead.
+- Owner receives an alert.
+- Support can reset/retry setup.
+

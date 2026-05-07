@@ -14,6 +14,8 @@ Endpoints:
 """
 import logging
 import re
+from datetime import datetime, timezone
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -71,6 +73,14 @@ class RescueSetupRequest(BaseModel):
     ring_owner_first: bool = True
 
 
+class ForwardingSetupRequest(BaseModel):
+    current_business_number: str
+    owner_phone: str
+    area_code: str
+    carrier: str = "unknown"
+    ring_timeout_seconds: int = 20
+
+
 def _webhook_urls() -> tuple[str, str]:
     """Absolute URLs for Twilio to hit. Built from PUBLIC_BASE_URL."""
     base = (settings.public_base_url or "").rstrip("/")
@@ -125,6 +135,101 @@ def _upsert_routing_rule(
     return rule
 
 
+def _carrier_key(carrier: str | None) -> str:
+    key = re.sub(r"[^a-z0-9]+", "_", (carrier or "unknown").strip().lower()).strip("_")
+    aliases = {
+        "i_dont_know": "unknown",
+        "dont_know": "unknown",
+        "other_manual": "other",
+        "at_t": "att",
+        "at_t_wireless": "att",
+    }
+    return aliases.get(key, key or "unknown")
+
+
+def _format_phone_for_code(phone: str) -> str:
+    return re.sub(r"\D", "", phone or "")
+
+
+def _forwarding_code(rescue_number: str, carrier: str | None) -> dict:
+    carrier_id = _carrier_key(carrier)
+    digits = _format_phone_for_code(rescue_number)
+    code = f"*61*{rescue_number}#"
+    tel_code = f"*61*{quote(rescue_number, safe='+')}%23"
+    notes = "Run this from the phone that owns your current business number."
+    carrier_name = carrier_id.replace("_", " ").title()
+
+    if carrier_id in {"telus", "rogers", "bell"}:
+        carrier_name = {"telus": "Telus", "rogers": "Rogers", "bell": "Bell"}[carrier_id]
+        notes = "Works for many Canadian mobile lines. If it fails, try your carrier's call-forwarding settings."
+    elif carrier_id in {"verizon", "att", "t_mobile"}:
+        carrier_name = {"verizon": "Verizon", "att": "AT&T", "t_mobile": "T-Mobile"}[carrier_id]
+        notes = "Works for many US mobile lines. If it fails, try your carrier's call-forwarding settings."
+    elif carrier_id in {"other", "unknown"}:
+        carrier_name = "Other carrier"
+        notes = "This code works on many mobile carriers, but some require enabling missed-call forwarding in account settings."
+
+    return {
+        "carrier": carrier_id,
+        "carrier_name": carrier_name,
+        "activation_code": code,
+        "tel_link": f"tel:{tel_code}",
+        "plain_digits": digits,
+        "notes": notes,
+        "steps": [
+            "Open this from the phone that owns your current business number.",
+            "Tap Activate missed-call rescue, then press call in your phone app.",
+            "Come back to LeadRelay and run the test.",
+        ],
+    }
+
+
+def _forwarding_payload(
+    row: PhoneNumber | None,
+    rule: PhoneRoutingRule | None,
+    *,
+    test_call: CallEvent | None = None,
+) -> dict:
+    if not rule:
+        return {
+            "status": "not_started",
+            "current_business_number": "",
+            "carrier": "unknown",
+            "activation": None,
+            "verified_at": None,
+            "test_call_event_id": None,
+            "message": "Missed-call rescue has not been set up yet.",
+        }
+
+    activation = _forwarding_code(row.phone_number, rule.forwarding_carrier) if row else None
+    status = rule.forwarding_setup_status or "not_started"
+    message = {
+        "not_started": "Missed-call rescue has not been set up yet.",
+        "provisioned": "Your rescue number is ready. Activate forwarding from your current business phone.",
+        "activation_shown": "Activate forwarding from your current business phone, then run the test.",
+        "testing": "Call your current business number from another phone and do not answer.",
+        "live": "You're live. Missed calls will now be rescued.",
+        "failed": "We did not see a forwarded test call yet. Try the code again or choose manual help.",
+    }.get(status, "Missed-call rescue status updated.")
+
+    return {
+        "status": status,
+        "current_business_number": rule.current_business_number,
+        "carrier": rule.forwarding_carrier,
+        "activation": activation,
+        "verified_at": rule.forwarding_verified_at.isoformat() if rule.forwarding_verified_at else None,
+        "test_started_at": rule.forwarding_test_started_at.isoformat() if rule.forwarding_test_started_at else None,
+        "test_call_event_id": rule.forwarding_test_call_event_id,
+        "test_call": None if test_call is None else {
+            "id": test_call.id,
+            "from_number": test_call.from_number,
+            "to_number": test_call.to_number,
+            "started_at": test_call.started_at.isoformat() if test_call.started_at else None,
+        },
+        "message": message,
+    }
+
+
 def _phone_payload(row: PhoneNumber | None, rule: PhoneRoutingRule | None) -> dict:
     return {
         "phone": None if row is None else {
@@ -140,6 +245,10 @@ def _phone_payload(row: PhoneNumber | None, rule: PhoneRoutingRule | None) -> di
             "send_caller_confirmation": rule.send_caller_confirmation,
             "voicemail_greeting": rule.voicemail_greeting,
             "after_hours_greeting": rule.after_hours_greeting,
+            "current_business_number": rule.current_business_number,
+            "forwarding_carrier": rule.forwarding_carrier,
+            "forwarding_setup_status": rule.forwarding_setup_status,
+            "forwarding_verified_at": rule.forwarding_verified_at.isoformat() if rule.forwarding_verified_at else None,
         },
     }
 
@@ -342,6 +451,177 @@ def rescue_setup(
     }
 
 
+@router.post("/rescue-forwarding/setup")
+def rescue_forwarding_setup(
+    payload: ForwardingSetupRequest,
+    user: User = Depends(require_owner_active),
+    db: Session = Depends(get_db),
+):
+    """Set up the easy path: keep the public number, forward missed
+    calls to a LeadRelay rescue number, then test that forwarding works.
+    """
+    area_code = (payload.area_code or "").strip()
+    if not re.match(r"^\d{3}$", area_code):
+        raise HTTPException(status_code=400, detail="Enter a 3-digit area code.")
+
+    owner = _normalize_e164(payload.owner_phone)
+    if len(re.sub(r"\D", "", owner)) < 10:
+        raise HTTPException(status_code=400, detail="Enter the cell phone we should ring.")
+
+    current_business_number = _normalize_e164(payload.current_business_number)
+    if len(re.sub(r"\D", "", current_business_number)) < 10:
+        raise HTTPException(status_code=400, detail="Enter the current business number customers call today.")
+
+    row = db.query(PhoneNumber).filter(
+        PhoneNumber.org_id == user.org_id,
+        PhoneNumber.is_active == True,  # noqa: E712
+    ).first()
+
+    if row is None:
+        voice_url, status_url = _webhook_urls()
+        try:
+            numbers = search_available_numbers(area_code=area_code, country="US", limit=1)
+            if not numbers:
+                numbers = search_available_numbers(area_code=area_code, country="CA", limit=1)
+            if not numbers:
+                raise HTTPException(status_code=404, detail="No rescue numbers found in that area code. Try a nearby area code.")
+
+            chosen = numbers[0]["phone_number"]
+            result = provision_number(
+                chosen,
+                voice_url=voice_url,
+                status_callback_url=status_url,
+                friendly_name=f"LeadRelay missed-call rescue {chosen}",
+            )
+        except HTTPException:
+            raise
+        except TwilioError as e:
+            logger.warning("twilio forwarding setup failed area=%s: %s", area_code, e.message)
+            raise HTTPException(status_code=e.status, detail=e.message)
+
+        row = PhoneNumber(
+            org_id=user.org_id,
+            twilio_sid=result["sid"],
+            phone_number=result["phone_number"],
+            friendly_name=result.get("friendly_name") or f"LeadRelay missed-call rescue {chosen}",
+            is_active=True,
+        )
+        db.add(row)
+
+    rule = _upsert_routing_rule(
+        db,
+        org_id=user.org_id,
+        owner_phone=owner,
+        ring_owner_first=True,
+        ring_timeout_seconds=payload.ring_timeout_seconds,
+        send_caller_confirmation=True,
+    )
+    rule.current_business_number = current_business_number
+    rule.forwarding_carrier = _carrier_key(payload.carrier)
+    rule.forwarding_code_used = _forwarding_code(row.phone_number, rule.forwarding_carrier)["activation_code"]
+    rule.forwarding_setup_status = "activation_shown"
+    rule.forwarding_test_started_at = None
+    rule.forwarding_test_call_event_id = None
+    rule.forwarding_verified_at = None
+    db.commit()
+    db.refresh(row)
+    db.refresh(rule)
+
+    return {
+        "ok": True,
+        **_phone_payload(row, rule),
+        "rescue": _rescue_stats(db, user.org_id, row, rule),
+        "forwarding": _forwarding_payload(row, rule),
+    }
+
+
+@router.post("/rescue-forwarding/test/start")
+def rescue_forwarding_test_start(
+    user: User = Depends(require_owner_active),
+    db: Session = Depends(get_db),
+):
+    row = db.query(PhoneNumber).filter(
+        PhoneNumber.org_id == user.org_id,
+        PhoneNumber.is_active == True,  # noqa: E712
+    ).first()
+    rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == user.org_id).first()
+    if not row or not rule or not rule.current_business_number:
+        raise HTTPException(status_code=400, detail="Set up missed-call rescue before starting a test.")
+
+    rule.forwarding_setup_status = "testing"
+    rule.forwarding_test_started_at = datetime.now(timezone.utc)
+    rule.forwarding_test_call_event_id = None
+    rule.forwarding_verified_at = None
+    db.commit()
+    db.refresh(rule)
+
+    return {
+        "ok": True,
+        "forwarding": _forwarding_payload(row, rule),
+    }
+
+
+@router.get("/rescue-forwarding/test/status")
+def rescue_forwarding_test_status(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = db.query(PhoneNumber).filter(
+        PhoneNumber.org_id == user.org_id,
+        PhoneNumber.is_active == True,  # noqa: E712
+    ).first()
+    rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == user.org_id).first()
+    if not row or not rule:
+        return {"ok": True, "forwarding": _forwarding_payload(row, rule)}
+
+    test_call = None
+    if rule.forwarding_test_started_at:
+        test_call = (
+            db.query(CallEvent)
+            .filter(
+                CallEvent.org_id == user.org_id,
+                CallEvent.to_number == row.phone_number,
+                CallEvent.started_at >= rule.forwarding_test_started_at,
+            )
+            .order_by(CallEvent.started_at.desc(), CallEvent.id.desc())
+            .first()
+        )
+
+    if test_call:
+        rule.forwarding_setup_status = "live"
+        rule.forwarding_test_call_event_id = test_call.id
+        rule.forwarding_verified_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(rule)
+
+    return {
+        "ok": True,
+        "forwarding": _forwarding_payload(row, rule, test_call=test_call),
+    }
+
+
+@router.post("/rescue-forwarding/reset")
+def rescue_forwarding_reset(
+    user: User = Depends(require_owner_active),
+    db: Session = Depends(get_db),
+):
+    row = db.query(PhoneNumber).filter(
+        PhoneNumber.org_id == user.org_id,
+        PhoneNumber.is_active == True,  # noqa: E712
+    ).first()
+    rule = db.query(PhoneRoutingRule).filter(PhoneRoutingRule.org_id == user.org_id).first()
+    if not rule:
+        return {"ok": True, "forwarding": _forwarding_payload(row, rule)}
+
+    rule.forwarding_setup_status = "activation_shown" if row and rule.current_business_number else "not_started"
+    rule.forwarding_test_started_at = None
+    rule.forwarding_test_call_event_id = None
+    rule.forwarding_verified_at = None
+    db.commit()
+    db.refresh(rule)
+    return {"ok": True, "forwarding": _forwarding_payload(row, rule)}
+
+
 @router.post("/adopt")
 def adopt(
     payload: AdoptRequest,
@@ -453,6 +733,7 @@ def my_number(
     return {
         **_phone_payload(row, rule),
         "rescue": _rescue_stats(db, user.org_id, row, rule),
+        "forwarding": _forwarding_payload(row, rule),
     }
 
 

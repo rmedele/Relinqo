@@ -144,30 +144,47 @@
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Phone lead capture</p>
-                <h2>Your business phone line</h2>
+                <h2>Keep your number. Rescue missed calls.</h2>
               </div>
               <span class="section-chip">Missed-call rescue</span>
             </div>
             <div class="editorial-form section-fields">
               <div id="phoneNotProvisioned">
                 <p class="subhead" style="margin-bottom:1rem;">
-                  Turn this on and LeadRelay creates a business line for you. It rings your cell first. If you miss the call, the customer gets a text right away and their reply becomes a lead.
+                  Customers keep calling your current business number. If you miss the call, your carrier forwards it to LeadRelay, we text the caller, and their reply becomes a lead.
                 </p>
                 <div class="phone-rescue-steps">
-                  <div><strong>1</strong><span>Enter your area code</span></div>
-                  <div><strong>2</strong><span>Enter the cell we should ring</span></div>
-                  <div><strong>3</strong><span>Click once. You're live.</span></div>
+                  <div><strong>1</strong><span>Tell us the number customers call today</span></div>
+                  <div><strong>2</strong><span>Tap the forwarding code from that phone</span></div>
+                  <div><strong>3</strong><span>Run one missed-call test</span></div>
                 </div>
+                <label class="form-field">
+                  <span class="field-label">Current business number</span>
+                  <input id="currentBusinessNumber" class="filter-input" placeholder="+1 403 555 0100" />
+                </label>
                 <div class="field-group field-group-double">
                   <label class="form-field">
-                    <span class="field-label">Business area code</span>
-                    <input id="phoneAreaCode" class="filter-input" placeholder="e.g. 403" maxlength="3" />
+                    <span class="field-label">Carrier</span>
+                    <select id="forwardingCarrier" class="filter-input">
+                      <option value="unknown">I don't know</option>
+                      <option value="telus">Telus</option>
+                      <option value="rogers">Rogers</option>
+                      <option value="bell">Bell</option>
+                      <option value="verizon">Verizon</option>
+                      <option value="att">AT&amp;T</option>
+                      <option value="t_mobile">T-Mobile</option>
+                      <option value="other">Other</option>
+                    </select>
                   </label>
                   <label class="form-field">
-                    <span class="field-label">Your cell phone</span>
-                    <input id="phoneOwnerCell" class="filter-input" placeholder="+1 403 555 0123" />
+                    <span class="field-label">Rescue number area code</span>
+                    <input id="phoneAreaCode" class="filter-input" placeholder="e.g. 403" maxlength="3" />
                   </label>
                 </div>
+                <label class="form-field">
+                  <span class="field-label">Owner cell to ring first</span>
+                  <input id="phoneOwnerCell" class="filter-input" placeholder="+1 403 555 0123" />
+                </label>
                 <button type="button" id="phoneSearchBtn" class="primary-btn primary-btn-strong" style="margin-top:0.75rem;">
                   Turn on missed-call rescue
                 </button>
@@ -195,16 +212,27 @@
               <div id="phoneProvisionedPanel" class="hidden">
                 <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
                   <div>
-                    <span style="color:var(--clr-success, #34d399); font-weight:600;">Live</span>
+                    <span id="forwardingStatusLabel" style="color:var(--clr-success, #34d399); font-weight:600;">Rescue number ready</span>
                     <span id="phoneDisplay" style="margin-left:0.5rem; font-weight:600; font-size:1.1em;"></span>
                   </div>
                   <button type="button" id="phoneReleaseBtn" class="ghost-btn" style="color:var(--clr-error, #f87171);">Release number</button>
                 </div>
                 <p class="muted" style="margin-top:0.5rem;">
-                  Put this number on your website and Google Business Profile.
-                  Customers call it. You answer your cell like normal. If you
-                  miss it, LeadRelay texts them and captures the job.
+                  Keep your public number where it is. Use the activation code below so missed calls forward here automatically.
                 </p>
+                <div id="forwardingActivationCard" class="forwarding-card hidden">
+                  <p class="section-kicker">Activation</p>
+                  <h3>Run this from the phone that owns your business number</h3>
+                  <a id="forwardingTelLink" class="primary-btn primary-btn-strong" href="#">Activate missed-call rescue</a>
+                  <code id="forwardingCodeDisplay" class="forwarding-code">Waiting for setup...</code>
+                  <p id="forwardingNotes" class="muted"></p>
+                  <div class="settings-submit-row" style="justify-content:flex-start;">
+                    <button type="button" id="copyForwardingCodeBtn" class="ghost-btn">Copy code</button>
+                    <button type="button" id="startForwardingTestBtn" class="ghost-btn">I'm testing now</button>
+                    <button type="button" id="resetForwardingTestBtn" class="ghost-btn">Reset test</button>
+                  </div>
+                  <p id="forwardingTestStatus" class="muted" style="margin-top:0.75rem;"></p>
+                </div>
                 <div class="phone-rescue-stats">
                   <div><span>Missed calls rescued</span><strong id="phoneStatRescued">0</strong></div>
                   <div><span>Texts sent</span><strong id="phoneStatTexts">0</strong></div>
@@ -759,6 +787,8 @@
       const phoneDisplay = document.getElementById('phoneDisplay');
       const phoneStatusMsg = document.getElementById('phoneStatusMsg');
       const phoneSearchResults = document.getElementById('phoneSearchResults');
+      let forwardingPollTimer = null;
+      let latestForwardingCode = '';
 
       function showPhoneMsg(text, ok) {
         phoneStatusMsg.textContent = text;
@@ -766,9 +796,47 @@
         phoneStatusMsg.classList.remove('hidden');
       }
 
-      function updatePhoneUI(phone, routing, rescue) {
+      function renderForwardingUI(forwarding, phone) {
+        const card = document.getElementById('forwardingActivationCard');
+        const statusLabel = document.getElementById('forwardingStatusLabel');
+        const codeEl = document.getElementById('forwardingCodeDisplay');
+        const telLink = document.getElementById('forwardingTelLink');
+        const notesEl = document.getElementById('forwardingNotes');
+        const testStatus = document.getElementById('forwardingTestStatus');
+        if (!phone || !forwarding || !forwarding.activation) {
+          card.classList.add('hidden');
+          statusLabel.textContent = phone ? 'Rescue number ready' : 'Not set up';
+          return;
+        }
+
+        card.classList.remove('hidden');
+        latestForwardingCode = forwarding.activation.activation_code || '';
+        codeEl.textContent = latestForwardingCode;
+        telLink.href = forwarding.activation.tel_link || '#';
+        notesEl.textContent = forwarding.activation.notes || '';
+        testStatus.textContent = forwarding.message || '';
+
+        if (forwarding.current_business_number) {
+          document.getElementById('currentBusinessNumber').value = forwarding.current_business_number;
+        }
+        if (forwarding.carrier) {
+          document.getElementById('forwardingCarrier').value = forwarding.carrier;
+        }
+
+        const labels = {
+          not_started: 'Not set up',
+          provisioned: 'Rescue number ready',
+          activation_shown: 'Activation ready',
+          testing: 'Testing forwarding',
+          live: 'Live',
+          failed: 'Needs retry',
+        };
+        statusLabel.textContent = labels[forwarding.status] || 'Rescue number ready';
+      }
+
+      function updatePhoneUI(phone, routing, rescue, forwarding) {
         if (phone) {
-          phoneNotProvisioned.classList.add('hidden');
+          phoneNotProvisioned.classList.remove('hidden');
           phoneProvisionedPanel.classList.remove('hidden');
           phoneDisplay.textContent = phone.phone_number;
         } else {
@@ -777,6 +845,7 @@
         }
         if (routing) {
           document.getElementById('routeOwnerPhone').value = routing.owner_phone || '';
+          document.getElementById('phoneOwnerCell').value = routing.owner_phone || document.getElementById('phoneOwnerCell').value;
           document.getElementById('routeRingTimeout').value = String(routing.ring_timeout_seconds || 20);
           document.getElementById('routeRingFirst').checked = !!routing.ring_owner_first;
           document.getElementById('routeSendConfirmation').checked = !!routing.send_caller_confirmation;
@@ -786,6 +855,7 @@
           document.getElementById('phoneStatTexts').textContent = rescue.outreach_sent ?? 0;
           document.getElementById('phoneStatLeads').textContent = rescue.phone_leads ?? 0;
         }
+        renderForwardingUI(forwarding, phone);
       }
 
       async function loadPhone() {
@@ -793,31 +863,38 @@
           const res = await fetch('/api/phone/my-number');
           if (!res.ok) return;
           const data = await res.json();
-          updatePhoneUI(data.phone, data.routing, data.rescue);
+          updatePhoneUI(data.phone, data.routing, data.rescue, data.forwarding);
         } catch { /* best effort */ }
       }
 
       document.getElementById('phoneSearchBtn').addEventListener('click', async () => {
         const areaCode = document.getElementById('phoneAreaCode').value.trim();
         const ownerPhone = document.getElementById('phoneOwnerCell').value.trim();
+        const currentBusinessNumber = document.getElementById('currentBusinessNumber').value.trim();
+        const carrier = document.getElementById('forwardingCarrier').value;
         if (!/^\d{3}$/.test(areaCode)) {
           showPhoneMsg('Enter a 3-digit area code, like 403.', false);
+          return;
+        }
+        if (!currentBusinessNumber) {
+          showPhoneMsg('Enter the current business number customers call today.', false);
           return;
         }
         if (!ownerPhone) {
           showPhoneMsg('Enter the cell phone LeadRelay should ring.', false);
           return;
         }
-        phoneSearchResults.innerHTML = '<p class="muted">Setting up your missed-call rescue line...</p>';
+        phoneSearchResults.innerHTML = '<p class="muted">Setting up your rescue number and activation code...</p>';
         try {
-          const res = await fetch('/api/phone/rescue-setup', {
+          const res = await fetch('/api/phone/rescue-forwarding/setup', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
               area_code: areaCode,
               owner_phone: ownerPhone,
+              current_business_number: currentBusinessNumber,
+              carrier,
               ring_timeout_seconds: 20,
-              ring_owner_first: true,
             }),
           });
           const data = await res.json();
@@ -827,11 +904,60 @@
             return;
           }
           phoneSearchResults.innerHTML = '';
-          showPhoneMsg(data.message || `You're live on ${data.phone.phone_number}.`, true);
-          updatePhoneUI(data.phone, data.routing, data.rescue);
+          showPhoneMsg('Rescue number ready. Tap the activation code from the phone that owns your business number.', true);
+          updatePhoneUI(data.phone, data.routing, data.rescue, data.forwarding);
         } catch (e) {
           phoneSearchResults.innerHTML = '';
           showPhoneMsg('Setup error: ' + e.message, false);
+        }
+      });
+
+      async function pollForwardingStatus() {
+        try {
+          const res = await fetch('/api/phone/rescue-forwarding/test/status');
+          if (!res.ok) return;
+          const data = await res.json();
+          renderForwardingUI(data.forwarding, { phone_number: phoneDisplay.textContent });
+          if (data.forwarding?.status === 'live') {
+            clearInterval(forwardingPollTimer);
+            forwardingPollTimer = null;
+            showPhoneMsg('Forwarding test passed. Missed-call rescue is live.', true);
+          }
+        } catch { /* keep polling best-effort */ }
+      }
+
+      document.getElementById('copyForwardingCodeBtn').addEventListener('click', async () => {
+        if (!latestForwardingCode) return;
+        try {
+          await navigator.clipboard.writeText(latestForwardingCode);
+          showPhoneMsg('Forwarding code copied.', true);
+        } catch {
+          showPhoneMsg('Copy failed. Select the code and copy it manually.', false);
+        }
+      });
+
+      document.getElementById('startForwardingTestBtn').addEventListener('click', async () => {
+        const res = await fetch('/api/phone/rescue-forwarding/test/start', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+          showPhoneMsg(data.detail || 'Could not start test.', false);
+          return;
+        }
+        renderForwardingUI(data.forwarding, { phone_number: phoneDisplay.textContent });
+        showPhoneMsg('Testing started. Call your business number from another phone and do not answer.', true);
+        if (forwardingPollTimer) clearInterval(forwardingPollTimer);
+        forwardingPollTimer = setInterval(pollForwardingStatus, 4000);
+        pollForwardingStatus();
+      });
+
+      document.getElementById('resetForwardingTestBtn').addEventListener('click', async () => {
+        const res = await fetch('/api/phone/rescue-forwarding/reset', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          renderForwardingUI(data.forwarding, { phone_number: phoneDisplay.textContent });
+          showPhoneMsg('Forwarding test reset.', true);
+        } else {
+          showPhoneMsg(data.detail || 'Reset failed.', false);
         }
       });
 
