@@ -34,8 +34,8 @@
             <p class="eyebrow">LeadRelay</p>
             <span class="hero-badge">Owner settings</span>
           </div>
-          <h1 class="gradient-text">Make the workspace feel dialed in, not duct-taped together.</h1>
-          <p class="subhead">Configuration as product, not admin sludge. Business profile, channels, and behavior are grouped into clearer, premium sections with better hierarchy.</p>
+          <h1 class="gradient-text">Set up the workspace once, then let LeadRelay work.</h1>
+          <p class="subhead">Connect Gmail, missed-call rescue, owner alerts, scheduling, and review requests from one place.</p>
         </div>
         <div class="settings-hero-actions">
           <a href="/review" class="ghost-link compact-link">Back to Queue</a>
@@ -52,7 +52,8 @@
           <ol class="settings-steps">
             <li><span>1</span><div><strong>Business profile</strong><p>How the AI should talk and what the business actually does.</p></div></li>
             <li><span>2</span><div><strong>Email channels</strong><p>Connect outbound replies and inbound lead polling.</p></div></li>
-            <li><span>3</span><div><strong>Alerts & behavior</strong><p>Decide what sends automatically and what needs review.</p></div></li>
+            <li><span>3</span><div><strong>Phone rescue</strong><p>Forward missed calls, text callers back, and verify owner alerts.</p></div></li>
+            <li><span>4</span><div><strong>Alerts & behavior</strong><p>Decide what sends automatically and what needs review.</p></div></li>
           </ol>
 
           <div class="api-key-panel">
@@ -144,14 +145,14 @@
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Phone lead capture</p>
-                <h2>Keep your number. Rescue missed calls.</h2>
+                <h2>Phone rescue and owner alerts</h2>
               </div>
               <span class="section-chip">Missed-call rescue</span>
             </div>
             <div class="editorial-form section-fields">
               <div id="phoneNotProvisioned">
                 <p class="subhead" style="margin-bottom:1rem;">
-                  Customers keep calling your current business number. If you miss the call, your carrier forwards it to LeadRelay, we text the caller, and their reply becomes a lead.
+                  Keep your current business number. When a call is missed, LeadRelay texts the caller, turns their reply into a lead, and alerts the owner.
                 </p>
                 <div class="phone-rescue-steps">
                   <div><strong>1</strong><span>Tell us the number customers call today</span></div>
@@ -186,7 +187,7 @@
                   <input id="phoneOwnerCell" class="filter-input" placeholder="+1 403 555 0123" />
                 </label>
                 <button type="button" id="phoneSearchBtn" class="primary-btn primary-btn-strong" style="margin-top:0.75rem;">
-                  Turn on missed-call rescue
+                  Set up missed-call rescue
                 </button>
                 <div id="phoneSearchResults" style="margin-top:1rem;"></div>
 
@@ -218,7 +219,7 @@
                   <button type="button" id="phoneReleaseBtn" class="ghost-btn" style="color:var(--clr-error, #f87171);">Release number</button>
                 </div>
                 <p class="muted" style="margin-top:0.5rem;">
-                  Keep your public number where it is. Use the activation code below so missed calls forward here automatically.
+                  Missed-call rescue is configured for this workspace. Check the health panel after every real test call.
                 </p>
                 <div id="forwardingActivationCard" class="forwarding-card hidden">
                   <p class="section-kicker">Activation</p>
@@ -237,6 +238,34 @@
                   <div><span>Missed calls rescued</span><strong id="phoneStatRescued">0</strong></div>
                   <div><span>Texts sent</span><strong id="phoneStatTexts">0</strong></div>
                   <div><span>Phone leads created</span><strong id="phoneStatLeads">0</strong></div>
+                </div>
+
+                <div class="phone-health-panel">
+                  <div class="phone-health-header">
+                    <div>
+                      <p class="section-kicker">Phone health</p>
+                      <h3>Last signal from Twilio</h3>
+                    </div>
+                    <span id="phoneHealthOverall" class="status-chip">Waiting for test</span>
+                  </div>
+                  <div class="phone-health-grid">
+                    <div class="phone-health-item">
+                      <span>Last call</span>
+                      <strong id="phoneDiagCall">No calls yet</strong>
+                    </div>
+                    <div class="phone-health-item">
+                      <span>Caller text</span>
+                      <strong id="phoneDiagOutreach">No outreach yet</strong>
+                    </div>
+                    <div class="phone-health-item">
+                      <span>Owner alert</span>
+                      <strong id="phoneDiagOwnerAlert">No owner alert yet</strong>
+                    </div>
+                    <div class="phone-health-item">
+                      <span>Confirmation</span>
+                      <strong id="phoneDiagConfirmation">No confirmation yet</strong>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="field-group field-group-double" style="margin-top:1rem;">
@@ -796,6 +825,54 @@
         phoneStatusMsg.classList.remove('hidden');
       }
 
+      function formatPhoneTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      }
+
+      function smsStatusLabel(item) {
+        if (!item) return 'No activity yet';
+        const when = formatPhoneTime(item.created_at);
+        const suffix = when ? ` - ${when}` : '';
+        if (item.status === 'failed') {
+          return `Failed${item.error_message ? `: ${item.error_message}` : ''}${suffix}`;
+        }
+        if (item.status === 'delivered') return `Delivered${suffix}`;
+        if (item.status === 'sent') return `Accepted by Twilio${suffix}`;
+        return `${item.status || 'Unknown'}${suffix}`;
+      }
+
+      function setHealthChip(status, label) {
+        const chip = document.getElementById('phoneHealthOverall');
+        chip.textContent = label;
+        chip.className = `status-chip ${status}`;
+      }
+
+      function renderPhoneDiagnostics(rescue) {
+        if (!rescue) return;
+        const call = rescue.last_call;
+        document.getElementById('phoneDiagCall').textContent = call
+          ? `${call.from_number || 'Unknown caller'} -> ${call.status || 'received'}${call.dial_status ? ` (${call.dial_status})` : ''}${formatPhoneTime(call.created_at) ? ` - ${formatPhoneTime(call.created_at)}` : ''}`
+          : 'No calls yet';
+        document.getElementById('phoneDiagOutreach').textContent = smsStatusLabel(rescue.last_outreach);
+        document.getElementById('phoneDiagOwnerAlert').textContent = smsStatusLabel(rescue.last_owner_alert);
+        document.getElementById('phoneDiagConfirmation').textContent = smsStatusLabel(rescue.last_caller_confirmation);
+
+        if (rescue.last_owner_alert?.status === 'failed') {
+          setHealthChip('error', 'Owner alert failed');
+        } else if (rescue.last_owner_alert?.status === 'delivered') {
+          setHealthChip('success', 'Owner alert delivered');
+        } else if (rescue.last_owner_alert?.status === 'sent') {
+          setHealthChip('success', 'Owner alert accepted');
+        } else if (rescue.is_live) {
+          setHealthChip('warning', 'Needs test call');
+        } else {
+          setHealthChip('', 'Waiting for setup');
+        }
+      }
+
       function renderForwardingUI(forwarding, phone) {
         const card = document.getElementById('forwardingActivationCard');
         const statusLabel = document.getElementById('forwardingStatusLabel');
@@ -836,7 +913,7 @@
 
       function updatePhoneUI(phone, routing, rescue, forwarding) {
         if (phone) {
-          phoneNotProvisioned.classList.remove('hidden');
+          phoneNotProvisioned.classList.add('hidden');
           phoneProvisionedPanel.classList.remove('hidden');
           phoneDisplay.textContent = phone.phone_number;
         } else {
@@ -854,6 +931,7 @@
           document.getElementById('phoneStatRescued').textContent = rescue.rescued_calls ?? 0;
           document.getElementById('phoneStatTexts').textContent = rescue.outreach_sent ?? 0;
           document.getElementById('phoneStatLeads').textContent = rescue.phone_leads ?? 0;
+          renderPhoneDiagnostics(rescue);
         }
         renderForwardingUI(forwarding, phone);
       }
@@ -867,7 +945,8 @@
         } catch { /* best effort */ }
       }
 
-      document.getElementById('phoneSearchBtn').addEventListener('click', async () => {
+      const phoneSearchBtn = document.getElementById('phoneSearchBtn');
+      phoneSearchBtn.addEventListener('click', async () => {
         const areaCode = document.getElementById('phoneAreaCode').value.trim();
         const ownerPhone = document.getElementById('phoneOwnerCell').value.trim();
         const currentBusinessNumber = document.getElementById('currentBusinessNumber').value.trim();
@@ -885,6 +964,8 @@
           return;
         }
         phoneSearchResults.innerHTML = '<p class="muted">Setting up your rescue number and activation code...</p>';
+        phoneSearchBtn.disabled = true;
+        phoneSearchBtn.textContent = 'Setting up...';
         try {
           const res = await fetch('/api/phone/rescue-forwarding/setup', {
             method: 'POST',
@@ -909,6 +990,9 @@
         } catch (e) {
           phoneSearchResults.innerHTML = '';
           showPhoneMsg('Setup error: ' + e.message, false);
+        } finally {
+          phoneSearchBtn.disabled = false;
+          phoneSearchBtn.textContent = 'Set up missed-call rescue';
         }
       });
 

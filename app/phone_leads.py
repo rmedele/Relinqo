@@ -17,6 +17,7 @@ from app.sms import send_sms_to
 logger = logging.getLogger(__name__)
 
 URGENCY_ICON = {1: "", 2: "", 3: "!", 4: "!!", 5: "!!!"}
+SUCCESSFUL_SMS_STATUSES = {"sent", "delivered"}
 
 
 def synthetic_sender_email(from_number: str) -> str:
@@ -81,8 +82,23 @@ def recent_sms_exists(
         SmsNotification.org_id == org_id,
         SmsNotification.to_number == to_number,
         SmsNotification.purpose == purpose,
-        SmsNotification.status == "sent",
+        SmsNotification.status.in_(SUCCESSFUL_SMS_STATUSES),
         SmsNotification.created_at >= cutoff,
+    ).first() is not None
+
+
+def successful_lead_sms_exists(
+    db: Session,
+    *,
+    org_id: int,
+    lead_id: int,
+    purpose: str,
+) -> bool:
+    return db.query(SmsNotification).filter(
+        SmsNotification.org_id == org_id,
+        SmsNotification.lead_id == lead_id,
+        SmsNotification.purpose == purpose,
+        SmsNotification.status.in_(SUCCESSFUL_SMS_STATUSES),
     ).first() is not None
 
 
@@ -137,6 +153,7 @@ def send_owner_alert_sms(
         lead_id=lead.id,
         call_event_id=call.id,
         org_settings=org_settings,
+        from_number=call.to_number,
     )
     logger.info(
         "SMS owner_alert %s org_id=%s lead_id=%s call_event_id=%s to=%s sid=%s",
@@ -169,6 +186,7 @@ def record_and_send_sms(
     lead_id: int | None,
     call_event_id: int | None,
     org_settings: OrgSettings | None,
+    from_number: str | None = None,
 ) -> SmsNotification:
     """Persist intent, send via Twilio, update status. Always flushes an
     sms_notifications row even if the send fails — gives us an audit trail."""
@@ -191,7 +209,23 @@ def record_and_send_sms(
         db.commit()
         return notification
 
-    ok, msg, twilio_sid = send_sms_to(body, to_number, org_settings)
+    ok, msg, twilio_sid = send_sms_to(
+        body,
+        to_number,
+        org_settings,
+        from_number=from_number,
+    )
+    fallback_from = (settings.twilio_from_number or "").strip()
+    if not ok and from_number and fallback_from and fallback_from != from_number.strip():
+        logger.warning(
+            "SMS %s to %s failed from %s; retrying from platform default %s",
+            purpose, to_number, from_number, fallback_from,
+        )
+        fallback_ok, fallback_msg, fallback_sid = send_sms_to(body, to_number, org_settings)
+        ok = fallback_ok
+        twilio_sid = fallback_sid
+        msg = f"{msg}; fallback: {fallback_msg}"
+
     notification.twilio_message_sid = twilio_sid
     notification.status = "sent" if ok else "failed"
     if not ok:

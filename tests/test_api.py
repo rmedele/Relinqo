@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from app.main import app
 from app.database import SessionLocal
-from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, PhoneRoutingRule, SmsOptOut, User
+from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, PhoneRoutingRule, SmsNotification, SmsOptOut, User
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
 
@@ -511,3 +511,42 @@ def test_rescue_forwarding_test_status_marks_live(monkeypatch):
     data = status.json()["forwarding"]
     assert data["status"] == "live"
     assert data["test_call"]["from_number"] == "+14035551234"
+
+
+def test_sms_status_callback_updates_owner_alert_and_phone_diagnostics():
+    c, info = _auth_client()
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        db.add(PhoneNumber(org_id=org.id, twilio_sid="PN_DIAG", phone_number="+14035550112", is_active=True))
+        db.add(PhoneRoutingRule(org_id=org.id, owner_phone="+14035559999"))
+        notification = SmsNotification(
+            org_id=org.id,
+            direction="outbound",
+            to_number="+14035559999",
+            body="Owner alert",
+            twilio_message_sid="SM_DIAG_OWNER",
+            status="sent",
+            purpose="owner_alert",
+        )
+        db.add(notification)
+        db.commit()
+    finally:
+        db.close()
+
+    status = client.post(
+        "/sms/status",
+        data={
+            "MessageSid": "SM_DIAG_OWNER",
+            "MessageStatus": "undelivered",
+            "ErrorCode": "30007",
+            "ErrorMessage": "Carrier filtered message",
+        },
+    )
+    assert status.status_code == 200
+
+    phone = c.get("/api/phone/my-number")
+    assert phone.status_code == 200
+    owner_alert = phone.json()["rescue"]["last_owner_alert"]
+    assert owner_alert["status"] == "failed"
+    assert "30007" in owner_alert["error_message"]

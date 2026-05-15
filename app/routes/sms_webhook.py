@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.mailer import send_email
-from app.models import Lead, OrgSettings, PhoneNumber, SmsOptOut
+from app.models import Lead, OrgSettings, PhoneNumber, SmsNotification, SmsOptOut
 from app.sms_intake import find_recent_call_for_sender, process_sms_lead
 from app.twilio_signature import verify_twilio_signature
 
@@ -32,6 +32,9 @@ REJECT_RE = re.compile(r"^\s*(no)\s*(\d+)\s*$", re.IGNORECASE)
 STOP_WORDS = {"stop", "stopall", "unsubscribe", "cancel", "end", "quit"}
 START_WORDS = {"start", "unstop"}
 HELP_WORDS = {"help", "info"}
+TWILIO_FAILURE_STATUSES = {"failed", "undelivered"}
+TWILIO_SUCCESS_STATUSES = {"delivered"}
+TWILIO_ACCEPTED_STATUSES = {"accepted", "queued", "scheduled", "sending", "sent"}
 
 
 def _twiml_response(message: str | None = None) -> Response:
@@ -87,6 +90,52 @@ def _record_opt_out(db: Session, org_id: int, from_number: str, opted_out: bool)
         from datetime import datetime, timezone
         row.opted_in_at = datetime.now(timezone.utc)
         db.commit()
+
+
+@router.post("/sms/status", dependencies=[Depends(verify_twilio_signature)])
+async def sms_status_callback(
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """Twilio delivery receipts for outbound SMS.
+
+    The REST API only tells us Twilio accepted the message. This callback
+    closes the loop when the carrier later delivers or rejects it.
+    """
+    form = await request.form()
+    sid = str(form.get("MessageSid") or form.get("SmsSid") or "")
+    raw_status = str(form.get("MessageStatus") or form.get("SmsStatus") or "").lower()
+    error_code = str(form.get("ErrorCode") or "")
+    error_message = str(form.get("ErrorMessage") or "")
+
+    if not sid:
+        logger.warning("SMS status callback missing MessageSid")
+        return Response(content="", media_type="text/plain")
+
+    row = db.query(SmsNotification).filter(SmsNotification.twilio_message_sid == sid).first()
+    if not row:
+        logger.warning("SMS status callback for unknown sid=%s status=%s", sid, raw_status)
+        return Response(content="", media_type="text/plain")
+
+    if raw_status in TWILIO_FAILURE_STATUSES:
+        row.status = "failed"
+        row.error_message = "Twilio delivery failed"
+        if error_code or error_message:
+            row.error_message = f"{error_code} {error_message}".strip()
+    elif raw_status in TWILIO_SUCCESS_STATUSES:
+        row.status = "delivered"
+        row.error_message = None
+    elif raw_status in TWILIO_ACCEPTED_STATUSES:
+        row.status = "sent"
+    elif raw_status:
+        row.status = raw_status[:20]
+    db.commit()
+
+    logger.info(
+        "SMS status updated sid=%s status=%s purpose=%s to=%s",
+        sid, row.status, row.purpose, row.to_number,
+    )
+    return Response(content="", media_type="text/plain")
 
 
 @router.post("/sms/webhook", dependencies=[Depends(verify_twilio_signature)])

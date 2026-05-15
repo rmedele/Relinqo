@@ -17,6 +17,7 @@ from app.phone_leads import (
     record_and_send_sms,
     recent_sms_exists,
     send_owner_alert_sms,
+    successful_lead_sms_exists,
     synthetic_sender_email,
 )
 
@@ -192,6 +193,25 @@ async def process_voicemail(voicemail_id: int) -> None:
                 "vm_id=%s: appended transcript to existing lead_id=%s (SMS got there first)",
                 voicemail_id, existing_lead.id,
             )
+            if (
+                bool(extraction.get("owner_alert_needed", existing_lead.owner_alert_needed))
+                and not successful_lead_sms_exists(
+                    db,
+                    org_id=call.org_id,
+                    lead_id=existing_lead.id,
+                    purpose="owner_alert",
+                )
+            ):
+                send_owner_alert_sms(
+                    db,
+                    org_id=call.org_id,
+                    lead=existing_lead,
+                    call=call,
+                    org_settings=org_settings,
+                    routing_rule=routing_rule,
+                    channel_label="voicemail",
+                    automation_allowed=automation_allowed,
+                )
             return
 
         callback = extraction.get("callback_number") or call.from_number
@@ -261,6 +281,7 @@ async def process_voicemail(voicemail_id: int) -> None:
                     lead_id=lead.id,
                     call_event_id=call.id,
                     org_settings=org_settings,
+                    from_number=call.to_number,
                 )
     except Exception:
         logger.exception("process_voicemail failed vm_id=%s", voicemail_id)

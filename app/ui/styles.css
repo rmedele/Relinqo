@@ -3470,9 +3470,9 @@ select option {
 .phone-rescue-steps div,
 .phone-rescue-stats div {
   padding: 12px;
-  border: 1px solid rgba(190,197,193,0.14);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .phone-rescue-steps strong {
@@ -3481,9 +3481,9 @@ select option {
   width: 24px;
   height: 24px;
   margin-right: 8px;
-  color: #071010;
-  background: var(--accent-cyan);
-  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
 }
 
@@ -3503,9 +3503,9 @@ select option {
 .advanced-phone-setup {
   margin-top: 18px;
   padding: 12px;
-  border: 1px solid rgba(190,197,193,0.12);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .advanced-phone-setup summary {
@@ -3519,9 +3519,9 @@ select option {
   gap: 10px;
   margin: 16px 0;
   padding: 14px;
-  border: 1px solid rgba(190,197,193,0.14);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .forwarding-card h3 {
@@ -3534,15 +3534,67 @@ select option {
   display: block;
   width: 100%;
   padding: 10px 11px;
-  border: 1px solid rgba(169,185,214,0.14);
-  border-radius: 8px;
-  background: rgba(6,10,18,0.46);
-  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-mono);
   font-size: 0.95rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.phone-health-panel {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+}
+
+.phone-health-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.phone-health-header h3 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.phone-health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.phone-health-item {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.phone-health-item span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.phone-health-item strong {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 @keyframes relayPathMorph {

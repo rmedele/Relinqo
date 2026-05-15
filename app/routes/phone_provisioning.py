@@ -253,6 +253,45 @@ def _phone_payload(row: PhoneNumber | None, rule: PhoneRoutingRule | None) -> di
     }
 
 
+def _sms_payload(row: SmsNotification | None) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "id": row.id,
+        "to_number": row.to_number,
+        "purpose": row.purpose,
+        "status": row.status,
+        "twilio_message_sid": row.twilio_message_sid,
+        "error_message": row.error_message,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+def _call_payload(row: CallEvent | None) -> dict | None:
+    if row is None:
+        return None
+    return {
+        "id": row.id,
+        "from_number": row.from_number,
+        "to_number": row.to_number,
+        "status": row.status,
+        "dial_status": row.dial_status,
+        "answered_by_owner": row.answered_by_owner,
+        "is_after_hours": row.is_after_hours,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+    }
+
+
+def _latest_sms(db: Session, org_id: int, purpose: str) -> SmsNotification | None:
+    return db.query(SmsNotification).filter(
+        SmsNotification.org_id == org_id,
+        SmsNotification.purpose == purpose,
+    ).order_by(
+        SmsNotification.created_at.desc(),
+        SmsNotification.id.desc(),
+    ).first()
+
+
 def _rescue_stats(db: Session, org_id: int, row: PhoneNumber | None, rule: PhoneRoutingRule | None) -> dict:
     rescued_calls = db.query(CallEvent).filter(
         CallEvent.org_id == org_id,
@@ -265,13 +304,23 @@ def _rescue_stats(db: Session, org_id: int, row: PhoneNumber | None, rule: Phone
     outreach_sent = db.query(SmsNotification).filter(
         SmsNotification.org_id == org_id,
         SmsNotification.purpose == "outreach",
-        SmsNotification.status == "sent",
+        SmsNotification.status.in_(("sent", "delivered")),
     ).count()
+    last_call = db.query(CallEvent).filter(
+        CallEvent.org_id == org_id,
+    ).order_by(
+        CallEvent.created_at.desc(),
+        CallEvent.id.desc(),
+    ).first()
     return {
         "is_live": bool(row and rule and rule.owner_phone),
         "rescued_calls": rescued_calls,
         "phone_leads": phone_leads,
         "outreach_sent": outreach_sent,
+        "last_call": _call_payload(last_call),
+        "last_outreach": _sms_payload(_latest_sms(db, org_id, "outreach")),
+        "last_owner_alert": _sms_payload(_latest_sms(db, org_id, "owner_alert")),
+        "last_caller_confirmation": _sms_payload(_latest_sms(db, org_id, "caller_confirmation")),
     }
 
 
