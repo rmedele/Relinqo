@@ -12,6 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 def sms_configured(org_settings: OrgSettings | None = None) -> bool:
+    if (
+        settings.twilio_account_sid
+        and settings.twilio_auth_token
+        and settings.twilio_from_number
+        and settings.sms_alert_to_number
+    ):
+        return True
     if org_settings:
         return bool(
             org_settings.twilio_account_sid
@@ -19,26 +26,35 @@ def sms_configured(org_settings: OrgSettings | None = None) -> bool:
             and org_settings.twilio_from_number
             and org_settings.sms_alert_to_number
         )
-    return bool(
-        settings.twilio_account_sid
-        and settings.twilio_auth_token
-        and settings.twilio_from_number
-        and settings.sms_alert_to_number
-    )
+    return False
 
 
-def _twilio_credentials(org_settings: OrgSettings | None) -> tuple[str, str, str] | None:
+def _twilio_credentials(
+    org_settings: OrgSettings | None,
+    *,
+    from_number: str | None = None,
+) -> tuple[str, str, str] | None:
     """Return (account_sid, auth_token, from_number) or None if unconfigured.
     Unlike sms_configured(), this does NOT require a configured to_number
-    (callers can pass their own destination)."""
-    if org_settings and org_settings.twilio_account_sid and org_settings.twilio_auth_token and org_settings.twilio_from_number:
+    (callers can pass their own destination). Platform credentials are
+    authoritative; per-org Twilio credentials are only a BYO fallback."""
+    requested_from = (from_number or "").strip()
+    platform_from = requested_from or (settings.twilio_from_number or "").strip()
+    if settings.twilio_account_sid and settings.twilio_auth_token and platform_from:
         return (
-            org_settings.twilio_account_sid,
-            org_settings.twilio_auth_token,
-            org_settings.twilio_from_number,
+            settings.twilio_account_sid.strip(),
+            settings.twilio_auth_token.strip(),
+            platform_from,
         )
-    if settings.twilio_account_sid and settings.twilio_auth_token and settings.twilio_from_number:
-        return (settings.twilio_account_sid, settings.twilio_auth_token, settings.twilio_from_number)
+    if org_settings and org_settings.twilio_account_sid and org_settings.twilio_auth_token:
+        org_from = requested_from or (org_settings.twilio_from_number or "").strip()
+        if not org_from:
+            return None
+        return (
+            org_settings.twilio_account_sid.strip(),
+            org_settings.twilio_auth_token.strip(),
+            org_from,
+        )
     return None
 
 
@@ -56,12 +72,14 @@ def send_sms_to(
     body: str,
     to_number: str,
     org_settings: OrgSettings | None = None,
+    *,
+    from_number: str | None = None,
 ) -> tuple[bool, str, str | None]:
     """Send an SMS to an arbitrary destination. Returns (ok, message, twilio_message_sid).
     The caller is responsible for recording the send in sms_notifications."""
     if org_settings and org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
         return False, "Workspace is not active", None
-    creds = _twilio_credentials(org_settings)
+    creds = _twilio_credentials(org_settings, from_number=from_number)
     if creds is None:
         return False, "Twilio SMS not configured", None
     if not to_number:
@@ -69,11 +87,14 @@ def send_sms_to(
 
     sid, token, from_number = creds
     url = f"https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
-    data = urlencode({
+    payload = {
         "To": to_number,
         "From": from_number,
         "Body": body[:1600],
-    }).encode()
+    }
+    if settings.public_base_url:
+        payload["StatusCallback"] = f"{settings.public_base_url.rstrip('/')}/sms/status"
+    data = urlencode(payload).encode()
 
     credentials = base64.b64encode(f"{sid}:{token}".encode()).decode()
 

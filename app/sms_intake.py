@@ -27,6 +27,7 @@ from app.phone_leads import (
     record_and_send_sms,
     recent_sms_exists,
     send_owner_alert_sms,
+    successful_lead_sms_exists,
     synthetic_sender_email,
 )
 
@@ -202,6 +203,7 @@ def send_outreach_sms(call_event_id: int) -> None:
             lead_id=None,
             call_event_id=call.id,
             org_settings=org_settings,
+            from_number=call.to_number,
         )
     except Exception:
         logger.exception("send_outreach_sms failed call_event_id=%s", call_event_id)
@@ -279,6 +281,25 @@ def process_sms_lead(
                 "sms_lead: appended to existing lead_id=%s (voicemail got there first)",
                 existing_lead.id,
             )
+            if (
+                bool(extraction.get("owner_alert_needed", existing_lead.owner_alert_needed))
+                and not successful_lead_sms_exists(
+                    db,
+                    org_id=call.org_id,
+                    lead_id=existing_lead.id,
+                    purpose="owner_alert",
+                )
+            ):
+                send_owner_alert_sms(
+                    db,
+                    org_id=call.org_id,
+                    lead=existing_lead,
+                    call=call,
+                    org_settings=org_settings,
+                    routing_rule=routing_rule,
+                    channel_label="SMS",
+                    automation_allowed=automation_allowed,
+                )
             return existing_lead.id
 
         callback = extraction.get("callback_number") or call.from_number
