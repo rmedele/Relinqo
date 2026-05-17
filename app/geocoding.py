@@ -30,7 +30,7 @@ def geocode_location(location: str | None, *, countrycodes: str = "ca") -> tuple
         f"{NOMINATIM_URL}?{params}",
         headers={
             "Accept": "application/json",
-            "User-Agent": f"reqlinqo/1.0 ({settings.public_base_url})",
+            "User-Agent": f"Relinqo/1.0 ({settings.public_base_url})",
         },
     )
     try:

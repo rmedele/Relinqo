@@ -1,7 +1,7 @@
 """Thin Twilio REST client for number search + provisioning.
 
 Used by `/api/phone/*` endpoints so the app can buy a number on an
-org's behalf and wire webhooks without anyone leaving the reqlinqo UI.
+org's behalf and wire webhooks without anyone leaving the Relinqo UI.
 Uses stdlib HTTP to avoid adding the `twilio` SDK as a dependency.
 
 Auth token selection:
@@ -151,7 +151,7 @@ def provision_number(
         # YES/NO approval + caller SMS replies.
         "SmsUrl": voice_url.replace("/twilio/voice/incoming", "/sms/webhook"),
         "SmsMethod": "POST",
-        "FriendlyName": friendly_name or f"reqlinqo {phone_number}",
+        "FriendlyName": friendly_name or f"Relinqo {phone_number}",
     }
     return _request(
         "POST", "/IncomingPhoneNumbers.json",

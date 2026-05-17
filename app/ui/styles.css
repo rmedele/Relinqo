@@ -1,4 +1,4 @@
-/* reqlinqo UI — light, plain, professional. No gradients, no glass, no glow. */
+/* Relinqo UI — light, plain, professional. No gradients, no glass, no glow. */
 
 :root {
   --bg: #ffffff;
@@ -706,7 +706,7 @@ textarea { font-family: var(--font-sans); resize: vertical; min-height: 80px; }
 .scroll-x { overflow-x: auto; scrollbar-width: thin; }
 
 /* --------------------------------------------------------------------------
-   reqlinqo Executive UI Overhaul
+   Relinqo Executive UI Overhaul
    A premium operations cockpit: high-contrast surfaces, animated ambient light,
    crisp density, and richer micro-interactions across the shared app shell.
 ---------------------------------------------------------------------------- */

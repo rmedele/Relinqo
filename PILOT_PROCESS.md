@@ -1,7 +1,7 @@
-# reqlinqo Pilot Process
+# Relinqo Pilot Process
 
 ## Offer
-reqlinqo is a managed pilot for home service / trade businesses that want:
+Relinqo is a managed pilot for home service / trade businesses that want:
 - faster lead response
 - fewer missed jobs
 - urgent-job visibility
@@ -24,7 +24,7 @@ Good fit:
 1. Prospect lands on site
 2. Prospect books a demo
 3. Demo request creates:
-   - a lead in reqlinqo
+   - a lead in Relinqo
    - a provisioned workspace
    - a client login
 4. Admin reviews the request

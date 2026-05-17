@@ -1,4 +1,4 @@
-# reqlinqo
+# Relinqo
 
 ## File tree
 ```text
@@ -32,7 +32,7 @@ lead-recovery-v1/
 ```
 
 ## What this app does
-reqlinqo is a production-minded MVP for local service businesses that need help responding to inquiry emails fast without handing over their main mailbox. It ingests forwarded lead emails or webhook submissions, classifies the lead, stores it in SQLite, drafts a safe first reply, alerts the owner for hot leads, schedules follow-ups, and generates a daily digest.
+Relinqo is a production-minded MVP for local service businesses that need help responding to inquiry emails fast without handing over their main mailbox. It ingests forwarded lead emails or webhook submissions, classifies the lead, stores it in SQLite, drafts a safe first reply, alerts the owner for hot leads, schedules follow-ups, and generates a daily digest.
 
 ## How the pieces work together
 - `app/main.py` boots the FastAPI app and creates tables.
@@ -67,7 +67,7 @@ Owner alerts and daily digests are still allowed to send through SMTP.
 The owner can review and then call:
 - `POST /leads/{id}/review/send`
 
-If `HUMAN_REVIEW=false`, reqlinqo can automatically send first-response emails for non-spam leads when confidence is at or above `AUTO_SEND_CONFIDENCE_THRESHOLD`.
+If `HUMAN_REVIEW=false`, Relinqo can automatically send first-response emails for non-spam leads when confidence is at or above `AUTO_SEND_CONFIDENCE_THRESHOLD`.
 
 ## Local run guide
 1. Create a venv:
