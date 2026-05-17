@@ -172,7 +172,7 @@ async def sms_webhook(
                 _record_opt_out(db, org_id, From, opted_out=False)
                 return _twiml_response("You have been resubscribed.")
         if command in HELP_WORDS:
-            return _twiml_response("LeadRelay helps this business respond to service requests. Reply STOP to opt out.")
+            return _twiml_response("reqlinqo helps this business respond to service requests. Reply STOP to opt out.")
         return _twiml_response(None)
 
     # --- 1. Recent-caller reply flow ---

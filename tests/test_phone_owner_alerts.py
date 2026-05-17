@@ -119,7 +119,7 @@ def test_sms_update_retries_missing_owner_alert_for_existing_phone_lead(monkeypa
             org_id=org.id,
             source="phone",
             call_event_id=call.id,
-            sender_email="caller-17802633390@phone.leadrelay.local",
+            sender_email="caller-17802633390@phone.reqlinqo.local",
             subject="Voicemail from +17802633390",
             body="Original voicemail",
             phone="+17802633390",

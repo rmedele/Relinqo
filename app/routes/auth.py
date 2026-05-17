@@ -203,15 +203,15 @@ def invite_member(
     invite_url = f"{settings.public_base_url}/register?invite={token}"
     biz = org_settings.business_name or user.org.name
     email_body = (
-        f"You've been invited to join {biz} on LeadRelay!\n\n"
+        f"You've been invited to join {biz} on reqlinqo!\n\n"
         f"Click the link below to create your account:\n"
         f"{invite_url}\n\n"
         f"This invite expires in {INVITE_EXPIRY_HOURS} hours.\n\n"
-        f"— {biz} via LeadRelay"
+        f"— {biz} via reqlinqo"
     )
     sent, msg = send_email(
         to_email=payload.email,
-        subject=f"You're invited to join {biz} on LeadRelay",
+        subject=f"You're invited to join {biz} on reqlinqo",
         body=email_body,
         org_settings=org_settings,
     )
@@ -302,14 +302,14 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     reset_url = f"{settings.public_base_url}/reset-password?token={token}"
     send_email(
         to_email=user.email,
-        subject="LeadRelay — Password Reset",
+        subject="reqlinqo — Password Reset",
         body=(
-            f"You requested a password reset for your LeadRelay account.\n\n"
+            f"You requested a password reset for your reqlinqo account.\n\n"
             f"Click the link below to set a new password:\n"
             f"{reset_url}\n\n"
             f"This link expires in {RESET_EXPIRY_HOURS} hour(s).\n"
             f"If you didn't request this, you can ignore this email.\n\n"
-            f"— LeadRelay"
+            f"— reqlinqo"
         ),
     )
 

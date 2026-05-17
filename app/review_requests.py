@@ -24,6 +24,8 @@ from app.models import Lead, OrgSettings, ReviewRequest
 
 logger = logging.getLogger(__name__)
 
+PHONE_ONLY_EMAIL_DOMAINS = ("@phone.reqlinqo.local", "@phone.leadrelay.local")
+
 
 DEFAULT_REVIEW_BODY = (
     "Hi {{name}},\n\n"
@@ -154,7 +156,9 @@ def run_due_review_requests(
         wants_sms = req.channel in ("sms", "both")
 
         if wants_email:
-            if not lead.sender_email or "@phone.leadrelay.local" in lead.sender_email:
+            if not lead.sender_email or any(
+                domain in lead.sender_email for domain in PHONE_ONLY_EMAIL_DOMAINS
+            ):
                 # phone-only lead, skip email
                 pass
             elif email_configured(org_settings):
