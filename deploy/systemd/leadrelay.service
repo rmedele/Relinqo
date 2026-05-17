@@ -1,5 +1,5 @@
 [Unit]
-Description=reqlinqo FastAPI service
+Description=Relinqo FastAPI service
 After=network.target
 
 [Service]

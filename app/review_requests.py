@@ -24,7 +24,7 @@ from app.models import Lead, OrgSettings, ReviewRequest
 
 logger = logging.getLogger(__name__)
 
-PHONE_ONLY_EMAIL_DOMAINS = ("@phone.reqlinqo.local", "@phone.leadrelay.local")
+PHONE_ONLY_EMAIL_DOMAINS = ("@phone.relinqo.local", "@phone.leadrelay.local")
 
 
 DEFAULT_REVIEW_BODY = (

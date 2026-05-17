@@ -57,7 +57,7 @@ def push_booking_event(
     if not calendar_sync_active(org_settings):
         return None
 
-    business = org_settings.business_name or "reqlinqo"
+    business = org_settings.business_name or "Relinqo"
     summary = f"{booking.customer_name} — {business}"
     description_lines = [
         f"Customer: {booking.customer_name}",

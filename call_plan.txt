@@ -1,15 +1,15 @@
-reqlinqo missed-call rescue plan
+Relinqo missed-call rescue plan
 =================================
 
 Goal
 ----
 Make this promise true:
 
-"Keep your current public business number. reqlinqo rescues missed calls automatically."
+"Keep your current public business number. Relinqo rescues missed calls automatically."
 
 Important framing
 -----------------
-reqlinqo does not need to replace the customer's phone carrier and does not need
+Relinqo does not need to replace the customer's phone carrier and does not need
 to port their existing number for V1.
 
 The simple version uses conditional call forwarding:
@@ -17,8 +17,8 @@ The simple version uses conditional call forwarding:
 - Customers keep calling the business's existing public number.
 - If the owner answers, nothing changes.
 - If the owner misses the call, the carrier forwards that unanswered call to a
-  reqlinqo/Twilio rescue number.
-- reqlinqo receives the forwarded call, texts the caller, captures their reply,
+  Relinqo/Twilio rescue number.
+- Relinqo receives the forwarded call, texts the caller, captures their reply,
   creates a lead, and alerts the owner.
 
 This is not fully one-click because carriers control forwarding. The product job
@@ -29,7 +29,7 @@ User pathway
 ------------
 1. Owner opens Settings -> Missed-call rescue.
 
-2. reqlinqo shows one simple promise:
+2. Relinqo shows one simple promise:
    "Keep your current number. Rescue missed calls in 5 minutes."
 
 3. Owner enters:
@@ -41,10 +41,10 @@ User pathway
 4. Owner clicks:
    "Turn on missed-call rescue"
 
-5. reqlinqo provisions a rescue number through Twilio, for example:
+5. Relinqo provisions a rescue number through Twilio, for example:
    +1 782 212 1292
 
-6. reqlinqo shows the activation step:
+6. Relinqo shows the activation step:
    "From the phone that owns your business number, tap this button."
 
    Primary button:
@@ -59,7 +59,7 @@ User pathway
 7. Owner taps the button from their phone. Their dialer opens with the forwarding
    code. They press call.
 
-8. reqlinqo shows the test step:
+8. Relinqo shows the test step:
    "Call your business number from another phone and do not answer."
 
 9. Owner clicks:
@@ -68,15 +68,15 @@ User pathway
 10. Owner calls their current business number from a second phone and lets it ring
     out.
 
-11. Carrier forwards the unanswered call to the reqlinqo rescue number.
+11. Carrier forwards the unanswered call to the Relinqo rescue number.
 
-12. reqlinqo detects the incoming forwarded call and shows:
+12. Relinqo detects the incoming forwarded call and shows:
     "You're live. Missed calls will now be rescued."
 
-13. reqlinqo sends the caller an SMS:
+13. Relinqo sends the caller an SMS:
     "Hi, sorry we missed you. What can we help with?"
 
-14. When the caller replies, reqlinqo creates a phone lead in the dashboard and
+14. When the caller replies, Relinqo creates a phone lead in the dashboard and
     sends the owner alert.
 
 
@@ -102,11 +102,11 @@ What exists today
 -----------------
 Already built or mostly built:
 
-- reqlinqo can provision a Twilio number from Settings.
-- reqlinqo can adopt an existing Twilio-owned number.
+- Relinqo can provision a Twilio number from Settings.
+- Relinqo can adopt an existing Twilio-owned number.
 - Twilio voice webhooks receive calls at /twilio/voice/incoming.
-- reqlinqo can dial the owner first.
-- If the call is missed or after-hours, reqlinqo sends SMS outreach.
+- Relinqo can dial the owner first.
+- If the call is missed or after-hours, Relinqo sends SMS outreach.
 - Caller SMS replies can create phone leads.
 - Phone leads are deduped by call_event_id.
 - Dashboard can show phone leads.
@@ -114,7 +114,7 @@ Already built or mostly built:
 Current limitation:
 
 - The app does not yet guide an owner through forwarding missed calls from their
-  existing business number to the reqlinqo rescue number.
+  existing business number to the Relinqo rescue number.
 - The app does not yet have a polished "test forwarding" state.
 - Owner-alert SMS reliability still needs to be verified/fixed before external
   pilots.
@@ -259,7 +259,7 @@ In Settings:
    - "You're live."
    - Show rescue number.
    - Show what happens next:
-     "When you miss a call, reqlinqo texts the caller and creates a lead."
+     "When you miss a call, Relinqo texts the caller and creates a lead."
 
 6. Failure screen:
    - "We did not see the test call yet."
@@ -285,8 +285,8 @@ Phase 6: Must-fix before pilot
    - Toll-free verification may be an alternative.
 
 4. Test at least:
-   - In-hours missed call -> forwarded to reqlinqo -> SMS outreach -> lead.
-   - After-hours call -> forwarded to reqlinqo -> SMS outreach -> lead.
+   - In-hours missed call -> forwarded to Relinqo -> SMS outreach -> lead.
+   - After-hours call -> forwarded to Relinqo -> SMS outreach -> lead.
    - Caller replies by SMS -> owner alert.
 
 
@@ -330,10 +330,10 @@ gets calls you miss.
 Open this setup link from the phone that owns your business number. It will open
 your dialer with a forwarding code. Press call.
 
-Then call your business number from another phone and don't answer. If reqlinqo
+Then call your business number from another phone and don't answer. If Relinqo
 sees the forwarded call, you're live.
 
-From then on, when you miss a call, reqlinqo texts the customer immediately and
+From then on, when you miss a call, Relinqo texts the customer immediately and
 turns their reply into a lead."
 
 
@@ -344,7 +344,7 @@ This feature is ready for a first pilot when:
 - Owner can provision a rescue number from Settings.
 - Owner can see and tap an activation forwarding code.
 - Owner can start a test.
-- reqlinqo detects the forwarded test call.
+- Relinqo detects the forwarded test call.
 - UI shows Live only after detection.
 - Missed caller gets SMS outreach.
 - Caller reply creates a lead.

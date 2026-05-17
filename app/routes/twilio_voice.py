@@ -1,4 +1,4 @@
-"""Twilio Programmable Voice webhooks for reqlinqo phone lead capture.
+"""Twilio Programmable Voice webhooks for Relinqo phone lead capture.
 
 V1 scope: missed-call rescue, voicemail-to-lead, after-hours intake.
 The primary path for missed calls is SMS outreach — Twilio says "we'll

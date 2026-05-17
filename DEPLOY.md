@@ -1,4 +1,4 @@
-# reqlinqo Deployment
+# Relinqo Deployment
 
 ## Railway (recommended for MVP)
 
@@ -8,13 +8,13 @@
 git init
 git add -A
 git commit -m "Initial commit"
-gh repo create reqlinqo --private --push
+gh repo create Relinqo --private --push
 ```
 
 ### 2. Connect Railway
 
 1. Go to [railway.app](https://railway.app), sign in with GitHub
-2. New Project → Deploy from GitHub Repo → select reqlinqo
+2. New Project → Deploy from GitHub Repo → select Relinqo
 3. Railway auto-detects the Dockerfile
 
 ### 3. Add a persistent volume

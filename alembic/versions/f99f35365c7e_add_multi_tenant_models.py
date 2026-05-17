@@ -151,7 +151,7 @@ def upgrade() -> None:
     # Seed owner user (only if not already present)
     user_exists = conn.execute(sa.text('SELECT 1 FROM users WHERE role = :role AND org_id = 1'), {"role": "owner"}).fetchone()
     if not user_exists:
-        owner_email = os.environ.get('OWNER_ALERT_EMAIL', '') or 'admin@reqlinqo.local'
+        owner_email = os.environ.get('OWNER_ALERT_EMAIL', '') or 'admin@relinqo.local'
         owner_password = os.environ.get('REVIEW_PASSWORD', 'change-me')
         password_hash = bcrypt.hash(owner_password)
         conn.execute(sa.text(

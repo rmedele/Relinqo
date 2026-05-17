@@ -382,7 +382,7 @@ def test_rescue_setup_buys_number_and_saves_routing(monkeypatch):
     monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
         "sid": "PN_TEST_123",
         "phone_number": phone,
-        "friendly_name": "reqlinqo rescue line",
+        "friendly_name": "Relinqo rescue line",
     })
 
     res = c.post("/api/phone/rescue-setup", json={
@@ -415,7 +415,7 @@ def test_rescue_setup_existing_number_only_updates_routing(monkeypatch):
     }])
     def fake_provision(phone, **kwargs):
         calls["provision"] += 1
-        return {"sid": "PN_TEST_124", "phone_number": phone, "friendly_name": "reqlinqo rescue line"}
+        return {"sid": "PN_TEST_124", "phone_number": phone, "friendly_name": "Relinqo rescue line"}
     monkeypatch.setattr(phone_routes, "provision_number", fake_provision)
 
     first = c.post("/api/phone/rescue-setup", json={"area_code": "403", "owner_phone": "4035551111"})
@@ -441,7 +441,7 @@ def test_rescue_forwarding_setup_returns_activation_code(monkeypatch):
     monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
         "sid": "PN_FORWARD_155",
         "phone_number": phone,
-        "friendly_name": "reqlinqo missed-call rescue",
+        "friendly_name": "Relinqo missed-call rescue",
     })
 
     res = c.post("/api/phone/rescue-forwarding/setup", json={

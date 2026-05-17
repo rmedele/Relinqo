@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Global application settings
-    app_name: str = "reqlinqo"
+    app_name: str = "Relinqo"
     app_env: str = "development"
     app_host: str = "0.0.0.0"
     app_port: int = 8080
