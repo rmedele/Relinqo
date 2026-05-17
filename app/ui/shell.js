@@ -1,4 +1,4 @@
-/* LeadRelay shared shell — toast notifications, command palette, keyboard shortcuts.
+/* reqlinqo shared shell — toast notifications, command palette, keyboard shortcuts.
    Loaded on every authenticated page. Exposes window.LR for easy use from page-specific JS. */
 (function () {
   'use strict';
@@ -214,7 +214,7 @@
     const overlay = document.createElement('div');
     overlay.className = 'augen-search-overlay';
     overlay.innerHTML = `
-      <div class="augen-search-panel" role="dialog" aria-label="Search LeadRelay">
+      <div class="augen-search-panel" role="dialog" aria-label="Search reqlinqo">
         <div class="augen-search-top">
           <span>Search</span>
           <button type="button" aria-label="Close search">&times;</button>

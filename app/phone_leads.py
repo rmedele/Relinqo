@@ -24,7 +24,7 @@ def synthetic_sender_email(from_number: str) -> str:
     """Lead.sender_email is NOT NULL but phone leads have none. Use a
     routing-only address that clearly shows the origin channel."""
     digits = re.sub(r"\D", "", from_number) or "unknown"
-    return f"caller-{digits}@phone.leadrelay.local"
+    return f"caller-{digits}@phone.reqlinqo.local"
 
 
 def business_context(org_settings: OrgSettings | None) -> str:

@@ -33,7 +33,7 @@ def send_owner_alert(db: Session, lead: Lead, org_settings: OrgSettings | None =
 
     # Send SMS for urgent leads
     if lead.urgency_score >= 4 and sms_configured(org_settings):
-        sms_body = f"[LeadRelay] Urgent lead from {lead.sender_name or lead.sender_email}: {lead.summary or lead.subject or 'No details'}"
+        sms_body = f"[reqlinqo] Urgent lead from {lead.sender_name or lead.sender_email}: {lead.summary or lead.subject or 'No details'}"
         sms_sent, sms_msg = send_sms(sms_body, org_settings=org_settings)
         if sms_sent:
             logger.info("SMS alert sent for lead_id=%s", lead.id)
@@ -52,7 +52,7 @@ def send_sms_approval_request(db: Session, lead: Lead, org_settings: OrgSettings
     sender = lead.sender_name or lead.sender_email
     summary = (lead.summary or lead.subject or "No details")[:100]
     sms_body = (
-        f"[LeadRelay] New lead #{lead.id} from {sender}: \"{summary}\"\n"
+        f"[reqlinqo] New lead #{lead.id} from {sender}: \"{summary}\"\n"
         f"Reply YES {lead.id} to approve sending reply, or NO {lead.id} to skip."
     )
     sent, msg = send_sms(sms_body, org_settings=org_settings)
@@ -64,7 +64,7 @@ def send_sms_approval_request(db: Session, lead: Lead, org_settings: OrgSettings
 
 
 def build_alert_email(lead: Lead) -> dict[str, str]:
-    subject = f"[{lead.category.upper()}] LeadRelay alert: {lead.sender_email}"
+    subject = f"[{lead.category.upper()}] reqlinqo alert: {lead.sender_email}"
     body = (
         f"Category: {lead.category}\n"
         f"Urgency: {lead.urgency_score}\n"

@@ -1,5 +1,5 @@
 [Unit]
-Description=LeadRelay FastAPI service
+Description=reqlinqo FastAPI service
 After=network.target
 
 [Service]
