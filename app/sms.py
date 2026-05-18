@@ -5,6 +5,7 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from app.billing import org_has_billing_access
 from app.config import settings
 from app.models import OrgSettings
 
@@ -77,7 +78,7 @@ def send_sms_to(
 ) -> tuple[bool, str, str | None]:
     """Send an SMS to an arbitrary destination. Returns (ok, message, twilio_message_sid).
     The caller is responsible for recording the send in sms_notifications."""
-    if org_settings and org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+    if org_settings and org_settings.org and not org_has_billing_access(org_settings.org):
         return False, "Workspace is not active", None
     creds = _twilio_credentials(org_settings, from_number=from_number)
     if creds is None:

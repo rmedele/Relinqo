@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.billing import org_has_billing_access
 from app.models import FollowUp, Lead, OrgSettings
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,7 @@ def run_followups(db: Session, org_id: int | None = None, org_settings: OrgSetti
     if org_settings and org_settings.automation_paused:
         logger.info("Follow-up run skipped for org_id=%s because automation is paused", org_settings.org_id)
         return {"processed": 0, "sent": 0, "failed": 0, "skipped": 0}
-    if org_settings and org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+    if org_settings and org_settings.org and not org_has_billing_access(org_settings.org):
         logger.info("Follow-up run skipped for inactive org_id=%s", org_settings.org_id)
         return {"processed": 0, "sent": 0, "failed": 0, "skipped": 0}
 

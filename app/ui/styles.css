@@ -1,4 +1,4 @@
-/* Relinqo UI — light, plain, professional. No gradients, no glass, no glow. */
+/* reqlinqo UI — light, plain, professional. No gradients, no glass, no glow. */
 
 :root {
   --bg: #ffffff;
@@ -520,6 +520,9 @@ textarea { font-family: var(--font-sans); resize: vertical; min-height: 80px; }
 .settings-sidebar a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
 .settings-form-grid { display: flex; flex-direction: column; gap: 18px; }
 .settings-card { padding: 20px; }
+.billing-summary-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr); gap: 16px; align-items: start; }
+.billing-summary-row strong { display: block; margin-top: 4px; font-size: 1.05rem; color: var(--text); }
+@media (max-width: 720px) { .billing-summary-row { grid-template-columns: 1fr; } }
 .section-heading-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .editorial-form, .section-fields { display: flex; flex-direction: column; gap: 14px; }
 .form-field { display: flex; flex-direction: column; gap: 5px; }
@@ -706,7 +709,7 @@ textarea { font-family: var(--font-sans); resize: vertical; min-height: 80px; }
 .scroll-x { overflow-x: auto; scrollbar-width: thin; }
 
 /* --------------------------------------------------------------------------
-   Relinqo Executive UI Overhaul
+   reqlinqo Executive UI Overhaul
    A premium operations cockpit: high-contrast surfaces, animated ambient light,
    crisp density, and richer micro-interactions across the shared app shell.
 ---------------------------------------------------------------------------- */

@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Global application settings
-    app_name: str = "Relinqo"
+    app_name: str = "reqlinqo"
     app_env: str = "development"
     app_host: str = "0.0.0.0"
     app_port: int = 8080
@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     twilio_auth_token: str = ""
     twilio_from_number: str = ""
     sms_alert_to_number: str = ""
+
+    # Stripe Billing
+    stripe_publishable_key: str = ""
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id: str = ""
+    stripe_price_amount_cents: int = 9999
+    stripe_price_currency: str = "usd"
+    stripe_product_name: str = "reqlinqo Full Service"
+    billing_admin_token: str = ""
+    billing_enforced: bool = True
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

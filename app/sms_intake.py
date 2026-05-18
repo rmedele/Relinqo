@@ -20,6 +20,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.billing import org_has_billing_access
 from app.database import SessionLocal
 from app.models import CallEvent, Lead, OrgSettings, PhoneRoutingRule
 from app.phone_leads import (
@@ -175,7 +176,7 @@ def send_outreach_sms(call_event_id: int) -> None:
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == call.org_id).first()
         if org_settings and (
             org_settings.automation_paused
-            or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+            or (org_settings.org and not org_has_billing_access(org_settings.org))
         ):
             logger.info("send_outreach_sms skipped for org_id=%s", call.org_id)
             return
@@ -248,7 +249,7 @@ def process_sms_lead(
             org_settings
             and (
                 org_settings.automation_paused
-                or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+                or (org_settings.org and not org_has_billing_access(org_settings.org))
             )
         )
         routing_rule = db.query(PhoneRoutingRule).filter(

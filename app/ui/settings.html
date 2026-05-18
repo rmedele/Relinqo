@@ -3,8 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/ui/favicon.svg" type="image/svg+xml" />
-    <title>Relinqo — Settings</title>
+    <title>reqlinqo — Settings</title>
     <link rel="stylesheet" href="/ui/styles.css" />
     <style>
       .availability-grid { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -32,10 +31,10 @@
       <header class="settings-hero">
         <div class="settings-hero-copy">
           <div class="hero-badge-row">
-            <p class="eyebrow">Relinqo</p>
+            <p class="eyebrow">reqlinqo</p>
             <span class="hero-badge">Owner settings</span>
           </div>
-          <h1 class="gradient-text">Set up the workspace once, then let Relinqo work.</h1>
+          <h1 class="gradient-text">Set up the workspace once, then let reqlinqo work.</h1>
           <p class="subhead">Connect Gmail, missed-call rescue, owner alerts, scheduling, and review requests from one place.</p>
         </div>
         <div class="settings-hero-actions">
@@ -69,6 +68,34 @@
         </aside>
 
         <form id="settingsForm" class="settings-form-grid">
+          <section id="billingCard" class="settings-card card editorial-card">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Billing</p>
+                <h2>Full service subscription</h2>
+              </div>
+              <span id="billingStatusChip" class="section-chip">Loading</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <div class="billing-summary-row">
+                <div>
+                  <span class="field-label">Plan</span>
+                  <strong id="billingPlanName">Full service</strong>
+                  <p id="billingPlanMeta" class="muted">Loading billing status...</p>
+                </div>
+                <div>
+                  <span class="field-label">Price</span>
+                  <strong id="billingPrice">$99.99/mo</strong>
+                  <p id="billingStatusText" class="muted">Secure billing handled by Stripe.</p>
+                </div>
+              </div>
+              <div class="settings-submit-row" style="justify-content:flex-start;">
+                <button id="startCheckoutBtn" type="button" class="primary-btn primary-btn-strong">Start subscription</button>
+                <button id="manageBillingBtn" type="button" class="ghost-btn">Manage billing</button>
+              </div>
+            </div>
+          </section>
+
           <section class="settings-card card editorial-card">
             <div class="section-heading-row">
               <div>
@@ -153,7 +180,7 @@
             <div class="editorial-form section-fields">
               <div id="phoneNotProvisioned">
                 <p class="subhead" style="margin-bottom:1rem;">
-                  Keep your current business number. When a call is missed, Relinqo texts the caller, turns their reply into a lead, and alerts the owner.
+                  Keep your current business number. When a call is missed, reqlinqo texts the caller, turns their reply into a lead, and alerts the owner.
                 </p>
                 <div class="phone-rescue-steps">
                   <div><strong>1</strong><span>Tell us the number customers call today</span></div>
@@ -193,7 +220,7 @@
                 <div id="phoneSearchResults" style="margin-top:1rem;"></div>
 
                 <details class="advanced-phone-setup">
-                  <summary>Already have a Relinqo-compatible number?</summary>
+                  <summary>Already have a reqlinqo-compatible number?</summary>
                   <p class="muted" style="margin-bottom:0.75rem;">Most customers should ignore this. This is only for support-assisted migrations.</p>
                   <div class="field-group field-group-double">
                     <label class="form-field">
@@ -488,7 +515,7 @@
               <span class="section-chip">Growth loop</span>
             </div>
             <div class="editorial-form section-fields">
-              <p class="muted" style="margin:0;font-size:0.85rem;">When you mark a lead as <strong>Won</strong>, Relinqo waits the delay below and then sends the customer a friendly review-request message with your Google review link. Skips phone-only leads when the channel is email.</p>
+              <p class="muted" style="margin:0;font-size:0.85rem;">When you mark a lead as <strong>Won</strong>, reqlinqo waits the delay below and then sends the customer a friendly review-request message with your Google review link. Skips phone-only leads when the channel is email.</p>
               <label class="form-field">
                 <span class="field-label">Enable review requests</span>
                 <label class="toggle-card toggle-card-strong">
@@ -604,6 +631,59 @@
         }
       }
 
+      function titleCase(value) {
+        return String(value || '').replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+      }
+
+      function updateBillingUI(data) {
+        const chip = document.getElementById('billingStatusChip');
+        const plan = document.getElementById('billingPlanName');
+        const meta = document.getElementById('billingPlanMeta');
+        const price = document.getElementById('billingPrice');
+        const status = document.getElementById('billingStatusText');
+        const checkoutBtn = document.getElementById('startCheckoutBtn');
+        const portalBtn = document.getElementById('manageBillingBtn');
+
+        price.textContent = data.price || '$99.99/mo';
+        plan.textContent = data.plan === 'full_service_test' ? 'Full service test' : 'Full service';
+        chip.textContent = data.billing_exempt ? 'Comped' : titleCase(data.subscription_status || 'inactive');
+        chip.className = 'section-chip';
+
+        if (!data.billing_configured) {
+          meta.textContent = 'Stripe is not configured for this deployment.';
+          status.textContent = 'Add Stripe env vars before charging customers.';
+          checkoutBtn.disabled = true;
+          portalBtn.disabled = true;
+          return;
+        }
+
+        if (data.active) {
+          meta.textContent = data.billing_exempt
+            ? (data.billing_exempt_reason || 'Admin billing bypass is active.')
+            : 'Subscription is active.';
+          status.textContent = data.subscription_cancel_at_period_end
+            ? 'Cancellation is scheduled at the end of the current period.'
+            : 'Workspace has full access.';
+          checkoutBtn.disabled = true;
+          checkoutBtn.textContent = data.billing_exempt ? 'Bypassed' : 'Subscribed';
+          portalBtn.disabled = data.billing_exempt || !data.stripe_customer_linked;
+          return;
+        }
+
+        meta.textContent = 'Subscription required for the live lead automation workspace.';
+        status.textContent = 'Checkout opens in Stripe test/live mode based on your configured keys.';
+        checkoutBtn.disabled = false;
+        checkoutBtn.textContent = 'Start subscription';
+        portalBtn.disabled = !data.stripe_customer_linked;
+      }
+
+      async function loadBillingStatus() {
+        const res = await fetch('/api/billing/status');
+        if (!res.ok) return;
+        const data = await res.json();
+        updateBillingUI(data);
+      }
+
       async function loadSettings() {
         const res = await fetch('/api/settings');
         if (res.status === 401) { window.location.href = '/login'; return; }
@@ -618,6 +698,7 @@
         }
 
         updateGmailUI(data.google_oauth_email);
+        await loadBillingStatus();
 
         const meRes = await fetch('/auth/me');
         if (meRes.ok) {
@@ -632,6 +713,16 @@
           window.history.replaceState({}, '', '/settings');
         } else if (params.get('gmail') === 'error') {
           showMsg('Gmail connection failed: ' + (params.get('reason') || 'unknown error'), false);
+          window.history.replaceState({}, '', '/settings');
+        } else if (params.get('checkout') === 'success') {
+          showMsg('Stripe checkout completed. Billing status will update after the webhook lands.', true);
+          window.history.replaceState({}, '', '/settings');
+        } else if (params.get('checkout') === 'cancelled') {
+          showMsg('Checkout cancelled. You can start again any time.', false);
+          window.history.replaceState({}, '', '/settings');
+        } else if (params.get('billing') === 'required') {
+          showMsg('Start the subscription to unlock the lead workspace.', false);
+          document.getElementById('billingCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
           window.history.replaceState({}, '', '/settings');
         }
       }
@@ -700,8 +791,38 @@
         }
       });
 
+      document.getElementById('startCheckoutBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('startCheckoutBtn');
+        btn.disabled = true;
+        btn.textContent = 'Opening checkout...';
+        try {
+          const res = await fetch('/api/billing/checkout', { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok || !data.url) throw new Error(data.detail || 'Could not start checkout.');
+          window.location.href = data.url;
+        } catch (err) {
+          showMsg(err.message || 'Could not start checkout.', false);
+          await loadBillingStatus();
+        }
+      });
+
+      document.getElementById('manageBillingBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('manageBillingBtn');
+        btn.disabled = true;
+        btn.textContent = 'Opening portal...';
+        try {
+          const res = await fetch('/api/billing/portal', { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok || !data.url) throw new Error(data.detail || 'Could not open billing portal.');
+          window.location.href = data.url;
+        } catch (err) {
+          showMsg(err.message || 'Could not open billing portal.', false);
+          await loadBillingStatus();
+        }
+      });
+
       document.getElementById('gmailDisconnectBtn').addEventListener('click', async () => {
-        if (!confirm('Disconnect Gmail? Relinqo will stop reading your inbox and sending replies via Gmail.')) return;
+        if (!confirm('Disconnect Gmail? reqlinqo will stop reading your inbox and sending replies via Gmail.')) return;
         const res = await fetch('/auth/google/disconnect', { method: 'POST' });
         if (res.ok) {
           updateGmailUI('');
@@ -961,7 +1082,7 @@
           return;
         }
         if (!ownerPhone) {
-          showPhoneMsg('Enter the cell phone Relinqo should ring.', false);
+          showPhoneMsg('Enter the cell phone reqlinqo should ring.', false);
           return;
         }
         phoneSearchResults.innerHTML = '<p class="muted">Setting up your rescue number and activation code...</p>';
@@ -1102,7 +1223,7 @@
             showPhoneMsg(data.detail || 'Adoption failed.', false);
             return;
           }
-          showPhoneMsg(`Done — ${data.phone_number} is now wired to Relinqo.`, true);
+          showPhoneMsg(`Done — ${data.phone_number} is now wired to reqlinqo.`, true);
           await loadPhone();
         } catch (e) {
           showPhoneMsg('Error: ' + e.message, false);

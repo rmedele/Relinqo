@@ -10,6 +10,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+from app.billing import org_has_billing_access
 from app.database import SessionLocal
 from app.models import CallEvent, Lead, OrgSettings, PhoneRoutingRule, Voicemail
 from app.phone_leads import (
@@ -163,7 +164,7 @@ async def process_voicemail(voicemail_id: int) -> None:
             org_settings
             and (
                 org_settings.automation_paused
-                or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+                or (org_settings.org and not org_has_billing_access(org_settings.org))
             )
         )
         routing_rule = db.query(PhoneRoutingRule).filter(
