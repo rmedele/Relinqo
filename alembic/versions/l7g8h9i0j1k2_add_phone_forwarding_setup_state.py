@@ -35,7 +35,15 @@ def upgrade() -> None:
         if not _has_column("phone_routing_rules", "forwarding_test_started_at"):
             batch_op.add_column(sa.Column("forwarding_test_started_at", sa.DateTime(timezone=True), nullable=True))
         if not _has_column("phone_routing_rules", "forwarding_test_call_event_id"):
-            batch_op.add_column(sa.Column("forwarding_test_call_event_id", sa.Integer(), sa.ForeignKey("call_events.id"), nullable=True))
+            batch_op.add_column(sa.Column(
+                "forwarding_test_call_event_id",
+                sa.Integer(),
+                sa.ForeignKey(
+                    "call_events.id",
+                    name="fk_phone_routing_rules_forwarding_test_call_event_id_call_events",
+                ),
+                nullable=True,
+            ))
         if not _has_column("phone_routing_rules", "forwarding_verified_at"):
             batch_op.add_column(sa.Column("forwarding_verified_at", sa.DateTime(timezone=True), nullable=True))
 
