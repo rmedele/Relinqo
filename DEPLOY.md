@@ -122,6 +122,7 @@ sudo systemctl enable --now leadrelay-inbox-poll.timer
 ## Post-deploy checklist
 
 - [ ] Visit `/health` to confirm the app is running
+- [ ] Run `python scripts/check_deployment.py https://your-domain.example` and confirm every line starts with `OK`
 - [ ] Register an account at `/register`
 - [ ] Connect Gmail at `/setup` or `/settings`
 - [ ] Send a test email to your connected Gmail
