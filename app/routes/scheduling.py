@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user, get_org_settings
+from app.billing import org_has_billing_access
 from app.database import get_db
 from app.models import Booking, Lead, OrgSettings, ScheduleAvailability, User
 from app.routes.leads import log_activity
@@ -310,7 +311,7 @@ def _send_booking_notifications(db: Session, booking: Booking, lead: Lead, org_s
 
     if org_settings and (
         org_settings.automation_paused
-        or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+        or (org_settings.org and not org_has_billing_access(org_settings.org))
     ):
         return
 

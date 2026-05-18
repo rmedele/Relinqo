@@ -2,6 +2,7 @@ import logging
 import smtplib
 from email.message import EmailMessage
 
+from app.billing import org_has_billing_access
 from app.config import settings
 from app.models import OrgSettings
 
@@ -24,7 +25,7 @@ def smtp_configured(org_settings: OrgSettings | None = None) -> bool:
 def send_email(*, to_email: str, subject: str, body: str, org_settings: OrgSettings | None = None) -> tuple[bool, str]:
     logger.info("Email send attempt to=%s subject=%s", to_email, subject)
 
-    if org_settings and org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+    if org_settings and org_settings.org and not org_has_billing_access(org_settings.org):
         logger.warning("Email send blocked for inactive org_id=%s", org_settings.org_id)
         return False, "Workspace is not active"
 

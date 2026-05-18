@@ -3,8 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/ui/favicon.svg" type="image/svg+xml" />
-    <title>Relinqo — Create Account</title>
+    <title>reqlinqo — Create Account</title>
     <link rel="stylesheet" href="/ui/styles.css?v=20260426-ui9" />
   </head>
   <body class="auth-page">
@@ -12,7 +11,7 @@
       <div class="auth-grid auth-grid-register">
         <section class="auth-hero">
           <div class="hero-badge-row">
-            <p class="eyebrow">Relinqo</p>
+            <p class="eyebrow">reqlinqo</p>
             <span class="hero-badge">New workspace</span>
           </div>
           <h1 class="gradient-text">Set up the kind of business portal people actually trust.</h1>
@@ -109,6 +108,21 @@
             errEl.classList.remove('hidden');
             btn.disabled = false;
             btn.textContent = 'Create workspace';
+            return;
+          }
+          if (data.org?.subscription_status === 'incomplete') {
+            btn.textContent = 'Opening secure checkout...';
+            try {
+              const checkout = await fetch('/api/billing/checkout', { method: 'POST' });
+              const checkoutData = await checkout.json();
+              if (checkout.ok && checkoutData.url) {
+                window.location.href = checkoutData.url;
+                return;
+              }
+            } catch (_) {
+              // Fall through to the billing card in Settings.
+            }
+            window.location.href = '/settings?billing=required';
             return;
           }
           window.location.href = '/setup';

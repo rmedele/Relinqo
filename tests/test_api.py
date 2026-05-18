@@ -2,8 +2,10 @@ from fastapi.testclient import TestClient
 from datetime import timedelta
 
 from app.main import app
+from app.config import settings
 from app.database import SessionLocal
 from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, PhoneRoutingRule, SmsNotification, SmsOptOut, User
+from app.routes import billing as billing_routes
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
 
@@ -294,6 +296,99 @@ def test_settings_crud():
     assert res.json()["human_review"] is False
 
 
+def test_billing_status_defaults_to_configured_monthly_plan():
+    c, _ = _auth_client()
+    res = c.get("/api/billing/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["price"] == "USD 99.99/mo"
+    assert data["active"] is True
+
+
+def test_billing_checkout_creates_stripe_session(monkeypatch):
+    c, info = _auth_client()
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        org.subscription_status = "incomplete"
+        db.commit()
+    finally:
+        db.close()
+
+    class FakeSession:
+        id = "cs_test_123"
+        url = "https://checkout.stripe.test/session"
+
+    def fake_checkout(org, owner):
+        org.stripe_customer_id = "cus_test_123"
+        return FakeSession()
+
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
+    monkeypatch.setattr(settings, "billing_enforced", True)
+    monkeypatch.setattr(billing_routes, "create_checkout_session", fake_checkout)
+
+    res = c.post("/api/billing/checkout")
+    assert res.status_code == 200, res.text
+    assert res.json()["url"] == FakeSession.url
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        assert org.stripe_customer_id == "cus_test_123"
+        assert org.subscription_status == "incomplete"
+        assert org.plan == "full_service"
+    finally:
+        db.close()
+
+
+def test_billing_gate_blocks_incomplete_workspace(monkeypatch):
+    c, info = _auth_client()
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
+    monkeypatch.setattr(settings, "billing_enforced", True)
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        org.subscription_status = "incomplete"
+        db.commit()
+    finally:
+        db.close()
+
+    res = c.get("/leads", headers={"accept": "application/json"})
+    assert res.status_code == 402
+    assert res.json()["billing_required"] is True
+
+
+def test_admin_billing_bypass_marks_workspace_active(monkeypatch):
+    c, info = _auth_client()
+    monkeypatch.setattr(settings, "billing_admin_token", "admin-test-token")
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
+    monkeypatch.setattr(settings, "billing_enforced", True)
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        org.subscription_status = "incomplete"
+        db.commit()
+    finally:
+        db.close()
+
+    res = client.post(
+        "/api/billing/admin/bypass",
+        headers={"X-Admin-Token": "admin-test-token"},
+        json={"org_slug": info["data"]["org"]["slug"], "enabled": True, "reason": "pilot"},
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["active"] is True
+    assert data["billing_exempt"] is True
+    assert data["subscription_status"] == "active"
+
+    phone_res = c.post("/api/phone/search", json={"area_code": "403"})
+    assert phone_res.status_code != 402
+
+
 def test_automation_paused_blocks_auto_send(monkeypatch):
     c, _ = _auth_client()
     c.patch("/api/settings", json={"human_review": False, "automation_paused": True})
@@ -382,7 +477,7 @@ def test_rescue_setup_buys_number_and_saves_routing(monkeypatch):
     monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
         "sid": "PN_TEST_123",
         "phone_number": phone,
-        "friendly_name": "Relinqo rescue line",
+        "friendly_name": "reqlinqo rescue line",
     })
 
     res = c.post("/api/phone/rescue-setup", json={
@@ -415,7 +510,7 @@ def test_rescue_setup_existing_number_only_updates_routing(monkeypatch):
     }])
     def fake_provision(phone, **kwargs):
         calls["provision"] += 1
-        return {"sid": "PN_TEST_124", "phone_number": phone, "friendly_name": "Relinqo rescue line"}
+        return {"sid": "PN_TEST_124", "phone_number": phone, "friendly_name": "reqlinqo rescue line"}
     monkeypatch.setattr(phone_routes, "provision_number", fake_provision)
 
     first = c.post("/api/phone/rescue-setup", json={"area_code": "403", "owner_phone": "4035551111"})
@@ -441,7 +536,7 @@ def test_rescue_forwarding_setup_returns_activation_code(monkeypatch):
     monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
         "sid": "PN_FORWARD_155",
         "phone_number": phone,
-        "friendly_name": "Relinqo missed-call rescue",
+        "friendly_name": "reqlinqo missed-call rescue",
     })
 
     res = c.post("/api/phone/rescue-forwarding/setup", json={

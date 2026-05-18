@@ -8,6 +8,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user, get_org_settings, hash_password, require_owner, verify_password
+from app.billing import new_org_subscription_status
 from app.config import settings
 from app.database import get_db
 from app.rate_limit import login_limiter, register_limiter
@@ -95,6 +96,7 @@ def _org_dict(org: Organization, include_api_key: bool = False) -> dict:
         "slug": org.slug,
         "subscription_status": org.subscription_status,
         "plan": org.plan,
+        "billing_exempt": bool(org.billing_exempt),
     }
     if include_api_key:
         d["api_key"] = org.api_key
@@ -140,6 +142,8 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
         slug=slug,
         api_key=f"deprecated-new-{raw_api_key[:16]}",
         api_key_hash=hash_api_key(raw_api_key),
+        subscription_status=new_org_subscription_status(),
+        plan="full_service",
     )
     db.add(org)
     db.flush()
@@ -203,15 +207,15 @@ def invite_member(
     invite_url = f"{settings.public_base_url}/register?invite={token}"
     biz = org_settings.business_name or user.org.name
     email_body = (
-        f"You've been invited to join {biz} on Relinqo!\n\n"
+        f"You've been invited to join {biz} on reqlinqo!\n\n"
         f"Click the link below to create your account:\n"
         f"{invite_url}\n\n"
         f"This invite expires in {INVITE_EXPIRY_HOURS} hours.\n\n"
-        f"— {biz} via Relinqo"
+        f"— {biz} via reqlinqo"
     )
     sent, msg = send_email(
         to_email=payload.email,
-        subject=f"You're invited to join {biz} on Relinqo",
+        subject=f"You're invited to join {biz} on reqlinqo",
         body=email_body,
         org_settings=org_settings,
     )
@@ -302,14 +306,14 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     reset_url = f"{settings.public_base_url}/reset-password?token={token}"
     send_email(
         to_email=user.email,
-        subject="Relinqo — Password Reset",
+        subject="reqlinqo — Password Reset",
         body=(
-            f"You requested a password reset for your Relinqo account.\n\n"
+            f"You requested a password reset for your reqlinqo account.\n\n"
             f"Click the link below to set a new password:\n"
             f"{reset_url}\n\n"
             f"This link expires in {RESET_EXPIRY_HOURS} hour(s).\n"
             f"If you didn't request this, you can ignore this email.\n\n"
-            f"— Relinqo"
+            f"— reqlinqo"
         ),
     )
 

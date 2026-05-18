@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -17,6 +17,7 @@ from slowapi.util import get_remote_address
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import get_current_user, get_org_from_session_or_api_key, get_org_settings, org_can_use_automation
+from app.billing import billing_enabled, org_has_billing_access
 from app.classifier import classify_lead
 from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
@@ -27,6 +28,7 @@ from app.inbox_poll import poll_inbox
 from app.mailer import send_email, smtp_configured
 from app.models import Lead, Organization, OrgSettings, User
 from app.routes.auth import router as auth_router
+from app.routes.billing import router as billing_router, webhook_router as stripe_webhook_router
 from app.routes.google_oauth import router as google_oauth_router
 from app.routes.leads import ingest_lead, router as lead_router
 from app.routes.settings import router as settings_router
@@ -143,9 +145,74 @@ async def lifespan(app: FastAPI):
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
-app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+BILLING_GATED_PATHS = {
+    "/review",
+    "/analytics",
+    "/pipeline",
+    "/templates",
+    "/mailbox/poll",
+    "/forwarded-email",
+    "/ingest-lead",
+    "/flush-pending",
+    "/daily-digest",
+    "/weekly-summary",
+}
+BILLING_GATED_PREFIXES = (
+    "/leads",
+    "/stats",
+    "/threads",
+    "/api/lead-map",
+    "/api/templates",
+    "/api/pipeline",
+    "/api/review-requests",
+    "/api/schedule",
+    "/api/phone",
+)
+
+
+def _is_billing_gated_path(path: str) -> bool:
+    return path in BILLING_GATED_PATHS or any(path.startswith(prefix) for prefix in BILLING_GATED_PREFIXES)
+
+
+def _expects_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept and "application/json" not in accept
+
+
+@app.middleware("http")
+async def billing_access_middleware(request: Request, call_next):
+    if not billing_enabled() or request.method == "OPTIONS" or not _is_billing_gated_path(request.url.path):
+        return await call_next(request)
+
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return await call_next(request)
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+        if user and not org_has_billing_access(user.org):
+            if _expects_html(request):
+                return RedirectResponse(url="/settings?billing=required", status_code=303)
+            return JSONResponse(
+                status_code=402,
+                content={
+                    "detail": "Billing required",
+                    "billing_required": True,
+                    "subscription_status": user.org.subscription_status,
+                },
+            )
+    finally:
+        db.close()
+
+    return await call_next(request)
+
+
+app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
 
 _allowed_origins = [settings.public_base_url]
 if settings.app_env == "development":
@@ -190,6 +257,8 @@ if settings.app_env == "production":
         return response
 
 app.include_router(auth_router)
+app.include_router(billing_router)
+app.include_router(stripe_webhook_router)
 app.include_router(google_oauth_router)
 app.include_router(lead_router)
 app.include_router(scheduling_router)
@@ -363,7 +432,7 @@ def submit_contact_form(
             if smtp_configured(org_settings):
                 send_email(
                     to_email=alert_email,
-                    subject=f"Relinqo demo request — {payload['company']}",
+                    subject=f"reqlinqo demo request — {payload['company']}",
                     body=(
                         f"Lead ID: {lead_id}\n"
                         f"Name: {payload['name']}\n"

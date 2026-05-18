@@ -20,11 +20,12 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
+from app.billing import org_has_billing_access
 from app.models import Lead, OrgSettings, ReviewRequest
 
 logger = logging.getLogger(__name__)
 
-PHONE_ONLY_EMAIL_DOMAINS = ("@phone.relinqo.local", "@phone.leadrelay.local")
+PHONE_ONLY_EMAIL_DOMAINS = ("@phone.reqlinqo.local", "@phone.leadrelay.local")
 
 
 DEFAULT_REVIEW_BODY = (
@@ -54,7 +55,7 @@ def schedule_review_request(
         return None
     if org_settings.automation_paused:
         return None
-    if org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"}:
+    if org_settings.org and not org_has_billing_access(org_settings.org):
         return None
     if not org_settings.review_url:
         logger.info("review_request skipped lead_id=%s — no review_url set", lead.id)
@@ -142,7 +143,7 @@ def run_due_review_requests(
             or not org_settings.review_request_enabled
             or not org_settings.review_url
             or org_settings.automation_paused
-            or (org_settings.org and org_settings.org.subscription_status not in {"active", "trialing"})
+            or (org_settings.org and not org_has_billing_access(org_settings.org))
         ):
             req.status = "skipped"
             req.error_message = "review automation disabled at send time"
