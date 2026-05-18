@@ -81,7 +81,13 @@ Make sure `/home/dariomed/leadrelay/data` is writable by the cPanel account.
 
 ## Smoke Test
 
-After boot, visit:
+After boot, run the deployment checker from your local checkout:
+
+```bash
+python scripts/check_deployment.py https://your-domain.example
+```
+
+Then visit:
 
 ```text
 /health
@@ -96,6 +102,27 @@ Then test:
 
 `/health` should return JSON. If `/health` returns an HTML app shell or a 404
 from another backend, the domain is not routed to this FastAPI app yet.
+
+### Static Shell / Other API Mismatch
+
+The broken shape looks like this:
+
+```text
+GET /health          -> 200 text/html with a Vite/React app shell
+GET /auth/me         -> 200 text/html with the same app shell
+GET /api/health      -> 200 JSON like {"status":"ok","uptime":...}
+POST /api/auth/login -> JSON with error.code such as AUTH_INVALID
+```
+
+That means the app subdomain is serving a different frontend/backend pair.
+This repo's login/register code lives at `/auth/login` and `/auth/register`, so
+the browser will never reach it until Doteasy routes the domain to the Python
+app, or until every relevant path is reverse-proxied to this FastAPI process.
+
+For this repo, do not deploy only a static bundle to the owner portal domain.
+The domain must be handled by Passenger/FastAPI for `/`, `/login`, `/register`,
+`/auth/*`, `/api/*`, `/leads/*`, `/settings`, `/review`, `/pipeline`,
+`/templates`, `/twilio/voice/*`, and `/sms/*`.
 
 Update Google OAuth redirect URI:
 
