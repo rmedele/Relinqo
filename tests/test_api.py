@@ -342,6 +342,47 @@ def test_billing_checkout_creates_stripe_session(monkeypatch):
         db.close()
 
 
+def test_billing_checkout_uses_absolute_public_base_url(monkeypatch):
+    from types import SimpleNamespace
+
+    from app import billing as billing_module
+    from app.config import Settings
+
+    captured = {}
+
+    class FakeStripe:
+        class Customer:
+            @staticmethod
+            def create(**kwargs):
+                return SimpleNamespace(id="cus_test_123")
+
+        class checkout:
+            class Session:
+                @staticmethod
+                def create(**kwargs):
+                    captured.update(kwargs)
+                    return SimpleNamespace(id="cs_test_123", url="https://checkout.stripe.test/session")
+
+    monkeypatch.setattr(billing_module, "_stripe", lambda: FakeStripe)
+    monkeypatch.setattr(
+        settings,
+        "public_base_url",
+        Settings(public_base_url="leadrelay-production-4a37.up.railway.app").public_base_url,
+    )
+
+    org = Organization(id=123, name="LeadRelay", slug="leadrelay")
+    owner = User(email="owner@example.com")
+
+    billing_module.create_checkout_session(org, owner)
+
+    assert captured["success_url"].startswith(
+        "https://leadrelay-production-4a37.up.railway.app/settings?checkout=success"
+    )
+    assert captured["cancel_url"] == (
+        "https://leadrelay-production-4a37.up.railway.app/settings?checkout=cancelled"
+    )
+
+
 def test_billing_gate_blocks_incomplete_workspace(monkeypatch):
     c, info = _auth_client()
     monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
@@ -477,7 +518,7 @@ def test_rescue_setup_buys_number_and_saves_routing(monkeypatch):
     monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
         "sid": "PN_TEST_123",
         "phone_number": phone,
-        "friendly_name": "reqlinqo rescue line",
+        "friendly_name": "relinqo rescue line",
     })
 
     res = c.post("/api/phone/rescue-setup", json={
@@ -510,7 +551,7 @@ def test_rescue_setup_existing_number_only_updates_routing(monkeypatch):
     }])
     def fake_provision(phone, **kwargs):
         calls["provision"] += 1
-        return {"sid": "PN_TEST_124", "phone_number": phone, "friendly_name": "reqlinqo rescue line"}
+        return {"sid": "PN_TEST_124", "phone_number": phone, "friendly_name": "relinqo rescue line"}
     monkeypatch.setattr(phone_routes, "provision_number", fake_provision)
 
     first = c.post("/api/phone/rescue-setup", json={"area_code": "403", "owner_phone": "4035551111"})
@@ -536,7 +577,7 @@ def test_rescue_forwarding_setup_returns_activation_code(monkeypatch):
     monkeypatch.setattr(phone_routes, "provision_number", lambda phone, **kwargs: {
         "sid": "PN_FORWARD_155",
         "phone_number": phone,
-        "friendly_name": "reqlinqo missed-call rescue",
+        "friendly_name": "relinqo missed-call rescue",
     })
 
     res = c.post("/api/phone/rescue-forwarding/setup", json={

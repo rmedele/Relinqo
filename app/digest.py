@@ -58,7 +58,7 @@ def build_daily_digest(db: Session, org_id: int | None = None) -> dict:
 
 
 def send_daily_digest(summary: dict, org_settings: OrgSettings | None = None) -> tuple[bool, str]:
-    biz = (org_settings.business_name if org_settings else settings.business_name) or "Relinqo"
+    biz = (org_settings.business_name if org_settings else settings.business_name) or "relinqo"
     digest_to = org_settings.digest_to_email if org_settings else settings.digest_to_email
 
     subject = f"{biz} — {summary['new_leads']} new leads | {summary['auto_replies_sent']} auto-replied"
@@ -93,7 +93,7 @@ def send_daily_digest(summary: dict, org_settings: OrgSettings | None = None) ->
     if summary["auto_replies_sent"] > 0:
         lines.append(f"{summary['auto_replies_sent']} replies were sent automatically on your behalf overnight.")
 
-    lines.append(f"\n— {biz} via Relinqo")
+    lines.append(f"\n— {biz} via relinqo")
 
     body = "\n".join(lines)
     return send_email(to_email=digest_to, subject=subject, body=body, org_settings=org_settings)
@@ -168,7 +168,7 @@ def build_weekly_summary(db: Session, org_id: int | None = None) -> dict:
 
 
 def send_weekly_summary(summary: dict, org_settings: OrgSettings | None = None) -> tuple[bool, str]:
-    biz = (org_settings.business_name if org_settings else settings.business_name) or "Relinqo"
+    biz = (org_settings.business_name if org_settings else settings.business_name) or "relinqo"
     digest_to = org_settings.digest_to_email if org_settings else settings.digest_to_email
 
     subject = f"{biz} — Weekly Report ({summary['period_start']} – {summary['period_end']})"
@@ -226,7 +226,7 @@ def send_weekly_summary(summary: dict, org_settings: OrgSettings | None = None) 
     lines += [
         "",
         f"View your dashboard: {settings.public_base_url}/portal",
-        f"\n— {biz} via Relinqo",
+        f"\n— {biz} via relinqo",
     ]
 
     body = "\n".join(lines)

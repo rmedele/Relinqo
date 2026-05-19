@@ -1,9 +1,12 @@
+from urllib.parse import urlparse
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     # Global application settings
-    app_name: str = "reqlinqo"
+    app_name: str = "relinqo"
     app_env: str = "development"
     app_host: str = "0.0.0.0"
     app_port: int = 8080
@@ -60,9 +63,36 @@ class Settings(BaseSettings):
     stripe_price_id: str = ""
     stripe_price_amount_cents: int = 9999
     stripe_price_currency: str = "usd"
-    stripe_product_name: str = "reqlinqo Full Service"
+    stripe_product_name: str = "relinqo Full Service"
     billing_admin_token: str = ""
     billing_enforced: bool = True
+
+    @field_validator("public_base_url", mode="before")
+    @classmethod
+    def normalize_public_base_url(cls, value: str) -> str:
+        raw = str(value or "").strip().rstrip("/")
+        if not raw:
+            return raw
+
+        if "://" not in raw:
+            authority = raw.split("/", 1)[0].lower()
+            is_local = (
+                authority == "localhost"
+                or authority.startswith("localhost:")
+                or authority == "127.0.0.1"
+                or authority.startswith("127.0.0.1:")
+                or authority == "0.0.0.0"
+                or authority.startswith("0.0.0.0:")
+                or authority == "[::1]"
+                or authority.startswith("[::1]:")
+            )
+            scheme = "http" if is_local else "https"
+            raw = f"{scheme}://{raw}"
+
+        parsed = urlparse(raw)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("PUBLIC_BASE_URL must be an absolute HTTP(S) URL")
+        return raw
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

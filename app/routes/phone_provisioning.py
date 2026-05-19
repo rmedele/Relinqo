@@ -1,7 +1,7 @@
 """Phone-number provisioning API.
 
 The whole point of this module: Bob never has to touch Twilio. He clicks
-"Create my business line" in the Relinqo UI, we buy him a number
+"Create my business line" in the relinqo UI, we buy him a number
 on the platform Twilio account, configure the webhooks, and he's live
 in under 5 seconds.
 
@@ -179,7 +179,7 @@ def _forwarding_code(rescue_number: str, carrier: str | None) -> dict:
         "steps": [
             "Open this from the phone that owns your current business number.",
             "Tap Activate missed-call rescue, then press call in your phone app.",
-            "Come back to Relinqo and run the test.",
+            "Come back to relinqo and run the test.",
         ],
     }
 
@@ -412,7 +412,7 @@ def rescue_setup(
     db: Session = Depends(get_db),
 ):
     """Grandpa-proof setup: user enters an area code + cell number.
-    Relinqo finds, buys, configures, and saves routing for a number.
+    relinqo finds, buys, configures, and saves routing for a number.
 
     If the org already has an active number, this endpoint simply updates
     routing and returns the live setup instead of making the user start over.
@@ -462,7 +462,7 @@ def rescue_setup(
             chosen,
             voice_url=voice_url,
             status_callback_url=status_url,
-            friendly_name=f"Relinqo rescue line {chosen}",
+            friendly_name=f"relinqo rescue line {chosen}",
         )
     except HTTPException:
         raise
@@ -474,7 +474,7 @@ def rescue_setup(
         org_id=user.org_id,
         twilio_sid=result["sid"],
         phone_number=result["phone_number"],
-        friendly_name=result.get("friendly_name") or f"Relinqo rescue line {chosen}",
+        friendly_name=result.get("friendly_name") or f"relinqo rescue line {chosen}",
         is_active=True,
     )
     db.add(row)
@@ -507,7 +507,7 @@ def rescue_forwarding_setup(
     db: Session = Depends(get_db),
 ):
     """Set up the easy path: keep the public number, forward missed
-    calls to a Relinqo rescue number, then test that forwarding works.
+    calls to a relinqo rescue number, then test that forwarding works.
     """
     area_code = (payload.area_code or "").strip()
     if not re.match(r"^\d{3}$", area_code):
@@ -540,7 +540,7 @@ def rescue_forwarding_setup(
                 chosen,
                 voice_url=voice_url,
                 status_callback_url=status_url,
-                friendly_name=f"Relinqo missed-call rescue {chosen}",
+                friendly_name=f"relinqo missed-call rescue {chosen}",
             )
         except HTTPException:
             raise
@@ -552,7 +552,7 @@ def rescue_forwarding_setup(
             org_id=user.org_id,
             twilio_sid=result["sid"],
             phone_number=result["phone_number"],
-            friendly_name=result.get("friendly_name") or f"Relinqo missed-call rescue {chosen}",
+            friendly_name=result.get("friendly_name") or f"relinqo missed-call rescue {chosen}",
             is_active=True,
         )
         db.add(row)
@@ -679,7 +679,7 @@ def adopt(
 ):
     """Take over a number the user already bought in the Twilio console.
     Looks it up on their Twilio account, reconfigures its webhooks to
-    point at Relinqo, and saves it to the org. Optionally writes the
+    point at relinqo, and saves it to the org. Optionally writes the
     routing rule (owner_phone) in the same call so the UI can 'finish
     setup' in one click.
     """
@@ -706,7 +706,7 @@ def adopt(
     if not remote:
         raise HTTPException(
             status_code=404,
-            detail=f"Number {phone} not found on this Twilio account. Buy it in the Twilio Console first, or use /provision to buy via Relinqo.",
+            detail=f"Number {phone} not found on this Twilio account. Buy it in the Twilio Console first, or use /provision to buy via relinqo.",
         )
 
     sid = remote.get("sid")
@@ -719,7 +719,7 @@ def adopt(
             voice_url=voice_url,
             status_callback_url=status_url,
             sms_url=sms_url,
-            friendly_name=f"Relinqo {phone}",
+            friendly_name=f"relinqo {phone}",
         )
     except TwilioError as e:
         logger.warning("twilio webhook update failed for %s: %s", sid, e.message)
@@ -729,7 +729,7 @@ def adopt(
         org_id=user.org_id,
         twilio_sid=sid,
         phone_number=remote.get("phone_number") or phone,
-        friendly_name=f"Relinqo {phone}",
+        friendly_name=f"relinqo {phone}",
         is_active=True,
     )
     db.add(row)

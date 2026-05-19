@@ -4,1013 +4,296 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/ui/favicon.svg" type="image/svg+xml" />
-    <title>Relinqo | Professional lead response for trades</title>
-    <meta name="description" content="Relinqo helps local service businesses reply to email and missed-call leads faster, with owner approval controls, SMS alerts, scheduling, pipeline tracking, and review automation." />
+    <title>relinqo | AI lead response for trades</title>
+    <meta name="description" content="relinqo captures email and missed-call leads, drafts fast replies, alerts owners on urgent jobs, books appointments, and tracks every opportunity for local service businesses." />
     <meta http-equiv="Cache-Control" content="no-store" />
     <meta http-equiv="Pragma" content="no-cache" />
-    <link rel="stylesheet" href="/ui/styles.css?v=20260426-ui9" />
-    <style>
-      :root {
-        --site-max: 1160px;
-        --bg: #f7f8fa;
-        --paper: #ffffff;
-        --ink: #101820;
-        --ink-soft: #43515c;
-        --muted: #6d7b86;
-        --line: #dbe2e8;
-        --line-soft: #e9eef2;
-        --blue: #1769e0;
-        --blue-dark: #0f4fb5;
-        --cyan: #0e9fb5;
-        --green: #15835b;
-        --amber: #a66300;
-        --shadow: 0 18px 50px rgba(16, 24, 32, 0.08);
-        --shadow-strong: 0 28px 80px rgba(16, 24, 32, 0.14);
-      }
-
-      * { box-sizing: border-box; }
-      html { scroll-behavior: smooth; background: var(--bg); overflow-x: hidden; }
-      body {
-        margin: 0;
-        color: var(--ink);
-        background:
-          linear-gradient(180deg, #ffffff 0%, #f7f8fa 46%, #ffffff 100%);
-        overflow-x: hidden;
-      }
-
-      .site-nav {
-        position: sticky;
-        top: 0;
-        z-index: 40;
-        background: rgba(255, 255, 255, 0.92);
-        border-bottom: 1px solid var(--line-soft);
-        backdrop-filter: blur(18px);
-      }
-
-      .site-nav-inner {
-        width: min(var(--site-max), calc(100% - 32px));
-        min-height: 72px;
-        margin: 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-      }
-
-      .brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--ink);
-        font-weight: 800;
-        text-decoration: none;
-      }
-
-      .brand-mark {
-        width: 36px;
-        height: 36px;
-        display: block;
-        flex: 0 0 auto;
-        border-radius: 10px;
-        object-fit: cover;
-        box-shadow: 0 10px 26px rgba(23, 105, 224, 0.22);
-      }
-
-      .nav-links, .nav-actions {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-      }
-
-      .nav-links a, .nav-actions a {
-        color: var(--ink-soft);
-        font-size: 0.92rem;
-        font-weight: 600;
-        text-decoration: none;
-      }
-
-      .nav-links a:hover, .nav-actions a:hover {
-        color: var(--ink);
-        text-decoration: none;
-      }
-
-      .btn-primary, .btn-secondary {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 44px;
-        padding: 11px 18px;
-        border-radius: 8px;
-        font-weight: 750;
-        text-decoration: none;
-        transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, border-color 0.16s ease;
-      }
-
-      .btn-primary {
-        color: #fff !important;
-        background: var(--blue);
-        box-shadow: 0 12px 30px rgba(23, 105, 224, 0.2);
-      }
-
-      .btn-primary:hover {
-        background: var(--blue-dark);
-        transform: translateY(-1px);
-      }
-
-      .btn-secondary {
-        color: var(--ink) !important;
-        border: 1px solid var(--line);
-        background: #fff;
-      }
-
-      .btn-secondary:hover {
-        border-color: #c6d0d8;
-        box-shadow: 0 10px 24px rgba(16, 24, 32, 0.08);
-        transform: translateY(-1px);
-      }
-
-      .hero {
-        width: min(var(--site-max), calc(100% - 32px));
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: minmax(0, 0.9fr) minmax(440px, 1.1fr);
-        gap: clamp(36px, 6vw, 76px);
-        align-items: center;
-        padding: 76px 0 70px;
-      }
-
-      .eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        margin: 0 0 16px;
-        color: var(--blue);
-        font-size: 0.78rem;
-        font-weight: 850;
-        letter-spacing: 0.11em;
-        text-transform: uppercase;
-      }
-
-      .eyebrow::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--green);
-      }
-
-      h1, h2, h3, p { letter-spacing: 0; }
-
-      .hero h1 {
-        margin: 0;
-        max-width: 620px;
-        color: var(--ink);
-        font-size: clamp(3rem, 5.8vw, 5.7rem);
-        line-height: 0.96;
-        font-weight: 850;
-      }
-
-      .hero-lede {
-        max-width: 610px;
-        margin: 24px 0 0;
-        color: var(--ink-soft);
-        font-size: 1.12rem;
-        line-height: 1.7;
-      }
-
-      .hero-actions {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin: 30px 0 24px;
-      }
-
-      .trust-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      .trust-row span {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        padding: 7px 10px;
-        color: var(--ink-soft);
-        font-size: 0.86rem;
-        font-weight: 600;
-        border: 1px solid var(--line-soft);
-        border-radius: 999px;
-        background: #fff;
-      }
-
-      .trust-row span::before {
-        content: "";
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--cyan);
-      }
-
-      .product-preview {
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        background: var(--paper);
-        box-shadow: var(--shadow-strong);
-        overflow: hidden;
-      }
-
-      .preview-top {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 16px 18px;
-        border-bottom: 1px solid var(--line-soft);
-        background: #fbfcfd;
-      }
-
-      .preview-dots {
-        display: flex;
-        gap: 7px;
-      }
-
-      .preview-dots span {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #ff6b7a;
-      }
-      .preview-dots span:nth-child(2) { background: #f5c451; }
-      .preview-dots span:nth-child(3) { background: #33bfd0; }
-
-      .preview-top strong {
-        color: var(--ink);
-        font-size: 0.9rem;
-      }
-
-      .preview-body {
-        display: grid;
-        grid-template-columns: 1fr 1.15fr;
-        gap: 18px;
-        padding: 20px;
-        background:
-          linear-gradient(135deg, rgba(23, 105, 224, 0.045), transparent 42%),
-          #fff;
-      }
-
-      .lead-list {
-        display: grid;
-        gap: 12px;
-      }
-
-      .lead-card {
-        padding: 14px;
-        border: 1px solid var(--line-soft);
-        border-radius: 12px;
-        background: #fff;
-      }
-
-      .lead-card.active {
-        border-color: rgba(23, 105, 224, 0.34);
-        box-shadow: 0 12px 30px rgba(23, 105, 224, 0.12);
-      }
-
-      .lead-meta {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 8px;
-        color: var(--muted);
-        font-size: 0.78rem;
-        font-weight: 700;
-      }
-
-      .tag {
-        color: var(--blue);
-      }
-
-      .tag.hot {
-        color: #b4233a;
-      }
-
-      .lead-card strong {
-        display: block;
-        color: var(--ink);
-        font-size: 0.94rem;
-      }
-
-      .lead-card p {
-        margin: 6px 0 0;
-        color: var(--muted);
-        font-size: 0.84rem;
-        line-height: 1.45;
-      }
-
-      .reply-panel {
-        padding: 18px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: #fff;
-      }
-
-      .reply-panel h3 {
-        margin: 0 0 8px;
-        color: var(--ink);
-        font-size: 1.05rem;
-      }
-
-      .reply-panel p {
-        color: var(--ink-soft);
-        line-height: 1.6;
-      }
-
-      .reply-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 18px;
-      }
-
-      .mini-btn {
-        padding: 8px 10px;
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        color: var(--ink-soft);
-        background: #fff;
-        font-size: 0.8rem;
-        font-weight: 700;
-      }
-
-      .mini-btn.primary {
-        color: #fff;
-        border-color: var(--blue);
-        background: var(--blue);
-      }
-
-      .metrics {
-        width: min(var(--site-max), calc(100% - 32px));
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-      }
-
-      .metric-card {
-        padding: 20px;
-        border: 1px solid var(--line-soft);
-        border-radius: 14px;
-        background: #fff;
-        box-shadow: var(--shadow);
-      }
-
-      .metric-card strong {
-        display: block;
-        color: var(--ink);
-        font-size: 1.85rem;
-      }
-
-      .metric-card span {
-        display: block;
-        margin-top: 4px;
-        color: var(--muted);
-        font-size: 0.9rem;
-        line-height: 1.4;
-      }
-
-      .section {
-        width: min(var(--site-max), calc(100% - 32px));
-        margin: 0 auto;
-        padding: 92px 0 0;
-      }
-
-      .section-heading {
-        max-width: 760px;
-        margin-bottom: 30px;
-      }
-
-      .section-heading h2 {
-        margin: 0;
-        color: var(--ink);
-        font-size: clamp(2rem, 4vw, 3.6rem);
-        line-height: 1.03;
-        font-weight: 820;
-      }
-
-      .section-heading p:not(.eyebrow) {
-        margin: 16px 0 0;
-        color: var(--ink-soft);
-        font-size: 1.05rem;
-        line-height: 1.65;
-      }
-
-      .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      .feature-card, .flow-card, .price-card, .faq-card {
-        border: 1px solid var(--line-soft);
-        border-radius: 14px;
-        background: #fff;
-        box-shadow: var(--shadow);
-      }
-
-      .feature-card {
-        min-height: 210px;
-        padding: 22px;
-      }
-
-      .feature-icon {
-        display: grid;
-        place-items: center;
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        color: #fff;
-        font-weight: 850;
-        background: var(--blue);
-      }
-
-      .feature-card h3, .flow-card h3, .price-card h3, .faq-card h3 {
-        margin: 18px 0 8px;
-        color: var(--ink);
-        font-size: 1.08rem;
-      }
-
-      .feature-card p, .flow-card p, .price-card p, .faq-card p {
-        color: var(--ink-soft);
-        line-height: 1.58;
-      }
-
-      .flow-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      .flow-card {
-        min-height: 220px;
-        padding: 22px;
-      }
-
-      .flow-card span {
-        color: var(--blue);
-        font-size: 0.76rem;
-        font-weight: 850;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-
-      .pricing-grid, .faq-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-      }
-
-      .price-card, .faq-card {
-        padding: 26px;
-      }
-
-      .price-card {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        font-size: 1rem;
-      }
-
-      .price-card.featured {
-        border-color: rgba(23, 105, 224, 0.22);
-        box-shadow: 0 22px 60px rgba(23, 105, 224, 0.13);
-      }
-
-      .price {
-        display: flex;
-        align-items: baseline;
-        gap: 5px;
-        margin: 10px 0 12px;
-      }
-
-      .price strong {
-        color: var(--ink);
-        font-size: 3rem;
-      }
-
-      .price span {
-        color: var(--muted);
-      }
-
-      .price-card ul {
-        display: grid;
-        gap: 8px;
-        margin: 20px 0;
-        padding: 0;
-        list-style: none;
-      }
-
-      .price-card li {
-        position: relative;
-        padding-left: 22px;
-        color: var(--ink-soft);
-      }
-
-      .price-card li::before {
-        content: "";
-        position: absolute;
-        left: 1px;
-        top: 0.46em;
-        width: 10px;
-        height: 5px;
-        border-left: 2px solid var(--green);
-        border-bottom: 2px solid var(--green);
-        transform: rotate(-45deg);
-      }
-
-      .final-cta {
-        width: min(var(--site-max), calc(100% - 32px));
-        margin: 0 auto;
-        padding: 96px 0 54px;
-        text-align: center;
-      }
-
-      .final-cta h2 {
-        max-width: 740px;
-        margin: 0 auto 16px;
-        color: var(--ink);
-        font-size: clamp(2rem, 4vw, 3.5rem);
-        line-height: 1.04;
-      }
-
-      .final-cta p {
-        max-width: 630px;
-        margin: 0 auto 26px;
-        color: var(--ink-soft);
-        font-size: 1.06rem;
-        line-height: 1.65;
-      }
-
-      .site-footer {
-        width: min(var(--site-max), calc(100% - 32px));
-        margin: 0 auto;
-        padding: 24px 0 42px;
-        display: flex;
-        gap: 18px;
-        flex-wrap: wrap;
-        border-top: 1px solid var(--line-soft);
-        color: var(--muted);
-      }
-
-      .site-footer strong {
-        margin-right: auto;
-        color: var(--ink);
-      }
-
-      .site-footer a {
-        color: var(--ink-soft);
-        text-decoration: none;
-      }
-
-      .reveal {
-        opacity: 1;
-        transform: none;
-      }
-
-      .js .reveal {
-        opacity: 0;
-        transform: translateY(14px);
-        transition: opacity 0.45s ease, transform 0.45s ease;
-      }
-
-      .js .reveal.is-visible {
-        opacity: 1;
-        transform: translateY(0);
-      }
-
-      @media (max-width: 980px) {
-        .nav-links { display: none; }
-        .hero {
-          grid-template-columns: 1fr;
-          padding-top: 52px;
-        }
-        .metrics, .feature-grid, .flow-grid {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      @media (max-width: 640px) {
-        .site-nav-inner {
-          width: calc(100% - 24px);
-          min-height: 68px;
-        }
-        .nav-actions a:first-child { display: none; }
-        .hero {
-          width: calc(100% - 32px);
-          gap: 32px;
-          padding: 44px 0 52px;
-        }
-        .hero h1 {
-          font-size: clamp(2.75rem, 13vw, 4.15rem);
-        }
-        .hero-lede {
-          font-size: 1rem;
-        }
-        .preview-body {
-          grid-template-columns: 1fr;
-          padding: 14px;
-        }
-        .reply-panel {
-          display: none;
-        }
-        .metrics, .feature-grid, .flow-grid, .pricing-grid, .faq-grid {
-          grid-template-columns: 1fr;
-        }
-        .section {
-          padding-top: 68px;
-        }
-        .site-footer strong {
-          width: 100%;
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after {
-          scroll-behavior: auto !important;
-          transition-duration: 0.01ms !important;
-        }
-      }
-
-      /* Dark black theme layer: preserves the approved layout and motion. */
-      body {
-        background:
-          radial-gradient(circle at 18% -8%, rgba(84, 216, 232, 0.11), transparent 30rem),
-          radial-gradient(circle at 86% 0%, rgba(91, 157, 255, 0.1), transparent 32rem),
-          linear-gradient(180deg, #05070a 0%, #080c12 48%, #05070a 100%);
-        color: #f4f8fb;
-      }
-
-      .site-nav {
-        background: rgba(5, 7, 10, 0.9);
-        border-bottom-color: rgba(223, 236, 245, 0.1);
-      }
-
-      .brand,
-      .hero h1,
-      .section-heading h2,
-      .reply-panel h3,
-      .feature-card h3,
-      .flow-card h3,
-      .price-card h3,
-      .faq-card h3,
-      .final-cta h2,
-      .site-footer strong,
-      .lead-card strong,
-      .metric-card strong,
-      .price strong {
-        color: #f4f8fb;
-      }
-
-      .hero-lede,
-      .lead-card p,
-      .reply-panel p,
-      .metric-card span,
-      .feature-card p,
-      .flow-card p,
-      .price-card p,
-      .price-card li,
-      .price span,
-      .faq-card p,
-      .final-cta p,
-      .nav-links a,
-      .nav-actions a,
-      .site-footer,
-      .site-footer a,
-      .lead-meta,
-      .flow-card span {
-        color: #aebdca;
-      }
-
-      .section-heading p:not(.eyebrow) {
-        color: #b8c6d1;
-      }
-
-      .nav-links a:hover,
-      .nav-actions a:hover,
-      .site-footer a:hover {
-        color: #ffffff;
-      }
-
-      .feature-icon {
-        background: linear-gradient(135deg, #54d8e8, #5b9dff);
-        color: #041018;
-        box-shadow: 0 14px 34px rgba(84, 216, 232, 0.22);
-      }
-
-      .brand-mark {
-        box-shadow: 0 14px 34px rgba(84, 216, 232, 0.22);
-      }
-
-      .eyebrow,
-      .tag,
-      .flow-card span {
-        color: #54d8e8;
-      }
-
-      .tag.hot {
-        color: #ff8fa0;
-      }
-
-      .btn-primary {
-        background: linear-gradient(135deg, #54d8e8 0%, #5b9dff 100%);
-        color: #041018 !important;
-        box-shadow: 0 18px 46px rgba(84, 216, 232, 0.22);
-      }
-
-      .btn-primary:hover {
-        box-shadow: 0 22px 56px rgba(91, 157, 255, 0.28);
-      }
-
-      .btn-secondary,
-      .trust-row span,
-      .mini-btn {
-        background: rgba(255, 255, 255, 0.04);
-        border-color: rgba(223, 236, 245, 0.15);
-        color: #d6e2eb !important;
-      }
-
-      .product-preview,
-      .lead-card,
-      .reply-panel,
-      .metric-card,
-      .feature-card,
-      .flow-card,
-      .price-card,
-      .faq-card {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.028));
-        border-color: rgba(223, 236, 245, 0.12);
-        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.3);
-      }
-
-      .product-preview {
-        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.42);
-      }
-
-      .preview-top {
-        background: rgba(15, 21, 29, 0.92);
-        border-bottom-color: rgba(223, 236, 245, 0.11);
-        color: #f4f8fb;
-      }
-
-      .preview-top strong {
-        color: #dbe7f0;
-      }
-
-      .preview-dots span {
-        background: #41515f;
-      }
-
-      .preview-dots span:nth-child(2) {
-        background: #5b9dff;
-      }
-
-      .preview-dots span:nth-child(3) {
-        background: #54d8e8;
-      }
-
-      .preview-body {
-        background:
-          linear-gradient(135deg, rgba(84, 216, 232, 0.08), transparent 44%),
-          linear-gradient(315deg, rgba(91, 157, 255, 0.08), transparent 44%),
-          #0b1017;
-      }
-
-      .lead-card.active,
-      .price-card.featured {
-        border-color: rgba(84, 216, 232, 0.34);
-        box-shadow: 0 20px 60px rgba(84, 216, 232, 0.12), 0 22px 70px rgba(0, 0, 0, 0.3);
-      }
-
-      .price-card.featured {
-        background:
-          linear-gradient(135deg, rgba(84, 216, 232, 0.11), transparent 44%),
-          linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.032));
-        font-weight: 400;
-      }
-
-      .price-card.featured .price strong {
-        color: #ffffff;
-      }
-
-      .price-card.featured .price span {
-        color: #c7d5df;
-      }
-
-      .price-card .btn-primary,
-      .price-card .btn-secondary {
-        margin-top: auto;
-      }
-
-      .price-card li::before {
-        border-color: #54d8e8;
-      }
-
-      .reply-panel {
-        background:
-          linear-gradient(180deg, rgba(84, 216, 232, 0.09), rgba(255, 255, 255, 0.035)),
-          #0d131b;
-      }
-
-      .mini-btn.primary {
-        background: linear-gradient(135deg, #54d8e8, #5b9dff);
-        border-color: transparent;
-        color: #041018 !important;
-      }
-
-      .section,
-      .metrics,
-      .final-cta,
-      .site-footer {
-        border-color: rgba(223, 236, 245, 0.1);
-      }
-
-      .final-cta {
-        background:
-          linear-gradient(135deg, rgba(84, 216, 232, 0.11), rgba(91, 157, 255, 0.07)),
-          rgba(255, 255, 255, 0.035);
-        border: 1px solid rgba(223, 236, 245, 0.12);
-      }
-    </style>
+    <link rel="stylesheet" href="/ui/styles.css?v=20260518-ui" />
+    <link rel="stylesheet" href="/ui/marketing.css?v=20260518-overhaul1" />
     <script>document.documentElement.classList.add("js");</script>
   </head>
 
-  <body>
-    <nav class="site-nav">
-      <div class="site-nav-inner">
-        <a href="/" class="brand">
-          <img class="brand-mark" src="/ui/favicon.svg" alt="" aria-hidden="true" />
-          <span>Relinqo</span>
+  <body class="lr-page">
+    <header class="lr-nav">
+      <div class="lr-container lr-nav-inner">
+        <a class="lr-brand" href="/" aria-label="relinqo home">
+          <span class="lr-brand-mark">rl</span>
+          <span>relinqo</span>
         </a>
-        <div class="nav-links">
-          <a href="#features">Features</a>
-          <a href="#workflow">Workflow</a>
-          <a href="#pricing">Pricing</a>
+        <nav class="lr-nav-links" aria-label="Primary navigation">
+          <a href="#process">Process</a>
+          <a href="#services">Services</a>
+          <a href="#pilot">Pilot</a>
           <a href="#faq">FAQ</a>
-        </div>
-        <div class="nav-actions">
-          <a href="/login">Sign in</a>
-          <a href="/book-demo" class="btn-primary">Book demo</a>
+        </nav>
+        <div class="lr-nav-actions">
+          <a class="lr-link" href="/login">Sign in</a>
+          <a class="lr-btn lr-btn-primary" href="/book-demo">Book demo</a>
         </div>
       </div>
-    </nav>
+    </header>
 
     <main>
-      <section class="hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Lead response for local service teams</p>
-          <h1>Reply first. Win more jobs.</h1>
-          <p class="hero-lede">Relinqo reads inbound emails and missed calls, drafts a professional first reply, alerts the owner on urgent work, and tracks every opportunity from inbox to invoice.</p>
-          <div class="hero-actions">
-            <a href="/book-demo" class="btn-primary">Book a demo</a>
-            <a href="#features" class="btn-secondary">See features</a>
+      <section class="lr-hero" id="top">
+        <div class="lr-hero-scene" data-process-board aria-hidden="true">
+          <div class="lr-track lr-track-one"></div>
+          <div class="lr-track lr-track-two"></div>
+          <div class="lr-track lr-track-three"></div>
+          <div class="lr-packet lr-packet-email">Email lead</div>
+          <div class="lr-packet lr-packet-call">Missed call</div>
+          <div class="lr-flow-node lr-flow-intake" data-step="0">
+            <span>1</span>
+            <strong>Capture</strong>
+            <small>Gmail + calls</small>
           </div>
-          <div class="trust-row">
-            <span>Google OAuth</span>
-            <span>Owner approval controls</span>
-            <span>No email passwords stored</span>
+          <div class="lr-flow-node lr-flow-triage" data-step="1">
+            <span>2</span>
+            <strong>AI triage</strong>
+            <small>Urgency, spam, intent</small>
+          </div>
+          <div class="lr-flow-node lr-flow-reply" data-step="2">
+            <span>3</span>
+            <strong>Reply</strong>
+            <small>Draft, send, approve</small>
+          </div>
+          <div class="lr-flow-node lr-flow-book" data-step="3">
+            <span>4</span>
+            <strong>Book</strong>
+            <small>Pipeline + reviews</small>
+          </div>
+          <div class="lr-hero-phone">
+            <div class="lr-phone-top"></div>
+            <strong>Owner alert</strong>
+            <p>Burst pipe lead. Call Daniel now.</p>
+            <span>Tap to call</span>
+          </div>
+          <div class="lr-hero-reply">
+            <span>Reply draft</span>
+            <p>Thanks for reaching out. We can help today. Please send the address and a photo if safe.</p>
           </div>
         </div>
 
-        <div class="product-preview" aria-label="Relinqo dashboard preview">
-          <div class="preview-top">
-            <div class="preview-dots"><span></span><span></span><span></span></div>
-            <strong>Lead command center</strong>
+        <div class="lr-container lr-hero-content">
+          <p class="lr-kicker">Lead response system for local service businesses</p>
+          <h1>AI lead response for trades</h1>
+          <p class="lr-hero-copy">relinqo catches new email and missed-call leads, drafts a fast professional reply, alerts the owner on hot jobs, and tracks the customer from first message to booked work.</p>
+          <div class="lr-hero-actions">
+            <a class="lr-btn lr-btn-primary" href="/book-demo">Book a demo</a>
+            <a class="lr-btn lr-btn-secondary" href="#process">See the process</a>
           </div>
-          <div class="preview-body">
-            <div class="lead-list">
-              <article class="lead-card active">
-                <div class="lead-meta"><span class="tag hot">Urgent</span><span>2:14 AM</span></div>
-                <strong>Burst pipe in basement</strong>
-                <p>Owner alerted with customer summary and callback number.</p>
-              </article>
-              <article class="lead-card">
-                <div class="lead-meta"><span class="tag">Quote</span><span>7:42 AM</span></div>
-                <strong>Water heater replacement</strong>
-                <p>Draft reply is ready for review with next-step questions.</p>
-              </article>
-              <article class="lead-card">
-                <div class="lead-meta"><span class="tag">Missed call</span><span>8:03 AM</span></div>
-                <strong>SMS reply captured</strong>
-                <p>Caller responded by text and became a tracked lead.</p>
-              </article>
-            </div>
-            <article class="reply-panel">
-              <h3>Draft reply ready</h3>
-              <p>Hi Daniel, thanks for reaching out. We can help with the burst pipe. Please send your address and a photo if safe, and we will call you shortly.</p>
-              <div class="reply-actions">
-                <span class="mini-btn primary">Send reply</span>
-                <span class="mini-btn">Edit draft</span>
-                <span class="mini-btn">Call customer</span>
-              </div>
+          <div class="lr-service-strip" aria-label="Core services">
+            <span>Email lead replies</span>
+            <span>Missed-call SMS rescue</span>
+            <span>Urgent owner alerts</span>
+            <span>Booking and pipeline</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="lr-proof">
+        <div class="lr-container lr-proof-grid">
+          <div>
+            <strong>60 second</strong>
+            <span>first response target</span>
+          </div>
+          <div>
+            <strong>24/7</strong>
+            <span>lead capture coverage</span>
+          </div>
+          <div>
+            <strong>OAuth</strong>
+            <span>secure Gmail connection</span>
+          </div>
+          <div>
+            <strong>One view</strong>
+            <span>lead to revenue tracking</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="lr-section lr-process-section" id="process">
+        <div class="lr-container lr-split">
+          <div class="lr-section-copy-block reveal">
+            <p class="lr-kicker">How relinqo works</p>
+            <h2>Every new lead follows the same simple path.</h2>
+            <p>Customers do not wait. Owners do not dig through inboxes. The system catches the lead, understands what it is, prepares the response, and keeps the job moving.</p>
+          </div>
+
+          <div class="lr-process-board reveal" data-process-board>
+            <div class="lr-process-line"></div>
+            <article class="lr-process-step" data-step="0">
+              <span>01</span>
+              <h3>Lead comes in</h3>
+              <p>Gmail inquiries, contact forms, missed calls, and SMS replies are captured as leads.</p>
+            </article>
+            <article class="lr-process-step" data-step="1">
+              <span>02</span>
+              <h3>AI sorts it</h3>
+              <p>relinqo identifies urgency, category, spam risk, customer details, and next action.</p>
+            </article>
+            <article class="lr-process-step" data-step="2">
+              <span>03</span>
+              <h3>Reply is ready</h3>
+              <p>A clean customer response is drafted with approval controls and SMS alerts for hot leads.</p>
+            </article>
+            <article class="lr-process-step" data-step="3">
+              <span>04</span>
+              <h3>Job gets tracked</h3>
+              <p>Booking links, pipeline stages, notes, revenue, and review requests stay tied to the lead.</p>
             </article>
           </div>
         </div>
       </section>
 
-      <section class="metrics">
-        <div class="metric-card reveal"><strong>60s</strong><span>first-response target for new inquiries</span></div>
-        <div class="metric-card reveal"><strong>24/7</strong><span>email and missed-call intake coverage</span></div>
-        <div class="metric-card reveal"><strong>OAuth</strong><span>secure Gmail connection without passwords</span></div>
-        <div class="metric-card reveal"><strong>1 view</strong><span>pipeline from lead to won revenue</span></div>
+      <section class="lr-section lr-services-section" id="services">
+        <div class="lr-container">
+          <div class="lr-section-heading reveal">
+            <p class="lr-kicker">What we do</p>
+            <h2>relinqo is the front desk that never misses the first touch.</h2>
+            <p>Everything is built around speed-to-lead for plumbers, HVAC companies, roofers, electricians, restoration teams, garage door companies, and other service businesses.</p>
+          </div>
+
+          <div class="lr-services-grid">
+            <article class="lr-service-card reveal">
+              <span class="lr-icon lr-icon-mail"></span>
+              <h3>Email lead replies</h3>
+              <p>Connect Gmail, classify incoming lead emails, and prepare a professional first response.</p>
+            </article>
+            <article class="lr-service-card reveal">
+              <span class="lr-icon lr-icon-phone"></span>
+              <h3>Missed-call rescue</h3>
+              <p>Send a helpful SMS after missed calls so customers can reply by text instead of leaving voicemail.</p>
+            </article>
+            <article class="lr-service-card reveal">
+              <span class="lr-icon lr-icon-alert"></span>
+              <h3>Urgent job alerts</h3>
+              <p>Emergency leads reach the owner with a concise summary, callback number, and dashboard link.</p>
+            </article>
+            <article class="lr-service-card reveal">
+              <span class="lr-icon lr-icon-calendar"></span>
+              <h3>Booking links</h3>
+              <p>Send customers scheduling links that respect configured availability and Google Calendar conflicts.</p>
+            </article>
+            <article class="lr-service-card reveal">
+              <span class="lr-icon lr-icon-pipeline"></span>
+              <h3>Pipeline tracking</h3>
+              <p>Track New, Contacted, Quoted, Scheduled, Won, and Lost without burying the team in CRM clutter.</p>
+            </article>
+            <article class="lr-service-card reveal">
+              <span class="lr-icon lr-icon-review"></span>
+              <h3>Review follow-up</h3>
+              <p>When a job is won, relinqo can queue the review request and send it at the right time.</p>
+            </article>
+          </div>
+        </div>
       </section>
 
-      <section id="features" class="section">
-        <div class="section-heading reveal">
-          <p class="eyebrow">Everything in one lead desk</p>
-          <h2>Built for the moments where slow response costs real money.</h2>
-          <p>Relinqo gives local service teams a dependable way to catch, reply to, and track new opportunities without adding another complicated CRM.</p>
-        </div>
-        <div class="feature-grid">
-          <article class="feature-card reveal"><span class="feature-icon">1</span><h3>AI-drafted replies</h3><p>Inbound leads are classified and answered with a practical, professional first response.</p></article>
-          <article class="feature-card reveal"><span class="feature-icon">2</span><h3>Missed-call SMS rescue</h3><p>If a caller hangs up, Relinqo texts back and turns their reply into a tracked lead.</p></article>
-          <article class="feature-card reveal"><span class="feature-icon">3</span><h3>Urgent owner alerts</h3><p>Emergency jobs trigger an SMS summary with the customer details and next action.</p></article>
-          <article class="feature-card reveal"><span class="feature-icon">4</span><h3>Pipeline tracking</h3><p>Move jobs through New, Contacted, Quoted, Scheduled, Won, and Lost.</p></article>
-          <article class="feature-card reveal"><span class="feature-icon">5</span><h3>Booking links</h3><p>Replies can include scheduling links tied to real Google Calendar availability.</p></article>
-          <article class="feature-card reveal"><span class="feature-icon">6</span><h3>Review automation</h3><p>Won jobs can automatically trigger a review request after the configured delay.</p></article>
-        </div>
-      </section>
+      <section class="lr-section lr-dashboard-section">
+        <div class="lr-container lr-dashboard-grid">
+          <div class="lr-dashboard-visual reveal" aria-label="Clean dashboard preview">
+            <div class="lr-window-bar"><span></span><span></span><span></span><strong>Lead workspace</strong></div>
+            <div class="lr-dashboard-layout">
+              <div class="lr-dashboard-list">
+                <div class="lr-dashboard-lead active">
+                  <span>Urgent</span>
+                  <strong>Burst pipe in basement</strong>
+                  <p>Reply drafted. Owner alerted.</p>
+                </div>
+                <div class="lr-dashboard-lead">
+                  <span>Quote</span>
+                  <strong>Furnace replacement</strong>
+                  <p>Needs booking link.</p>
+                </div>
+                <div class="lr-dashboard-lead">
+                  <span>Won</span>
+                  <strong>Water heater install</strong>
+                  <p>Review request queued.</p>
+                </div>
+              </div>
+              <div class="lr-dashboard-detail">
+                <span>AI reply</span>
+                <p>Hi Daniel, we can help with that burst pipe. Please send the address and a safe photo, and we will call you right away.</p>
+                <div class="lr-dashboard-actions"><span>Send</span><span>Edit</span><span>Call</span></div>
+              </div>
+            </div>
+          </div>
 
-      <section id="workflow" class="section">
-        <div class="section-heading reveal">
-          <p class="eyebrow">Workflow</p>
-          <h2>A clean handoff from first message to booked job.</h2>
-        </div>
-        <div class="flow-grid">
-          <article class="flow-card reveal"><span>01 Intake</span><h3>Email or call arrives</h3><p>Relinqo watches the inbox and missed-call flow around the clock.</p></article>
-          <article class="flow-card reveal"><span>02 Triage</span><h3>Urgency is scored</h3><p>Routine quotes, spam, existing customers, and emergencies are separated.</p></article>
-          <article class="flow-card reveal"><span>03 Response</span><h3>Draft is ready</h3><p>The customer gets a fast answer while the team keeps approval controls.</p></article>
-          <article class="flow-card reveal"><span>04 Revenue</span><h3>Job moves forward</h3><p>The team tracks pipeline, bookings, revenue, and reviews in one place.</p></article>
-        </div>
-      </section>
-
-      <section id="pricing" class="section">
-        <div class="section-heading reveal">
-          <p class="eyebrow">Pricing</p>
-          <h2>Simple pilot pricing while you prove it on real leads.</h2>
-        </div>
-        <div class="pricing-grid">
-          <article class="price-card reveal">
-            <h3>Starter</h3>
-            <div class="price"><strong>$49</strong><span>/mo</span></div>
-            <p>For solo operators who need faster email lead response.</p>
-            <ul>
-              <li>AI lead reading and reply drafts</li>
-              <li>Urgent lead alerts</li>
-              <li>Daily summaries</li>
-              <li>Spam filtering</li>
+          <div class="lr-section-copy-block reveal">
+            <p class="lr-kicker">Simple operator view</p>
+            <h2>Readable enough for a busy owner between jobs.</h2>
+            <p>The dashboard is intentionally plain: priority leads first, quick call and email actions, the draft response in front of you, and the pipeline nearby.</p>
+            <ul class="lr-check-list">
+              <li>Hot leads are obvious.</li>
+              <li>Draft replies are easy to review.</li>
+              <li>Pipeline status is visible without extra setup.</li>
+              <li>Revenue and reviews stay connected to the job.</li>
             </ul>
-            <a href="/book-demo" class="btn-secondary">Book demo</a>
-          </article>
-          <article class="price-card featured reveal">
-            <h3>Pro pilot</h3>
-            <div class="price"><strong>$99</strong><span>/mo</span></div>
-            <p>For teams that want email, missed calls, booking, pipeline, and reviews together.</p>
-            <ul>
-              <li>Everything in Starter</li>
-              <li>Missed-call SMS rescue</li>
-              <li>Pipeline and revenue tracking</li>
-              <li>Calendar sync and review automation</li>
-            </ul>
-            <a href="/book-demo" class="btn-primary">Run my pilot</a>
-          </article>
+          </div>
         </div>
       </section>
 
-      <section id="faq" class="section">
-        <div class="section-heading reveal">
-          <p class="eyebrow">FAQ</p>
-          <h2>Professional where customers see it. Controlled where it matters.</h2>
-        </div>
-        <div class="faq-grid">
-          <article class="faq-card reveal"><h3>Will AI send without approval?</h3><p>Only when you allow it. You can review drafts, require approval for urgent leads, or keep everything manual.</p></article>
-          <article class="faq-card reveal"><h3>Does it need my email password?</h3><p>No. Gmail connects through Google's OAuth flow, so passwords are not stored in Relinqo.</p></article>
-          <article class="faq-card reveal"><h3>What if the AI is wrong?</h3><p>It does not quote firm pricing or make business commitments. It responds quickly and gathers the details you need.</p></article>
-          <article class="faq-card reveal"><h3>Who is this for?</h3><p>Plumbing, HVAC, roofing, electrical, restoration, garage doors, and similar local service businesses.</p></article>
+      <section class="lr-section lr-pilot-section" id="pilot">
+        <div class="lr-container lr-pilot-box reveal">
+          <div>
+            <p class="lr-kicker">Pilot offer</p>
+            <h2>Run it on one real service business for 30 days.</h2>
+            <p>Bring a real inbox, missed-call workflow, or lead source. We will set up the flow, watch what happens, and tune the response process around actual customer behavior.</p>
+          </div>
+          <div class="lr-pilot-actions">
+            <a class="lr-btn lr-btn-primary" href="/book-demo">Book a pilot call</a>
+            <a class="lr-btn lr-btn-secondary" href="/register">Create account</a>
+          </div>
         </div>
       </section>
 
-      <section class="final-cta">
-        <h2>See Relinqo run on your actual lead flow.</h2>
-        <p>Fifteen-minute walkthrough. Bring a real lead scenario and we will show how the system handles it from first message to follow-up.</p>
-        <a href="/book-demo" class="btn-primary">Book a demo</a>
+      <section class="lr-section lr-faq-section" id="faq">
+        <div class="lr-container">
+          <div class="lr-section-heading reveal">
+            <p class="lr-kicker">FAQ</p>
+            <h2>Clear answers before you connect anything.</h2>
+          </div>
+          <div class="lr-faq-grid">
+            <article class="lr-faq-item reveal">
+              <h3>Does it send replies automatically?</h3>
+              <p>Only if you enable that behavior. You can keep review required, use owner approval, or let confident replies send after the undo window.</p>
+            </article>
+            <article class="lr-faq-item reveal">
+              <h3>Do I need to share my Gmail password?</h3>
+              <p>No. Gmail connects with Google OAuth, so relinqo does not store your email password.</p>
+            </article>
+            <article class="lr-faq-item reveal">
+              <h3>What happens to missed calls?</h3>
+              <p>relinqo can text the caller, capture their reply, create a lead, and alert the owner when the job looks urgent.</p>
+            </article>
+            <article class="lr-faq-item reveal">
+              <h3>Who is this built for?</h3>
+              <p>Local service teams where fast response matters: plumbing, HVAC, roofing, electrical, restoration, garage doors, and similar trades.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="lr-final-cta">
+        <div class="lr-container">
+          <p class="lr-kicker">See it on your lead flow</p>
+          <h2>Show us one real lead. We will show you exactly how relinqo handles it.</h2>
+          <div class="lr-hero-actions">
+            <a class="lr-btn lr-btn-primary" href="/book-demo">Book a demo</a>
+            <a class="lr-btn lr-btn-secondary" href="/login">Sign in</a>
+          </div>
+        </div>
       </section>
     </main>
 
-    <footer class="site-footer">
-      <strong>Relinqo</strong>
-      <a href="/login">Sign in</a>
-      <a href="/book-demo">Book demo</a>
-      <a href="/register">Create account</a>
+    <footer class="lr-footer">
+      <div class="lr-container lr-footer-inner">
+        <strong>relinqo</strong>
+        <span>AI lead response for local service businesses.</span>
+        <a href="/book-demo">Book demo</a>
+        <a href="/register">Create account</a>
+      </div>
     </footer>
-    <script src="/ui/marketing-motion.js?v=20260430-clean1"></script>
+
+    <script src="/ui/marketing-motion.js?v=20260518-overhaul1"></script>
   </body>
 </html>

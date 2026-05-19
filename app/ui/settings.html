@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>reqlinqo — Settings</title>
+    <title>relinqo — Settings</title>
     <link rel="stylesheet" href="/ui/styles.css" />
     <style>
       .availability-grid { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -31,10 +31,10 @@
       <header class="settings-hero">
         <div class="settings-hero-copy">
           <div class="hero-badge-row">
-            <p class="eyebrow">reqlinqo</p>
+            <p class="eyebrow">relinqo</p>
             <span class="hero-badge">Owner settings</span>
           </div>
-          <h1 class="gradient-text">Set up the workspace once, then let reqlinqo work.</h1>
+          <h1 class="gradient-text">Set up the workspace once, then let relinqo work.</h1>
           <p class="subhead">Connect Gmail, missed-call rescue, owner alerts, scheduling, and review requests from one place.</p>
         </div>
         <div class="settings-hero-actions">
@@ -180,7 +180,7 @@
             <div class="editorial-form section-fields">
               <div id="phoneNotProvisioned">
                 <p class="subhead" style="margin-bottom:1rem;">
-                  Keep your current business number. When a call is missed, reqlinqo texts the caller, turns their reply into a lead, and alerts the owner.
+                  Keep your current business number. When a call is missed, relinqo texts the caller, turns their reply into a lead, and alerts the owner.
                 </p>
                 <div class="phone-rescue-steps">
                   <div><strong>1</strong><span>Tell us the number customers call today</span></div>
@@ -220,7 +220,7 @@
                 <div id="phoneSearchResults" style="margin-top:1rem;"></div>
 
                 <details class="advanced-phone-setup">
-                  <summary>Already have a reqlinqo-compatible number?</summary>
+                  <summary>Already have a relinqo-compatible number?</summary>
                   <p class="muted" style="margin-bottom:0.75rem;">Most customers should ignore this. This is only for support-assisted migrations.</p>
                   <div class="field-group field-group-double">
                     <label class="form-field">
@@ -515,7 +515,7 @@
               <span class="section-chip">Growth loop</span>
             </div>
             <div class="editorial-form section-fields">
-              <p class="muted" style="margin:0;font-size:0.85rem;">When you mark a lead as <strong>Won</strong>, reqlinqo waits the delay below and then sends the customer a friendly review-request message with your Google review link. Skips phone-only leads when the channel is email.</p>
+              <p class="muted" style="margin:0;font-size:0.85rem;">When you mark a lead as <strong>Won</strong>, relinqo waits the delay below and then sends the customer a friendly review-request message with your Google review link. Skips phone-only leads when the channel is email.</p>
               <label class="form-field">
                 <span class="field-label">Enable review requests</span>
                 <label class="toggle-card toggle-card-strong">
@@ -822,7 +822,7 @@
       });
 
       document.getElementById('gmailDisconnectBtn').addEventListener('click', async () => {
-        if (!confirm('Disconnect Gmail? reqlinqo will stop reading your inbox and sending replies via Gmail.')) return;
+        if (!confirm('Disconnect Gmail? relinqo will stop reading your inbox and sending replies via Gmail.')) return;
         const res = await fetch('/auth/google/disconnect', { method: 'POST' });
         if (res.ok) {
           updateGmailUI('');
@@ -1082,7 +1082,7 @@
           return;
         }
         if (!ownerPhone) {
-          showPhoneMsg('Enter the cell phone reqlinqo should ring.', false);
+          showPhoneMsg('Enter the cell phone relinqo should ring.', false);
           return;
         }
         phoneSearchResults.innerHTML = '<p class="muted">Setting up your rescue number and activation code...</p>';
@@ -1223,7 +1223,7 @@
             showPhoneMsg(data.detail || 'Adoption failed.', false);
             return;
           }
-          showPhoneMsg(`Done — ${data.phone_number} is now wired to reqlinqo.`, true);
+          showPhoneMsg(`Done — ${data.phone_number} is now wired to relinqo.`, true);
           await loadPhone();
         } catch (e) {
           showPhoneMsg('Error: ' + e.message, false);

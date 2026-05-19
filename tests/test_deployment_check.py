@@ -7,7 +7,7 @@ def probe(path: str, status: int, content_type: str, body: str) -> ProbeResult:
 
 def test_deployment_check_accepts_fastapi_backend():
     ok, lines = analyze_probe_results({
-        "/health": probe("/health", 200, "application/json", '{"ok": true, "app": "reqlinqo"}'),
+        "/health": probe("/health", 200, "application/json", '{"ok": true, "app": "relinqo"}'),
         "/auth/me": probe("/auth/me", 401, "application/json", '{"detail": "Not authenticated"}'),
         "/auth/login": probe("/auth/login", 401, "application/json", '{"detail": "Invalid credentials"}'),
         "/api/health": probe("/api/health", 404, "application/json", '{"detail": "Not Found"}'),
