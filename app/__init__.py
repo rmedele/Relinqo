@@ -1,1 +1,1 @@
-# Relinqo app package
+# relinqo app package

@@ -1,4 +1,4 @@
-/* Relinqo shared shell — toast notifications, command palette, keyboard shortcuts.
+/* relinqo shared shell — toast notifications, command palette, keyboard shortcuts.
    Loaded on every authenticated page. Exposes window.LR for easy use from page-specific JS. */
 (function () {
   'use strict';
@@ -7,20 +7,32 @@
   function bootVisualSystem() {
     document.documentElement.classList.add('lr-visuals-ready');
 
-    const texture = document.createElement('div');
-    texture.className = 'lr-scene-texture';
-    texture.setAttribute('aria-hidden', 'true');
-    document.body.prepend(texture);
-
     const candidates = document.querySelectorAll(
-      '.card, .stat-card, .chart-card, .priority-card, .lead-item, .kanban-card, .mk-demo-card, .mk-price-card, .mk-benefit, .mk-step, .mk-faq, .mk-stat, .auth-card, .settings-card'
+      [
+        '.card',
+        '.stat-card',
+        '.chart-card',
+        '.priority-card',
+        '.lead-item',
+        '.kanban-card',
+        '.auth-card',
+        '.settings-card',
+        '.demo-form-card',
+        '.workspace-card',
+        '.tmpl-row',
+        '.sender-row',
+        '.book-card',
+        '.portal-card',
+        '.phone-health-panel',
+        '.forwarding-card',
+      ].join(', ')
     );
     candidates.forEach((el, index) => {
       el.classList.add('lr-reveal');
-      el.style.setProperty('--reveal-delay', `${Math.min(index % 8, 7) * 55}ms`);
+      el.style.setProperty('--reveal-delay', `${Math.min(index % 5, 4) * 35}ms`);
     });
 
-    if (!('IntersectionObserver' in window)) {
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       candidates.forEach((el) => el.classList.add('is-visible'));
       return;
     }
@@ -31,181 +43,26 @@
         entry.target.classList.add('is-visible');
         observer.unobserve(entry.target);
       });
-    }, { threshold: 0.08, rootMargin: '0px 0px -8% 0px' });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
 
     candidates.forEach((el) => observer.observe(el));
   }
 
   function bootShuttleMotion() {
-    const hero = document.querySelector('.mk-hero');
-    if (!hero || hero.querySelector('.shuttle-stage')) return;
-
-    const stage = document.createElement('div');
-    stage.className = 'shuttle-stage';
-    stage.setAttribute('aria-hidden', 'true');
-    stage.innerHTML = `
-      <div class="shuttle-orbit shuttle-orbit-one"></div>
-      <div class="shuttle-orbit shuttle-orbit-two"></div>
-      <div class="shuttle-core">
-        <div class="shuttle-window-bar"><span></span><span></span><span></span></div>
-        <div class="shuttle-file shuttle-file-main">
-          <span class="shuttle-file-kicker">Lead packet</span>
-          <strong>Emergency job request</strong>
-          <i></i><i></i><i></i>
-        </div>
-        <div class="shuttle-file shuttle-file-reply">
-          <span class="shuttle-file-kicker">Draft reply</span>
-          <strong>Ready in 42s</strong>
-          <i></i><i></i>
-        </div>
-        <div class="shuttle-file shuttle-file-alert">
-          <span class="shuttle-file-kicker">Owner alert</span>
-          <strong>High urgency</strong>
-          <i></i>
-        </div>
-        <div class="shuttle-rail">
-          <span></span><span></span><span></span><span></span>
-        </div>
-      </div>
-      <div class="shuttle-node shuttle-node-one"></div>
-      <div class="shuttle-node shuttle-node-two"></div>
-      <div class="shuttle-node shuttle-node-three"></div>
-      <div class="relay-core-3d">
-        <span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <svg class="relay-morph-svg relay-morph-hero" viewBox="0 0 260 260" role="presentation" focusable="false">
-        <path class="relay-morph-path" d="M130 13 C190 20 247 68 240 132 C233 196 184 247 121 239 C59 232 16 184 18 124 C20 64 70 6 130 13 Z"></path>
-      </svg>
-    `;
-    const photo = document.createElement('figure');
-    photo.className = 'recovery-photo';
-    photo.innerHTML = `
-      <img src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=1600&q=82" alt="" loading="eager" />
-      <figcaption>
-        <span>Recovery desk</span>
-        <strong>Every urgent job gets routed before it goes cold.</strong>
-      </figcaption>
-    `;
-    hero.appendChild(photo);
-    hero.appendChild(stage);
-    hero.classList.add('mk-hero-shuttle');
-
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const rect = hero.getBoundingClientRect();
-      const viewport = window.innerHeight || 1;
-      const progress = Math.min(1, Math.max(0, (viewport - rect.top) / (viewport + rect.height)));
-      document.documentElement.style.setProperty('--shuttle-scroll', progress.toFixed(4));
-    };
-    const requestUpdate = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener('scroll', requestUpdate, { passive: true });
-    window.addEventListener('resize', requestUpdate, { passive: true });
+    document.querySelectorAll('.shuttle-stage, .recovery-photo, .relay-core-3d, .relay-morph-svg').forEach((el) => el.remove());
   }
 
   function bootAugenInteractions() {
-    const nav = document.querySelector('.mk-nav');
-    if (!nav || nav.dataset.augenReady) return;
-    nav.dataset.augenReady = 'true';
-
-    const navLinks = Array.from(nav.querySelectorAll('.mk-nav-links a'));
-    const dropdownData = {
-      Features: [
-        ['01', 'AI reply drafting', 'Classify, summarize, and draft in under a minute.'],
-        ['02', 'Urgency routing', 'Escalate burst pipes, roof leaks, and high-value jobs.'],
-        ['03', 'Pipeline memory', 'Track every lead from inbox to won revenue.'],
-      ],
-      'How it works': [
-        ['01', 'Connect sources', 'Gmail, forms, missed calls, and booking links.'],
-        ['02', 'Tune the voice', 'Services, tone, territory, and approval rules.'],
-        ['03', 'Operate live', 'Review, send, schedule, and follow up from one queue.'],
-      ],
-      Pricing: [
-        ['01', 'Starter', 'Lean automation for solo operators.'],
-        ['02', 'Pro', 'Unlimited leads, SMS rescue, calendar and pipeline.'],
-      ],
-      FAQ: [
-        ['01', 'Approval rules', 'Choose manual review or confident auto-send.'],
-        ['02', 'Safety rails', 'No pricing promises or hard commitments.'],
-        ['03', 'Setup', 'Most teams are live the same day.'],
-      ],
-    };
-
-    navLinks.forEach((link, index) => {
-      const label = link.textContent.trim();
-      link.classList.add('augen-nav-link');
-      link.dataset.index = String(index + 1).padStart(2, '0');
-      const panel = document.createElement('div');
-      panel.className = 'augen-dropdown';
-      panel.innerHTML = `
-        <div class="augen-dropdown-title">${escapeHtml(label)}</div>
-        <div class="augen-dropdown-grid">
-          ${(dropdownData[label] || []).map(([num, title, copy]) => `
-            <a href="${link.getAttribute('href')}" class="augen-drop-item">
-              <span>${escapeHtml(num)}</span>
-              <strong>${escapeHtml(title)}</strong>
-              <small>${escapeHtml(copy)}</small>
-            </a>
-          `).join('')}
-        </div>
-      `;
-      link.parentElement.appendChild(panel);
+    document.querySelectorAll('.augen-dropdown, .augen-search-btn, .augen-scroll-progress, .augen-search-overlay').forEach((el) => el.remove());
+    document.querySelectorAll('.augen-nav-link, .augen-tilt-card').forEach((el) => {
+      el.classList.remove('augen-nav-link', 'augen-tilt-card');
     });
-
-    const actions = nav.querySelector('.mk-nav-actions');
-    if (actions && !actions.querySelector('.augen-search-btn')) {
-      const search = document.createElement('button');
-      search.type = 'button';
-      search.className = 'augen-search-btn';
-      search.innerHTML = '<span>05</span> Search';
-      actions.insertBefore(search, actions.firstChild);
-      search.addEventListener('click', () => openAugenSearch());
-    }
-
-    document.querySelectorAll('.mk-benefit, .mk-step, .mk-demo-card, .mk-price-card').forEach((card) => {
-      card.classList.add('augen-tilt-card');
-    });
-
-    const progress = document.createElement('div');
-    progress.className = 'augen-scroll-progress';
-    progress.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(progress);
-
-    let raf = 0;
-    const tick = () => {
-      raf = 0;
-      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-      const pct = Math.min(1, Math.max(0, window.scrollY / max));
-      document.documentElement.style.setProperty('--augen-progress', pct.toFixed(4));
-    };
-    const requestTick = () => {
-      if (!raf) raf = requestAnimationFrame(tick);
-    };
-    tick();
-    window.addEventListener('scroll', requestTick, { passive: true });
-    window.addEventListener('resize', requestTick, { passive: true });
   }
 
   function bootDepthFields() {
     document.querySelectorAll('.relay-depth-field').forEach((field) => field.remove());
-    document.querySelectorAll('.mk-demo-card, .mk-benefit, .mk-step, .mk-price-card, .mk-faq, .mk-stat').forEach((tile) => {
-      if (tile.dataset.tileReady) return;
-      tile.dataset.tileReady = 'true';
-      tile.classList.add('interactive-tile');
-      tile.tabIndex = tile.tabIndex < 0 ? 0 : tile.tabIndex;
-      tile.addEventListener('click', () => {
-        tile.classList.toggle('tile-expanded');
-      });
-      tile.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          tile.classList.toggle('tile-expanded');
-        }
-      });
+    document.querySelectorAll('.interactive-tile, .tile-expanded').forEach((tile) => {
+      tile.classList.remove('interactive-tile', 'tile-expanded');
     });
   }
 
@@ -214,7 +71,7 @@
     const overlay = document.createElement('div');
     overlay.className = 'augen-search-overlay';
     overlay.innerHTML = `
-      <div class="augen-search-panel" role="dialog" aria-label="Search Relinqo">
+      <div class="augen-search-panel" role="dialog" aria-label="Search relinqo">
         <div class="augen-search-top">
           <span>Search</span>
           <button type="button" aria-label="Close search">&times;</button>

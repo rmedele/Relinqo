@@ -432,7 +432,7 @@ def submit_contact_form(
             if smtp_configured(org_settings):
                 send_email(
                     to_email=alert_email,
-                    subject=f"reqlinqo demo request — {payload['company']}",
+                    subject=f"relinqo demo request — {payload['company']}",
                     body=(
                         f"Lead ID: {lead_id}\n"
                         f"Name: {payload['name']}\n"
