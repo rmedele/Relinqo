@@ -54,8 +54,9 @@ def fetch_path(base_url: str, path: str, *, method: str = "GET", payload: dict |
         headers["Content-Type"] = "application/json"
 
     request = urllib.request.Request(url, data=data, headers=headers, method=method)
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with opener.open(request, timeout=10) as response:
             return ProbeResult(
                 path=path,
                 status=response.status,

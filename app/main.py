@@ -188,6 +188,10 @@ def _expects_html(request: Request) -> bool:
     return "text/html" in accept and "application/json" not in accept
 
 
+def _session_cookie_https_only() -> bool:
+    return settings.app_env == "production"
+
+
 @app.middleware("http")
 async def billing_access_middleware(request: Request, call_next):
     if not billing_enabled() or request.method == "OPTIONS" or not _is_billing_gated_path(request.url.path):
@@ -217,7 +221,12 @@ async def billing_access_middleware(request: Request, call_next):
     return await call_next(request)
 
 
-app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    same_site="lax",
+    https_only=_session_cookie_https_only(),
+)
 
 _allowed_origins = [settings.public_base_url]
 if settings.app_env == "development":
@@ -830,32 +839,32 @@ def register_page():
 
 
 @app.get("/review", include_in_schema=False)
-def review_page():
+def review_page(user: User = Depends(get_current_user)):
     return FileResponse(UI_DIR / "index.html")
 
 
 @app.get("/analytics", include_in_schema=False)
-def analytics_page():
+def analytics_page(user: User = Depends(get_current_user)):
     return FileResponse(UI_DIR / "analytics.html")
 
 
 @app.get("/pipeline", include_in_schema=False)
-def pipeline_page():
+def pipeline_page(user: User = Depends(get_current_user)):
     return FileResponse(UI_DIR / "pipeline.html")
 
 
 @app.get("/templates", include_in_schema=False)
-def templates_page():
+def templates_page(user: User = Depends(get_current_user)):
     return FileResponse(UI_DIR / "templates.html")
 
 
 @app.get("/setup", include_in_schema=False)
-def setup_page():
+def setup_page(user: User = Depends(get_current_user)):
     return FileResponse(UI_DIR / "setup.html")
 
 
 @app.get("/settings", include_in_schema=False)
-def settings_page():
+def settings_page(user: User = Depends(get_current_user)):
     return FileResponse(UI_DIR / "settings.html")
 
 
