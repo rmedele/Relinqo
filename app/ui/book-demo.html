@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/ui/favicon.svg" type="image/svg+xml" />
     <title>Book a demo | relinqo</title>
+    <meta name="description" content="Book a relinqo walkthrough using a real lead, missed-call scenario, or inbox problem from your local service business." />
     <link rel="stylesheet" href="/ui/styles.css?v=20260518-ui" />
     <link rel="stylesheet" href="/ui/marketing.css?v=20260518-overhaul1" />
   </head>
@@ -16,6 +16,7 @@
           <span>relinqo</span>
         </a>
         <div class="lr-nav-actions">
+          <a class="lr-link" href="/demo">Try live demo</a>
           <a class="lr-link" href="/">Back to site</a>
         </div>
       </div>
@@ -26,31 +27,36 @@
 
       <section class="lr-demo-grid">
         <div class="lr-demo-intro">
-          <p class="lr-kicker">Book a demo</p>
-          <h1>See relinqo on your real lead flow.</h1>
-          <p>Bring one example lead, missed call, or inbox problem. We will walk through how relinqo captures it, drafts the reply, alerts the owner, and tracks the opportunity.</p>
+          <p class="lr-kicker">Book a 20-minute walkthrough</p>
+          <h1>Bring one real lead leak. We will show the fix.</h1>
+          <p>Send a quote email, missed-call story, after-hours inquiry, or slow-response problem. The request is saved as a real relinqo lead so the walkthrough can show the actual workflow, not a generic deck.</p>
 
           <div class="lr-demo-points">
             <div>
               <strong>What you will see</strong>
-              <span>Email lead response, missed-call SMS rescue, urgent alerts, booking links, pipeline, and review follow-up.</span>
+              <span>Email lead response, missed-call SMS rescue, urgent owner alerts, booking links, pipeline, revenue tracking, and review follow-up.</span>
             </div>
             <div>
               <strong>Best fit</strong>
-              <span>Plumbing, HVAC, electrical, roofing, garage doors, restoration, and similar local service businesses.</span>
+              <span>Plumbing, HVAC, electrical, roofing, garage doors, restoration, and similar local service businesses that lose jobs when replies are slow.</span>
+            </div>
+            <div>
+              <strong>Pilot offer</strong>
+              <span>Founding pilots get 30 days free, then a month-to-month pilot plan from $99/mo if the workflow is worth keeping.</span>
             </div>
           </div>
         </div>
 
         <form action="/contact" method="post" class="lr-demo-form">
-          <div class="form-field">
-            <label class="field-label" for="name">Name</label>
-            <input id="name" name="name" type="text" placeholder="Your name" required />
-          </div>
-
-          <div class="form-field">
-            <label class="field-label" for="company">Company</label>
-            <input id="company" name="company" type="text" placeholder="Company name" required />
+          <div class="lr-demo-form-row">
+            <div class="form-field">
+              <label class="field-label" for="name">Name</label>
+              <input id="name" name="name" type="text" placeholder="Your name" required />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="company">Company</label>
+              <input id="company" name="company" type="text" placeholder="Company name" required />
+            </div>
           </div>
 
           <div class="lr-demo-form-row">
@@ -64,13 +70,43 @@
             </div>
           </div>
 
-          <div class="form-field">
-            <label class="field-label" for="message">What do you want to test?</label>
-            <textarea id="message" name="message" rows="5" placeholder="Tell us about your lead flow, after-hours response issue, team size, or what you want to see."></textarea>
+          <div class="lr-demo-form-row">
+            <div class="form-field">
+              <label class="field-label" for="business_type">Business type</label>
+              <input id="business_type" name="business_type" type="text" placeholder="Plumbing, HVAC, roofing..." />
+            </div>
+            <div class="form-field">
+              <label class="field-label" for="lead_source">Biggest leak</label>
+              <select id="lead_source" name="lead_source">
+                <option value="">Select one</option>
+                <option value="missed_calls">Missed calls</option>
+                <option value="slow_email_replies">Slow email replies</option>
+                <option value="after_hours">After-hours leads</option>
+                <option value="follow_up">Forgotten follow-up</option>
+                <option value="reviews">Not enough reviews</option>
+              </select>
+            </div>
           </div>
 
-          <button type="submit" class="lr-demo-submit">Book demo</button>
-          <p class="lr-demo-note">This creates a reviewable lead inside relinqo so the demo request follows the same workflow.</p>
+          <div class="form-field">
+            <label class="field-label" for="current_response_time">Current first-response time</label>
+            <select id="current_response_time" name="current_response_time">
+              <option value="">Select one</option>
+              <option value="under_5_minutes">Under 5 minutes</option>
+              <option value="5_to_30_minutes">5 to 30 minutes</option>
+              <option value="same_day">Same day</option>
+              <option value="next_day_or_later">Next day or later</option>
+              <option value="not_sure">Not sure</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label class="field-label" for="message">What should we test?</label>
+            <textarea id="message" name="message" rows="5" placeholder="Paste a sample inquiry, describe your missed-call flow, or tell us where leads slow down."></textarea>
+          </div>
+
+          <button type="submit" class="lr-demo-submit">Send test lead</button>
+          <p class="lr-demo-note">This creates a reviewable lead inside relinqo so the demo request follows the same workflow we will show you.</p>
         </form>
       </section>
     </main>

@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Relinqo inbox polling every minute
+Description=Run reqlinqo inbox polling every minute
 
 [Timer]
 OnBootSec=45s

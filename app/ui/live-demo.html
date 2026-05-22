@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Try the live demo | relinqo</title>
+    <meta name="description" content="Act like a homeowner, send a sample trade lead, and watch Relinqo classify it, draft a reply, alert the owner, and move the job forward." />
+    <link rel="stylesheet" href="/ui/styles.css?v=20260518-ui" />
+    <link rel="stylesheet" href="/ui/marketing.css?v=20260518-overhaul1" />
+  </head>
+
+  <body class="lr-page lr-live-demo-page">
+    <header class="lr-nav">
+      <div class="lr-container lr-nav-inner">
+        <a class="lr-brand" href="/" aria-label="relinqo home">
+          <span class="lr-brand-mark">rl</span>
+          <span>relinqo</span>
+        </a>
+        <div class="lr-nav-actions">
+          <a class="lr-link" href="/">Back to site</a>
+          <a class="lr-btn lr-btn-primary" href="/book-demo">Book pilot</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="lr-live-demo-shell lr-live-demo-shell-wide">
+      <section class="lr-live-demo-hero lr-live-demo-hero-wide">
+        <div>
+          <p class="lr-kicker">Interactive product demo</p>
+          <h1>Act like a homeowner. Watch Relinqo respond.</h1>
+          <p>Pick a realistic lead, run the demo, and watch what the business owner sees: triage, reply draft, owner alert, pipeline, booking, and review follow-up.</p>
+        </div>
+        <div class="lr-live-demo-note">
+          <strong>Safe preview</strong>
+          <span>The simulator sends nothing. Email/text demos create a preview link only, not a live customer reply.</span>
+        </div>
+      </section>
+
+      <section class="lr-real-demo-contact" id="realDemoContact">
+        <div>
+          <p class="lr-kicker">Two ways to try it</p>
+          <h2>Run the instant demo, or send a real email/text.</h2>
+          <p id="realDemoIntro">The form below is fastest. The demo inbox and phone number let a prospect send a real message and get a link back to this same Relinqo preview.</p>
+          <div class="lr-demo-choice-steps" aria-label="Demo steps">
+            <span><strong>1</strong> Pick a scenario</span>
+            <span><strong>2</strong> Run the lead</span>
+            <span><strong>3</strong> Watch Relinqo work</span>
+          </div>
+        </div>
+        <div class="lr-real-contact-grid">
+          <a id="demoInboxLink" class="lr-real-contact-card" href="#" aria-disabled="true">
+            <span>Real email test</span>
+            <strong id="demoInboxEmail">Not configured</strong>
+            <small id="demoInboxHint">Demo email is not connected yet.</small>
+          </a>
+          <a id="demoPhoneLink" class="lr-real-contact-card" href="#" aria-disabled="true">
+            <span>Real phone test</span>
+            <strong id="demoPhoneNumber">Not configured</strong>
+            <small id="demoPhoneHint">Demo phone is not connected yet.</small>
+          </a>
+        </div>
+        <details class="lr-demo-webhook-details">
+          <summary>Operator setup details</summary>
+          <div>
+            <span>Email forwarder endpoint</span>
+            <code id="demoInboundUrl">Loading...</code>
+          </div>
+          <div>
+            <span>Twilio SMS webhook</span>
+            <code id="demoSmsWebhookUrl">Loading...</code>
+          </div>
+          <div>
+            <span>Twilio voice webhook</span>
+            <code id="demoVoiceWebhookUrl">Loading...</code>
+          </div>
+        </details>
+      </section>
+
+      <section class="lr-demo-theatre">
+        <form id="liveDemoForm" class="lr-customer-console">
+          <div class="lr-window-bar"><span></span><span></span><span></span><strong>Customer message</strong></div>
+          <div class="lr-customer-console-body">
+            <div class="lr-demo-panel-heading">
+              <span>Instant simulator</span>
+              <strong>Choose a sample, then run it.</strong>
+            </div>
+            <div class="lr-channel-row" aria-label="Sample leads">
+              <button type="button" data-sample="urgent" class="is-active">Burst pipe</button>
+              <button type="button" data-sample="quote">Furnace quote</button>
+              <button type="button" data-sample="afterhours">After-hours text</button>
+            </div>
+
+            <div class="lr-customer-bubble">
+              <span id="channelLabel">Website form / email lead</span>
+              <textarea id="leadText" name="lead_text" rows="7" required>Hi, we have a burst pipe in the basement and water is coming through the ceiling. We are in Edmonton and need someone ASAP. Can you call me?</textarea>
+            </div>
+
+            <div class="lr-demo-form-row">
+              <div class="form-field">
+                <label class="field-label" for="senderName">Customer</label>
+                <input id="senderName" name="sender_name" type="text" value="Daniel" />
+              </div>
+              <div class="form-field">
+                <label class="field-label" for="phone">Phone</label>
+                <input id="phone" name="phone" type="tel" value="+1 780 555 0134" />
+              </div>
+            </div>
+
+            <div class="lr-demo-form-row">
+              <div class="form-field">
+                <label class="field-label" for="trade">Trade</label>
+                <select id="trade" name="trade">
+                  <option value="plumbing">Plumbing</option>
+                  <option value="HVAC">HVAC</option>
+                  <option value="electrical">Electrical</option>
+                  <option value="roofing">Roofing</option>
+                  <option value="restoration">Restoration</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label class="field-label" for="subject">Subject</label>
+                <input id="subject" name="subject" type="text" value="Burst pipe in basement" />
+              </div>
+            </div>
+
+            <button type="submit" class="lr-demo-submit">Run the demo</button>
+            <p id="demoStatus" class="lr-demo-note" role="status">Ready. This acts like a new customer email, text, or website form.</p>
+          </div>
+        </form>
+
+        <section class="lr-operator-console" id="demoResult" aria-live="polite">
+          <div class="lr-window-bar"><span></span><span></span><span></span><strong>What Relinqo shows the owner</strong></div>
+
+          <div class="lr-demo-stepper">
+            <div data-demo-step="capture"><span>1</span><strong>Capture</strong></div>
+            <div data-demo-step="triage"><span>2</span><strong>AI triage</strong></div>
+            <div data-demo-step="reply"><span>3</span><strong>Reply</strong></div>
+            <div data-demo-step="alert"><span>4</span><strong>Owner alert</strong></div>
+            <div data-demo-step="track"><span>5</span><strong>Track</strong></div>
+          </div>
+
+          <div class="lr-operator-workspace">
+            <aside class="lr-operator-queue">
+              <p class="lr-kicker">Lead queue</p>
+              <div id="queueLead" class="lr-queue-lead is-empty">
+                <span>Waiting</span>
+                <strong>No lead yet</strong>
+                <p>Run the demo to see the lead appear here.</p>
+              </div>
+              <div class="lr-queue-lead muted">
+                <span>Won</span>
+                <strong>Water heater install</strong>
+                <p>Review request queued.</p>
+              </div>
+            </aside>
+
+            <div class="lr-operator-detail">
+              <div class="lr-live-demo-kpis">
+                <div>
+                  <span>Category</span>
+                  <strong id="demoCategory">-</strong>
+                </div>
+                <div>
+                  <span>Urgency</span>
+                  <strong id="demoUrgency">-</strong>
+                </div>
+                <div>
+                  <span>Pipeline</span>
+                  <strong id="demoPipeline">-</strong>
+                </div>
+              </div>
+
+              <article class="lr-live-demo-card is-placeholder" id="replyCard">
+                <span>AI reply draft</span>
+                <p id="demoReply">The drafted customer response appears here.</p>
+              </article>
+
+              <div class="lr-demo-phone-and-next">
+                <article class="lr-owner-phone-card" id="alertCard">
+                  <div class="lr-phone-top"></div>
+                  <span>Owner SMS preview</span>
+                  <p id="demoAlert">Hot jobs trigger a concise owner alert preview.</p>
+                </article>
+                <article class="lr-live-demo-card" id="nextCard">
+                  <span>Next action</span>
+                  <p id="demoNext">Relinqo shows what should happen next.</p>
+                </article>
+              </div>
+
+              <div class="lr-live-demo-timeline" id="demoTimeline">
+                <div>
+                  <span>Ready</span>
+                  <p>Send a lead to see the workflow.</p>
+                </div>
+              </div>
+
+              <div class="lr-live-demo-actions">
+                <a class="lr-btn lr-btn-primary" href="/book-demo">Use this on my leads</a>
+                <a class="lr-btn lr-btn-secondary" href="/">Back to overview</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        const samples = {
+          urgent: {
+            sender_name: "Daniel",
+            phone: "+1 780 555 0134",
+            trade: "plumbing",
+            subject: "Burst pipe in basement",
+            channel: "Website form / email lead",
+            lead_text: "Hi, we have a burst pipe in the basement and water is coming through the ceiling. We are in Edmonton and need someone ASAP. Can you call me?"
+          },
+          quote: {
+            sender_name: "Megan",
+            phone: "+1 780 555 0188",
+            trade: "HVAC",
+            subject: "Furnace replacement estimate",
+            channel: "Quote request email",
+            lead_text: "Hello, our furnace is 18 years old and we want a quote for replacement before winter. We are in St. Albert. Could someone send pricing and available times?"
+          },
+          afterhours: {
+            sender_name: "Alex",
+            phone: "+1 780 555 0199",
+            trade: "electrical",
+            subject: "After-hours missed call reply",
+            channel: "Missed-call SMS reply",
+            lead_text: "I called after hours but did not leave a voicemail. Half the kitchen outlets are out and one breaker keeps tripping. Please text or call tomorrow morning."
+          }
+        };
+
+        const form = document.getElementById("liveDemoForm");
+        const status = document.getElementById("demoStatus");
+        const channelLabel = document.getElementById("channelLabel");
+        const queueLead = document.getElementById("queueLead");
+        const stepOrder = ["capture", "triage", "reply", "alert", "track"];
+        const realDemoContact = document.getElementById("realDemoContact");
+
+        function escapeHtml(value) {
+          return String(value || "").replace(/[&<>"']/g, (char) => ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;"
+          })[char]);
+        }
+
+        function renderDemoContact(config) {
+          document.getElementById("demoInboundUrl").textContent = config.demo_inbound_url || "Unavailable";
+          document.getElementById("demoSmsWebhookUrl").textContent = config.demo_sms_webhook_url || "Unavailable";
+          document.getElementById("demoVoiceWebhookUrl").textContent = config.demo_voice_webhook_url || "Unavailable";
+
+          const inboxLink = document.getElementById("demoInboxLink");
+          const phoneLink = document.getElementById("demoPhoneLink");
+          const inboxEmail = document.getElementById("demoInboxEmail");
+          const phoneNumber = document.getElementById("demoPhoneNumber");
+
+          if (config.demo_inbox_email) {
+            inboxEmail.textContent = config.demo_inbox_email;
+            inboxLink.href = `mailto:${config.demo_inbox_email}?subject=Emergency%20plumbing%20demo&body=Hi%2C%20we%20have%20water%20coming%20through%20the%20ceiling%20and%20need%20help%20ASAP.`;
+            inboxLink.setAttribute("aria-disabled", "false");
+            document.getElementById("demoInboxHint").textContent = "Opens your email app with a sample lead.";
+          }
+          if (config.demo_phone_number) {
+            phoneNumber.textContent = config.demo_phone_number;
+            phoneLink.href = `sms:${config.demo_phone_number}`;
+            phoneLink.setAttribute("aria-disabled", "false");
+            document.getElementById("demoPhoneHint").textContent = "Text it for a link, or call it to hear the voice demo.";
+          }
+          realDemoContact.classList.toggle("is-muted", !config.enabled);
+        }
+
+        async function loadDemoContact() {
+          try {
+            const response = await fetch("/api/demo/config");
+            if (!response.ok) return;
+            renderDemoContact(await response.json());
+          } catch {
+            realDemoContact.classList.add("is-muted");
+          }
+        }
+
+        function setSample(name) {
+          const sample = samples[name];
+          if (!sample) return;
+          Object.entries(sample).forEach(([key, value]) => {
+            const field = form.elements[key];
+            if (field) field.value = value;
+          });
+          channelLabel.textContent = sample.channel;
+          document.querySelectorAll("[data-sample]").forEach((button) => {
+            button.classList.toggle("is-active", button.dataset.sample === name);
+          });
+          status.textContent = "Sample loaded. Run it to watch the owner workflow.";
+        }
+
+        function resetDemo() {
+          document.querySelectorAll("[data-demo-step]").forEach((step) => {
+            step.classList.remove("is-active", "is-done");
+          });
+          document.querySelectorAll(".lr-live-demo-card, .lr-owner-phone-card").forEach((card) => {
+            card.classList.remove("is-live");
+          });
+        }
+
+        function activateStep(name) {
+          const index = stepOrder.indexOf(name);
+          document.querySelectorAll("[data-demo-step]").forEach((step) => {
+            const stepIndex = stepOrder.indexOf(step.dataset.demoStep);
+            step.classList.toggle("is-active", stepIndex === index);
+            step.classList.toggle("is-done", stepIndex < index);
+          });
+        }
+
+        function renderResult(data, payload) {
+          queueLead.classList.remove("is-empty");
+          queueLead.innerHTML = `
+            <span>${escapeHtml(data.urgency_label)}</span>
+            <strong>${escapeHtml(payload.subject || "New lead")}</strong>
+            <p>${escapeHtml(data.category_label)} from ${escapeHtml(payload.sender_name || "customer")}.</p>
+          `;
+
+          document.getElementById("demoCategory").textContent = data.category_label;
+          document.getElementById("demoUrgency").textContent = `${data.urgency_label} (${data.urgency_score}/5)`;
+          document.getElementById("demoPipeline").textContent = data.pipeline_stage;
+          document.getElementById("demoReply").textContent = data.recommended_reply || "No reply drafted for this lead.";
+          document.getElementById("demoAlert").textContent = data.owner_alert_preview;
+          document.getElementById("demoNext").textContent = data.next_step_label;
+          document.getElementById("demoTimeline").innerHTML = data.timeline.map((item) => `
+            <div>
+              <span>${escapeHtml(item.label)}</span>
+              <p>${escapeHtml(item.detail)}</p>
+            </div>
+          `).join("");
+        }
+
+        async function loadSharedDemoLead() {
+          const leadId = new URLSearchParams(window.location.search).get("lead");
+          if (!leadId) return;
+          status.textContent = "Loading real demo lead...";
+          try {
+            const response = await fetch(`/api/demo/leads/${encodeURIComponent(leadId)}`);
+            const record = await response.json();
+            if (!response.ok) throw new Error(record.detail || "Demo lead not found");
+            const payload = {
+              sender_name: record.from_name || record.from_phone || "Demo customer",
+              phone: record.from_phone || "",
+              trade: record.trade || "",
+              subject: record.subject || "Real demo lead",
+              lead_text: record.body || ""
+            };
+            Object.entries(payload).forEach(([key, value]) => {
+              const field = form.elements[key];
+              if (field) field.value = value;
+            });
+            channelLabel.textContent = record.source === "sms" ? "Real demo SMS" : "Real demo inbox";
+            renderResult(record.result, payload);
+            await animateWorkflow();
+            status.textContent = "Loaded from the real demo inbox/phone flow.";
+          } catch (error) {
+            status.textContent = error.message || "Could not load that demo lead.";
+          }
+        }
+
+        async function animateWorkflow() {
+          resetDemo();
+          const delays = [
+            ["capture", 120],
+            ["triage", 620],
+            ["reply", 1120],
+            ["alert", 1620],
+            ["track", 2120]
+          ];
+          delays.forEach(([step, delay]) => {
+            window.setTimeout(() => {
+              activateStep(step);
+              if (step === "reply") document.getElementById("replyCard").classList.add("is-live");
+              if (step === "alert") document.getElementById("alertCard").classList.add("is-live");
+              if (step === "track") document.getElementById("nextCard").classList.add("is-live");
+            }, delay);
+          });
+          await new Promise((resolve) => window.setTimeout(resolve, 2400));
+        }
+
+        document.querySelectorAll("[data-sample]").forEach((button) => {
+          button.addEventListener("click", () => setSample(button.dataset.sample));
+        });
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const payload = Object.fromEntries(new FormData(form).entries());
+          status.textContent = "Lead received. Relinqo is reading it now...";
+          form.querySelector("button[type='submit']").disabled = true;
+          resetDemo();
+          try {
+            const response = await fetch("/api/demo/lead", {
+              method: "POST",
+              headers: {"Content-Type": "application/json"},
+              body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok) {
+              throw new Error(data.detail || "Demo failed");
+            }
+            renderResult(data, payload);
+            await animateWorkflow();
+            status.textContent = "Demo complete. This is the same workflow used for live leads.";
+          } catch (error) {
+            status.textContent = error.message || "Demo failed. Please try again.";
+          } finally {
+            form.querySelector("button[type='submit']").disabled = false;
+          }
+        });
+
+        loadDemoContact();
+        loadSharedDemoLead();
+      })();
+    </script>
+  </body>
+</html>

@@ -37,6 +37,11 @@ def classify_lead(
     return _heuristic_classify(payload, booking_url=booking_url)
 
 
+def classify_demo_lead(payload: dict[str, Any], booking_url: str | None = None) -> ClassificationResult:
+    """Classify public demo leads without external AI calls or side effects."""
+    return _heuristic_classify(payload, booking_url=booking_url)
+
+
 def _heuristic_classify(payload: dict[str, Any], booking_url: str | None = None) -> ClassificationResult:
     """Keyword-based fallback classifier."""
     body = (payload.get("body") or "").lower()

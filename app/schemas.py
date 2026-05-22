@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class LeadIngestRequest(BaseModel):
@@ -63,6 +63,51 @@ class ClassificationResult(BaseModel):
     extracted_phone: str | None = None
     extracted_location: str | None = None
     photo_analysis: str | None = None
+
+
+class DemoLeadRequest(BaseModel):
+    lead_text: str = Field(..., max_length=2000)
+    sender_name: str | None = Field(default=None, max_length=120)
+    sender_email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=80)
+    trade: str | None = Field(default=None, max_length=80)
+    subject: str | None = Field(default=None, max_length=160)
+
+
+class DemoLeadResponse(BaseModel):
+    ok: bool
+    category: str
+    category_label: str
+    urgency_score: int
+    urgency_label: str
+    confidence: float
+    summary: str
+    recommended_reply: str
+    owner_alert_needed: bool
+    owner_alert_preview: str
+    pipeline_stage: str
+    next_step_label: str
+    booking_url: str
+    review_followup_preview: str
+    timeline: list[dict[str, str]]
+
+
+class DemoInboundRequest(BaseModel):
+    token: str | None = None
+    source: str = Field(default="email", max_length=40)
+    from_name: str | None = Field(default=None, max_length=120)
+    from_email: EmailStr | None = None
+    from_phone: str | None = Field(default=None, max_length=80)
+    subject: str | None = Field(default=None, max_length=160)
+    body: str = Field(..., max_length=2000)
+    trade: str | None = Field(default=None, max_length=80)
+
+
+class DemoInboundResponse(BaseModel):
+    ok: bool
+    demo_id: str
+    demo_url: str
+    result: DemoLeadResponse
 
 
 class SendReviewResponse(BaseModel):

@@ -117,6 +117,12 @@ class OrgSettings(Base):
     review_request_subject = Column(String(255), nullable=False, default="Quick favor — would you mind leaving us a review?")
     review_request_body = Column(Text, nullable=False, default="")
 
+    # Outbound webhook handoff for Zapier/Make/CRM glue
+    outbound_webhook_enabled = Column(Boolean, nullable=False, default=False)
+    outbound_webhook_url = Column(String(500), nullable=False, default="")
+    outbound_webhook_secret = Column(String(255), nullable=False, default="")
+    outbound_webhook_events = Column(String(255), nullable=False, default="lead.created,booking.created,lead.won")
+
     # Behavior
     human_review = Column(Boolean, nullable=False, default=True)
     automation_paused = Column(Boolean, nullable=False, default=False)

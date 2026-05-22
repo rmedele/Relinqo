@@ -175,7 +175,7 @@ def upgrade() -> None:
     for table in tables:
         existing_indexes = [idx['name'] for idx in inspector.get_indexes(table)]
         with op.batch_alter_table(table) as batch_op:
-            batch_op.alter_column('org_id', existing_type=sa.Integer(), nullable=False)
+            batch_op.alter_column('org_id', nullable=False)
             if f'ix_{table}_org_id' not in existing_indexes:
                 batch_op.create_index(f'ix_{table}_org_id', ['org_id'])
             existing_fks = [fk['name'] for fk in inspector.get_foreign_keys(table)]
