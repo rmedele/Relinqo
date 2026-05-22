@@ -2150,3 +2150,256 @@
     transform: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+   relinqo public-site color refresh
+   Color/background only. Keeps the existing scene, cards, motion, and words.
+-------------------------------------------------------------------------- */
+
+:root {
+  --lr-bg: #f5f2ea;
+  --lr-paper: #fffdf8;
+  --lr-paper-soft: #efe8dc;
+  --lr-ink: #121a17;
+  --lr-ink-soft: #31413a;
+  --lr-muted: #6a756e;
+  --lr-line: #ded4c4;
+  --lr-line-soft: #e8dece;
+  --lr-blue: #bd421f;
+  --lr-blue-dark: #8f2f17;
+  --lr-green: #0f7a4e;
+  --lr-red: #b42318;
+  --lr-yellow: #a66d08;
+  --lr-accent-soft: #fff0e8;
+  --lr-accent-border: #efb79f;
+  --lr-stage-blue: #2458d3;
+  --lr-stage-teal: #0f766e;
+  --lr-stage-violet: #6f4bc9;
+  --lr-shadow: 0 22px 54px rgba(43, 33, 21, 0.12);
+  --lr-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.74' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 .075'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+  --lr-page-wash: linear-gradient(135deg, rgba(255,255,255,0.94) 0%, rgba(245,242,234,0.9) 46%, rgba(231,243,239,0.82) 100%);
+}
+
+.lr-page {
+  color: var(--lr-ink);
+  background-color: var(--lr-bg);
+  background-image: var(--lr-texture), var(--lr-page-wash);
+  background-size: 180px 180px, auto;
+  background-attachment: fixed, fixed;
+}
+
+.lr-nav {
+  background: rgba(255, 253, 248, 0.94);
+  border-bottom-color: rgba(199, 183, 162, 0.72);
+}
+
+.lr-brand,
+.lr-nav a:hover,
+.lr-footer a:hover,
+.lr-page h1,
+.lr-page h2,
+.lr-page h3,
+.lr-dashboard-lead strong,
+.lr-demo-panel-heading strong,
+.lr-real-contact-card strong {
+  color: var(--lr-ink);
+}
+
+.lr-nav a,
+.lr-footer a,
+.lr-hero-copy,
+.lr-page p,
+.lr-check-list li,
+.lr-dashboard-detail p,
+.lr-live-demo-card p,
+.lr-live-demo-timeline p,
+.lr-real-contact-card small {
+  color: var(--lr-ink-soft);
+}
+
+.lr-brand-mark {
+  color: #ffffff;
+  background: var(--lr-ink);
+}
+
+.lr-kicker,
+.lr-dashboard-lead span,
+.lr-dashboard-detail span,
+.lr-real-contact-card span,
+.lr-demo-webhook-details span,
+.lr-live-demo-empty span,
+.lr-live-demo-card span,
+.lr-live-demo-kpis span,
+.lr-live-demo-timeline span,
+.lr-demo-panel-heading span {
+  color: var(--lr-blue);
+}
+
+.lr-btn-primary,
+.lr-dashboard-actions span:first-child,
+.lr-flow-node span,
+.lr-demo-choice-steps strong,
+.lr-live-demo-actions .lr-btn-primary {
+  color: #ffffff !important;
+  background: var(--lr-blue);
+  border-color: var(--lr-blue);
+  box-shadow: 0 12px 28px rgba(189, 66, 31, 0.22);
+}
+
+.lr-btn-primary:hover,
+.lr-live-demo-actions .lr-btn-primary:hover {
+  background: var(--lr-blue-dark);
+  border-color: var(--lr-blue-dark);
+}
+
+.lr-btn-secondary,
+.lr-service-strip span,
+.lr-dashboard-actions span,
+.lr-live-demo-samples button,
+.lr-demo-choice-steps span {
+  color: var(--lr-ink) !important;
+  background: var(--lr-paper);
+  border-color: var(--lr-line);
+}
+
+.lr-btn-secondary:hover,
+.lr-live-demo-samples button:hover {
+  border-color: var(--lr-line);
+  box-shadow: 0 12px 30px rgba(43, 33, 21, 0.09);
+}
+
+.lr-hero {
+  background-color: var(--lr-bg);
+  background-image: var(--lr-texture), var(--lr-page-wash);
+  background-size: 180px 180px, auto;
+  border-bottom-color: var(--lr-line-soft);
+}
+
+.lr-hero::after {
+  background: linear-gradient(90deg, rgba(255,253,248,0.92) 0%, rgba(255,253,248,0.74) 58%, rgba(255,253,248,0) 100%);
+}
+
+.lr-track {
+  background: rgba(199, 183, 162, 0.8);
+}
+
+.lr-track::after {
+  background: var(--lr-blue);
+}
+
+.lr-packet,
+.lr-flow-node,
+.lr-hero-phone,
+.lr-hero-reply,
+.lr-live-demo-note,
+.lr-live-demo-empty,
+.lr-live-demo-result,
+.lr-live-demo-card,
+.lr-live-demo-timeline div,
+.lr-real-demo-contact,
+.lr-dashboard-visual,
+.lr-customer-console,
+.lr-operator-console,
+.lr-pricing-card,
+.lr-service-card,
+.lr-real-contact-card {
+  color: var(--lr-ink);
+  background: rgba(255, 253, 248, 0.94);
+  border-color: var(--lr-line);
+  box-shadow: var(--lr-shadow);
+}
+
+.lr-dashboard-section,
+.lr-pilot-section,
+.lr-footer,
+.lr-live-demo-kpis div {
+  background: rgba(255, 253, 248, 0.64);
+}
+
+.lr-window-bar,
+.lr-dashboard-list,
+.lr-dashboard-actions span,
+.lr-live-demo-kpis div,
+.lr-real-contact-card,
+.lr-demo-choice-steps span,
+.lr-live-demo-samples button {
+  background: var(--lr-paper-soft);
+  border-color: var(--lr-line);
+}
+
+.lr-dashboard-lead {
+  background: var(--lr-paper);
+  border-color: var(--lr-line);
+}
+
+.lr-dashboard-lead.active,
+.lr-real-contact-card:hover {
+  background: var(--lr-accent-soft);
+  border-color: var(--lr-accent-border);
+  box-shadow: 0 12px 28px rgba(189, 66, 31, 0.14);
+}
+
+.lr-real-demo-contact.is-muted {
+  background: rgba(255, 253, 248, 0.72);
+}
+
+.lr-service-strip span::before {
+  background: var(--lr-green);
+}
+
+.lr-check-list li::before {
+  border-color: var(--lr-green);
+}
+
+.lr-window-bar span:nth-child(1) {
+  background: var(--lr-red);
+}
+
+.lr-window-bar span:nth-child(2) {
+  background: var(--lr-yellow);
+}
+
+.lr-window-bar span:nth-child(3) {
+  background: var(--lr-green);
+}
+
+.lr-customer-console input,
+.lr-customer-console select,
+.lr-customer-console textarea,
+.lr-customer-console button:not(.lr-btn-primary),
+.lr-operator-console input,
+.lr-operator-console select,
+.lr-operator-console textarea {
+  color: var(--lr-ink);
+  background: var(--lr-paper);
+  border-color: var(--lr-line);
+}
+
+.lr-customer-console input:focus,
+.lr-customer-console select:focus,
+.lr-customer-console textarea:focus,
+.lr-operator-console input:focus,
+.lr-operator-console select:focus,
+.lr-operator-console textarea:focus {
+  border-color: var(--lr-blue);
+  box-shadow: 0 0 0 3px rgba(189, 66, 31, 0.14);
+}
+
+.lr-icon-pipeline::before,
+.lr-icon-pipeline::after,
+.lr-icon-alert::before,
+.lr-icon-reply::before {
+  border-color: var(--lr-stage-blue);
+}
+
+.lr-icon-pipeline::after,
+.lr-icon-alert::after,
+.lr-icon-reply::after {
+  background: var(--lr-stage-teal);
+}
+
+@media (max-width: 720px) {
+  .lr-page {
+    background-attachment: scroll, scroll;
+  }
+}
