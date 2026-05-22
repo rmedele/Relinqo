@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -16,6 +17,7 @@ from app.mailer import send_email
 from app.models import InviteToken, Organization, OrgSettings, PasswordResetToken, User, hash_api_key
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 class LoginRequest(BaseModel):
@@ -211,7 +213,7 @@ def invite_member(
         f"Click the link below to create your account:\n"
         f"{invite_url}\n\n"
         f"This invite expires in {INVITE_EXPIRY_HOURS} hours.\n\n"
-        f"— {biz} via relinqo"
+        f"- {biz} via relinqo"
     )
     sent, msg = send_email(
         to_email=payload.email,
@@ -304,18 +306,20 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     db.commit()
 
     reset_url = f"{settings.public_base_url}/reset-password?token={token}"
-    send_email(
+    sent, message = send_email(
         to_email=user.email,
-        subject="relinqo — Password Reset",
+        subject="relinqo - Password Reset",
         body=(
             f"You requested a password reset for your relinqo account.\n\n"
             f"Click the link below to set a new password:\n"
             f"{reset_url}\n\n"
             f"This link expires in {RESET_EXPIRY_HOURS} hour(s).\n"
             f"If you didn't request this, you can ignore this email.\n\n"
-            f"— relinqo"
+            f"- relinqo"
         ),
     )
+    if not sent:
+        logger.warning("Password reset email failed for user_id=%s email=%s: %s", user.id, user.email, message)
 
     return {"ok": True, "message": "If that email exists, a reset link has been sent."}
 
@@ -343,16 +347,3 @@ def reset_password(request: Request, payload: ResetPasswordRequest, db: Session 
     return {"ok": True, "message": "Password has been reset. You are now logged in."}
 
 
-# TEMPORARY RESCUE FLOW — remove after initial owner completes password reset.
-#
-# Why this exists: SMTP isn't configured on the Railway deployment, so the
-# standard /forgot-password flow can't deliver a reset email. This pair of
-# endpoints lets an operator with the rescue secret generate a valid
-# PasswordResetToken directly (30-min expiry), then use the existing
-# /reset-password UI to set a new password. No password ever hits logs —
-# we only return the signed reset URL.
-#
-# Secret is hardcoded in source deliberately so it's explicit what to
-# remove. Delete this block + the import changes above once the initial
-# owner is back in.
-# ---------------------------------------------------------------------------

@@ -180,6 +180,27 @@ def test_leads_require_auth():
     assert response.status_code == 401
 
 
+def test_authenticated_page_shells_require_auth():
+    for path in ["/review", "/analytics", "/pipeline", "/templates", "/setup", "/settings"]:
+        response = client.get(path)
+        assert response.status_code == 401, path
+
+
+def test_authenticated_page_shells_load_for_logged_in_user():
+    c, _ = _auth_client()
+    for path in ["/review", "/analytics", "/pipeline", "/templates", "/setup", "/settings"]:
+        response = c.get(path)
+        assert response.status_code == 200, path
+        assert response.headers["content-type"].startswith("text/html")
+
+
+def test_session_cookie_secure_only_in_production(monkeypatch):
+    monkeypatch.setattr(main_module.settings, "app_env", "production")
+    assert main_module._session_cookie_https_only() is True
+    monkeypatch.setattr(main_module.settings, "app_env", "development")
+    assert main_module._session_cookie_https_only() is False
+
+
 def test_auth_login_register_flow():
     c, info = _auth_client()
     # /auth/me should return the logged-in user
