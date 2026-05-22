@@ -2,13 +2,16 @@ import asyncio
 import json
 import logging
 import os
+import re
+import secrets
+import xml.sax.saxutils as xml_escape
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -18,7 +21,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import get_current_user, get_org_from_session_or_api_key, get_org_settings, org_can_use_automation
 from app.billing import billing_enabled, org_has_billing_access
-from app.classifier import classify_lead
+from app.classifier import classify_demo_lead, classify_lead
 from app.config import settings
 from app.database import Base, SessionLocal, engine, get_db
 from app.email_parser import parse_forwarded_email
@@ -36,7 +39,9 @@ from app.routes.scheduling import router as scheduling_router
 from app.routes.sms_webhook import router as sms_router
 from app.routes.twilio_voice import router as twilio_voice_router
 from app.routes.phone_provisioning import router as phone_provisioning_router
-from app.schemas import ForwardedEmailIngestRequest, HealthResponse, LeadIngestRequest
+from app.schemas import DemoInboundRequest, DemoInboundResponse, DemoLeadRequest, DemoLeadResponse, ForwardedEmailIngestRequest, HealthResponse, LeadIngestRequest
+from app.sms import send_sms_to
+from app.twilio_signature import verify_twilio_signature
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -270,12 +275,13 @@ app.include_router(phone_provisioning_router)
 UI_DIR = Path(__file__).resolve().parent / "ui"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CONTACT_REQUESTS_PATH = DATA_DIR / "contact_requests.jsonl"
+DEMO_LEADS_PATH = DATA_DIR / "demo_leads.jsonl"
 app.mount("/ui", StaticFiles(directory=UI_DIR), name="ui")
 
 
 def _contact_status_markup(status: str | None) -> str:
     if status == "success":
-        return '<div class="demo-alert demo-alert-success">Thanks — demo request received. We saved it and routed it for follow-up.</div>'
+        return '<div class="demo-alert demo-alert-success">Thanks - demo request received. We saved it and routed it for follow-up.</div>'
     if status == "error":
         return '<div class="demo-alert demo-alert-error">Something went wrong saving your request. Please try again.</div>'
     return ""
@@ -291,10 +297,241 @@ def _store_contact_request(payload: dict[str, str]) -> None:
         handle.write(json.dumps(record) + "\n")
 
 
+def _store_demo_record(record: dict) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with DEMO_LEADS_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record) + "\n")
+
+
+def _load_demo_record(demo_id: str) -> dict | None:
+    if not DEMO_LEADS_PATH.exists():
+        return None
+    # JSONL stays tiny for this demo workflow. Walk backwards for recent IDs.
+    lines = DEMO_LEADS_PATH.read_text(encoding="utf-8").splitlines()
+    for line in reversed(lines[-500:]):
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if record.get("demo_id") == demo_id:
+            return record
+    return None
+
+
+def _demo_contact_payload(request: Request) -> dict[str, str | bool]:
+    base = str(request.base_url).rstrip("/")
+    return {
+        "enabled": bool(settings.demo_inbox_email or settings.demo_phone_number),
+        "demo_inbox_email": settings.demo_inbox_email,
+        "demo_phone_number": settings.demo_phone_number,
+        "demo_inbound_url": f"{base}/api/demo/inbound",
+        "demo_sms_webhook_url": f"{base}/demo/sms/webhook",
+        "demo_voice_webhook_url": f"{base}/demo/voice/incoming",
+    }
+
+
+def _demo_token_valid(token: str | None) -> bool:
+    if settings.demo_forwarding_token:
+        return secrets.compare_digest(token or "", settings.demo_forwarding_token)
+    return settings.app_env != "production"
+
+
+def _normalize_public_phone(raw: str | None) -> str:
+    return re.sub(r"[^\d+]", "", raw or "")
+
+
+def _ingest_demo_inbound(
+    request: Request,
+    payload: DemoInboundRequest,
+    *,
+    require_token: bool = True,
+) -> DemoInboundResponse:
+    if require_token and not _demo_token_valid(payload.token):
+        raise HTTPException(status_code=401, detail="Invalid demo forwarding token")
+
+    sender_name = (payload.from_name or "").strip() or "Demo customer"
+    sender_email = str(payload.from_email or "demo-customer@example.com")
+    subject = (payload.subject or "").strip() or f"{(payload.trade or 'service').title()} demo lead"
+    demo_payload = DemoLeadRequest(
+        sender_name=sender_name,
+        sender_email=sender_email,
+        phone=payload.from_phone,
+        trade=payload.trade,
+        subject=subject,
+        lead_text=payload.body,
+    )
+    result = _build_demo_response(request, demo_payload)
+    demo_id = secrets.token_urlsafe(8)
+    demo_url = f"{str(request.base_url).rstrip('/')}/demo?lead={demo_id}"
+    record = {
+        "demo_id": demo_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source": payload.source,
+        "from_name": sender_name,
+        "from_email": str(payload.from_email or ""),
+        "from_phone": payload.from_phone or "",
+        "subject": subject,
+        "body": payload.body,
+        "trade": payload.trade or "",
+        "demo_url": demo_url,
+        "result": result.model_dump(),
+    }
+    _store_demo_record(record)
+    return DemoInboundResponse(ok=True, demo_id=demo_id, demo_url=demo_url, result=result)
+
+
+def _demo_twiml(message: str | None = None) -> Response:
+    if message is None:
+        xml = '<?xml version="1.0" encoding="UTF-8"?><Response/>'
+    else:
+        xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            f"<Response><Message>{xml_escape.escape(message)}</Message></Response>"
+        )
+    return Response(content=xml, media_type="application/xml")
+
+
+def _demo_voice_twiml(message: str) -> Response:
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        f'<Say voice="alice">{xml_escape.escape(message)}</Say>'
+        '<Pause length="1"/>'
+        '<Say voice="alice">Thanks for trying Relinqo. Goodbye.</Say>'
+        "</Response>"
+    )
+    return Response(content=xml, media_type="application/xml")
+
+
 def _get_default_org_settings(db: Session) -> tuple[int, OrgSettings | None]:
     """Load the default org (id=1) settings for platform-level actions."""
     org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == 1).first()
     return 1, org_settings
+
+
+def _compact_demo_text(text: str, max_length: int = 130) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= max_length:
+        return compact
+    return compact[: max_length - 3].rstrip() + "..."
+
+
+def _demo_category_label(category: str) -> str:
+    labels = {
+        "urgent_request": "Urgent job",
+        "quote_request": "Quote request",
+        "existing_customer": "Existing customer",
+        "general_inquiry": "General inquiry",
+        "spam": "Filtered spam",
+    }
+    return labels.get(category, category.replace("_", " ").title())
+
+
+def _demo_urgency_label(score: int) -> str:
+    if score >= 5:
+        return "Emergency"
+    if score >= 4:
+        return "Hot lead"
+    if score >= 3:
+        return "Warm lead"
+    return "Normal"
+
+
+def _demo_pipeline_stage(category: str) -> str:
+    stages = {
+        "urgent_request": "New -> Contacted",
+        "quote_request": "New -> Quoted",
+        "existing_customer": "Contacted",
+        "general_inquiry": "New",
+        "spam": "Filtered",
+    }
+    return stages.get(category, "New")
+
+
+def _demo_next_step_label(category: str) -> str:
+    steps = {
+        "urgent_request": "Alert owner now and ask customer for address, callback, and safe photos.",
+        "quote_request": "Send quote-intake reply and offer a booking link.",
+        "existing_customer": "Review account context before replying.",
+        "general_inquiry": "Ask for service details and preferred timeline.",
+        "spam": "Keep out of the active lead queue.",
+    }
+    return steps.get(category, "Review the lead and choose the next action.")
+
+
+def _demo_timeline(category: str, owner_alert_needed: bool) -> list[dict[str, str]]:
+    if category == "spam":
+        return [
+            {"label": "Captured", "detail": "Message received by the demo inbox."},
+            {"label": "Filtered", "detail": "Spam risk detected, so it stays out of the active queue."},
+        ]
+
+    timeline = [
+        {"label": "Captured", "detail": "Lead enters the Relinqo queue from email, form, phone, or SMS."},
+        {"label": "Classified", "detail": "Urgency, job type, spam risk, and next action are assigned."},
+        {"label": "Reply drafted", "detail": "A customer-ready response is prepared for review or autopilot."},
+    ]
+    if owner_alert_needed:
+        timeline.append({"label": "Owner alerted", "detail": "Hot jobs get a concise SMS-style owner alert."})
+    timeline.extend([
+        {"label": "Tracked", "detail": "The lead moves through pipeline, booking, revenue, and notes."},
+        {"label": "Review loop", "detail": "Won jobs can trigger a Google review request later."},
+    ])
+    return timeline
+
+
+def _build_demo_response(request: Request, payload: DemoLeadRequest) -> DemoLeadResponse:
+    lead_text = payload.lead_text.strip()
+    if len(lead_text) < 12:
+        raise HTTPException(status_code=400, detail="Demo lead text must be at least 12 characters.")
+
+    sender_name = (payload.sender_name or "").strip() or "Daniel"
+    sender_email = str(payload.sender_email or "demo-customer@example.com")
+    phone = (payload.phone or "").strip() or "+1 780 555 0134"
+    trade = (payload.trade or "").strip() or "plumbing"
+    subject = (payload.subject or "").strip() or f"{trade.title()} lead from {sender_name}"
+    booking_url = f"{str(request.base_url).rstrip('/')}/book/demo-preview"
+
+    classification = classify_demo_lead(
+        {
+            "source": "live_demo",
+            "sender_name": sender_name,
+            "sender_email": sender_email,
+            "subject": subject,
+            "body": lead_text,
+            "phone": phone,
+            "location": None,
+        },
+        booking_url=booking_url,
+    )
+    lead_snippet = _compact_demo_text(lead_text, 110)
+    owner_alert_prefix = "URGENT" if classification.owner_alert_needed else "NEW"
+    owner_alert_preview = (
+        f"[DEMO] {owner_alert_prefix} {trade} lead from {sender_name}: "
+        f"{lead_snippet}. Call {phone}."
+    )
+
+    return DemoLeadResponse(
+        ok=True,
+        category=classification.category,
+        category_label=_demo_category_label(classification.category),
+        urgency_score=classification.urgency_score,
+        urgency_label=_demo_urgency_label(classification.urgency_score),
+        confidence=classification.confidence,
+        summary=classification.summary,
+        recommended_reply=classification.recommended_reply,
+        owner_alert_needed=classification.owner_alert_needed,
+        owner_alert_preview=owner_alert_preview,
+        pipeline_stage=_demo_pipeline_stage(classification.category),
+        next_step_label=_demo_next_step_label(classification.category),
+        booking_url=booking_url,
+        review_followup_preview=(
+            "If this lead is marked Won, Relinqo can queue a review request for the configured delay."
+            if classification.category != "spam"
+            else "No review request is queued for filtered spam."
+        ),
+        timeline=_demo_timeline(classification.category, classification.owner_alert_needed),
+    )
 
 
 def _create_contact_lead(payload: dict[str, str]) -> int:
@@ -302,9 +539,12 @@ def _create_contact_lead(payload: dict[str, str]) -> int:
         f"Demo request from {payload['name']} at {payload['company']}. "
         f"Email: {payload['email']}. "
         f"Phone: {payload['phone'] or 'not provided'}. "
+        f"Business type: {payload.get('business_type') or 'not provided'}. "
+        f"Biggest leak: {payload.get('lead_source') or 'not provided'}. "
+        f"Current response time: {payload.get('current_response_time') or 'not provided'}. "
         f"Message: {payload['message'] or 'No message provided.'}"
     )
-    subject = f"Book a demo — {payload['company']}"
+    subject = f"Book a demo - {payload['company']}"
 
     db = SessionLocal()
     try:
@@ -364,6 +604,102 @@ def book_demo_page(request: Request, status: str | None = None):
     return HTMLResponse(html)
 
 
+@app.get("/demo", include_in_schema=False)
+@limiter.limit("30/minute")
+def live_demo_page(request: Request):
+    return FileResponse(UI_DIR / "live-demo.html", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/demo/lead", response_model=DemoLeadResponse)
+@limiter.limit("20/minute")
+def run_live_demo(request: Request, payload: DemoLeadRequest):
+    return _build_demo_response(request, payload)
+
+
+@app.get("/api/demo/config")
+@limiter.limit("30/minute")
+def demo_config(request: Request):
+    return _demo_contact_payload(request)
+
+
+@app.post("/api/demo/inbound", response_model=DemoInboundResponse)
+@limiter.limit("20/minute")
+def demo_inbound(request: Request, payload: DemoInboundRequest):
+    return _ingest_demo_inbound(request, payload)
+
+
+@app.get("/api/demo/leads/{demo_id}")
+@limiter.limit("60/minute")
+def demo_lead_by_id(request: Request, demo_id: str):
+    record = _load_demo_record(demo_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Demo lead not found")
+    return record
+
+
+@app.post("/demo/sms/webhook", dependencies=[Depends(verify_twilio_signature)])
+@limiter.limit("30/minute")
+async def demo_sms_webhook(
+    request: Request,
+    Body: str = Form(""),
+    From: str = Form(""),
+    To: str = Form(""),
+):
+    if settings.demo_phone_number and _normalize_public_phone(To) != _normalize_public_phone(settings.demo_phone_number):
+        return _demo_twiml()
+
+    body = Body.strip() or "Demo SMS lead with no message body."
+    if len(body) < 12:
+        body = f"{body} - customer is testing the Relinqo demo phone number."
+    payload = DemoInboundRequest(
+        source="sms",
+        from_phone=From,
+        subject="Demo SMS lead",
+        body=body,
+    )
+    result = _ingest_demo_inbound(request, payload, require_token=False)
+    return _demo_twiml(f"Got it. Relinqo demo created: {result.demo_url}")
+
+
+@app.post("/demo/voice/incoming", dependencies=[Depends(verify_twilio_signature)])
+@limiter.limit("30/minute")
+async def demo_voice_incoming(
+    request: Request,
+    From: str = Form(""),
+    To: str = Form(""),
+    CallSid: str = Form(""),
+):
+    if settings.demo_phone_number and _normalize_public_phone(To) != _normalize_public_phone(settings.demo_phone_number):
+        return _demo_voice_twiml("This Relinqo demo number is not configured. Please check the phone number and try again.")
+
+    caller = From or "unknown caller"
+    payload = DemoInboundRequest(
+        source="voice",
+        from_phone=From,
+        subject="Demo phone call",
+        body=(
+            f"Caller {caller} dialed the Relinqo demo phone number. "
+            "They want to see how a missed call becomes a lead, owner alert, and follow-up workflow."
+        ),
+    )
+    result = _ingest_demo_inbound(request, payload, require_token=False)
+    sms_sent = False
+    if From and To:
+        sms_body = (
+            "Thanks for calling the Relinqo demo. Watch your call become a lead here: "
+            f"{result.demo_url}"
+        )
+        sms_sent, _, _ = send_sms_to(sms_body, From, None, from_number=To)
+
+    if sms_sent:
+        message = "Thanks for calling the Relinqo demo. I just texted you a link that shows this call becoming a lead."
+    else:
+        message = f"Thanks for calling the Relinqo demo. Open {result.demo_url} to see this call become a lead."
+    if CallSid:
+        logger.info("demo_voice call_sid=%s from=%s sms_sent=%s demo_id=%s", CallSid, From, sms_sent, result.demo_id)
+    return _demo_voice_twiml(message)
+
+
 @app.post("/forwarded-email")
 @limiter.limit("20/minute")
 def ingest_forwarded_email(
@@ -411,6 +747,9 @@ def submit_contact_form(
     company: str = Form(...),
     email: str = Form(...),
     phone: str = Form(""),
+    business_type: str = Form(""),
+    lead_source: str = Form(""),
+    current_response_time: str = Form(""),
     message: str = Form(""),
 ):
     payload = {
@@ -418,6 +757,9 @@ def submit_contact_form(
         "company": company.strip(),
         "email": email.strip(),
         "phone": phone.strip(),
+        "business_type": business_type.strip(),
+        "lead_source": lead_source.strip(),
+        "current_response_time": current_response_time.strip(),
         "message": message.strip(),
     }
 
@@ -432,13 +774,16 @@ def submit_contact_form(
             if smtp_configured(org_settings):
                 send_email(
                     to_email=alert_email,
-                    subject=f"relinqo demo request — {payload['company']}",
+                    subject=f"relinqo demo request - {payload['company']}",
                     body=(
                         f"Lead ID: {lead_id}\n"
                         f"Name: {payload['name']}\n"
                         f"Company: {payload['company']}\n"
                         f"Email: {payload['email']}\n"
                         f"Phone: {payload['phone'] or 'n/a'}\n\n"
+                        f"Business type: {payload['business_type'] or 'n/a'}\n"
+                        f"Biggest leak: {payload['lead_source'] or 'n/a'}\n"
+                        f"Current response time: {payload['current_response_time'] or 'n/a'}\n\n"
                         f"Message:\n{payload['message'] or '(none)'}\n"
                     ),
                     org_settings=org_settings,

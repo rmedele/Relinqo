@@ -51,8 +51,9 @@ def send_email(*, to_email: str, subject: str, body: str, org_settings: OrgSetti
     message.set_content(body)
 
     try:
-        with smtplib.SMTP(host, port, timeout=20) as server:
-            if use_tls:
+        smtp_class = smtplib.SMTP_SSL if use_tls and port == 465 else smtplib.SMTP
+        with smtp_class(host, port, timeout=20) as server:
+            if use_tls and port != 465:
                 server.starttls()
             if username:
                 server.login(username, password)

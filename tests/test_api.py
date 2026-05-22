@@ -1,10 +1,12 @@
 from fastapi.testclient import TestClient
 from datetime import timedelta
 
+from app import main as main_module
+from app import outbound_webhooks
 from app.main import app
 from app.config import settings
 from app.database import SessionLocal
-from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, PhoneRoutingRule, SmsNotification, SmsOptOut, User
+from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, PhoneRoutingRule, ScheduleAvailability, SmsNotification, SmsOptOut, User
 from app.routes import billing as billing_routes
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
@@ -37,6 +39,126 @@ def test_marketing_page_links_to_book_demo():
     response = client.get("/")
     assert response.status_code == 200
     assert 'href="/book-demo"' in response.text
+    assert 'href="/demo"' in response.text
+
+
+def test_live_demo_page_has_public_form():
+    response = client.get("/demo")
+    assert response.status_code == 200
+    assert 'id="liveDemoForm"' in response.text
+    assert 'id="realDemoContact"' in response.text
+    assert 'id="demoPhoneNumber"' in response.text
+    assert 'name="lead_text"' in response.text
+    assert 'data-sample="urgent"' in response.text
+
+
+def test_live_demo_api_classifies_without_creating_lead():
+    db = SessionLocal()
+    try:
+        before = db.query(Lead).count()
+    finally:
+        db.close()
+
+    response = client.post(
+        "/api/demo/lead",
+        json={
+            "sender_name": "Daniel",
+            "phone": "+17805550134",
+            "trade": "plumbing",
+            "subject": "Burst pipe",
+            "lead_text": "We have a burst pipe in the basement and need help ASAP in Edmonton.",
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["ok"] is True
+    assert data["category"] == "urgent_request"
+    assert data["owner_alert_needed"] is True
+    assert "book/demo-preview" in data["recommended_reply"]
+    assert data["timeline"]
+
+    db = SessionLocal()
+    try:
+        after = db.query(Lead).count()
+    finally:
+        db.close()
+    assert after == before
+
+
+def test_demo_config_and_real_inbound_flow(monkeypatch):
+    monkeypatch.setattr(settings, "demo_inbox_email", "demo@relinqo.test")
+    monkeypatch.setattr(settings, "demo_phone_number", "+17825550100")
+    monkeypatch.setattr(settings, "demo_forwarding_token", "")
+    monkeypatch.setattr(settings, "app_env", "development")
+
+    config = client.get("/api/demo/config")
+    assert config.status_code == 200
+    assert config.json()["enabled"] is True
+    assert config.json()["demo_inbox_email"] == "demo@relinqo.test"
+    assert config.json()["demo_sms_webhook_url"].endswith("/demo/sms/webhook")
+    assert config.json()["demo_voice_webhook_url"].endswith("/demo/voice/incoming")
+
+    response = client.post(
+        "/api/demo/inbound",
+        json={
+            "source": "email",
+            "from_name": "Sam Pilot",
+            "from_email": "sam@example.com",
+            "from_phone": "+17805550135",
+            "trade": "plumbing",
+            "subject": "Water heater leaking",
+            "body": "My water heater is leaking badly with water everywhere and we need someone ASAP.",
+        },
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["ok"] is True
+    assert data["demo_url"].endswith(f"/demo?lead={data['demo_id']}")
+    assert data["result"]["category"] == "urgent_request"
+
+    saved = client.get(f"/api/demo/leads/{data['demo_id']}")
+    assert saved.status_code == 200
+    assert saved.json()["from_name"] == "Sam Pilot"
+
+
+def test_demo_inbound_requires_token_in_production(monkeypatch):
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "demo_forwarding_token", "demo-secret")
+
+    payload = {"source": "email", "body": "Customer needs urgent plumbing help today."}
+    assert client.post("/api/demo/inbound", json=payload).status_code == 401
+
+    ok = client.post("/api/demo/inbound", json={**payload, "token": "demo-secret"})
+    assert ok.status_code == 200, ok.text
+
+
+def test_demo_voice_route_creates_preview_and_texts_link(monkeypatch):
+    monkeypatch.setattr(settings, "demo_phone_number", "+17825550100")
+    monkeypatch.setattr(settings, "app_env", "development")
+    sent = {}
+
+    def fake_send_sms(body, to_number, org_settings=None, *, from_number=None):
+        sent.update({"body": body, "to": to_number, "from": from_number})
+        return True, "sent", "SM_DEMO"
+
+    monkeypatch.setattr(main_module, "send_sms_to", fake_send_sms)
+
+    response = client.post(
+        "/demo/voice/incoming",
+        data={"From": "+17805550123", "To": "+17825550100", "CallSid": "CA_DEMO"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/xml")
+    assert "I just texted you a link" in response.text
+    assert sent["to"] == "+17805550123"
+    assert sent["from"] == "+17825550100"
+    assert "/demo?lead=" in sent["body"]
+
+    demo_id = sent["body"].split("/demo?lead=")[1]
+    saved = client.get(f"/api/demo/leads/{demo_id}")
+    assert saved.status_code == 200
+    assert saved.json()["source"] == "voice"
 
 
 def test_book_demo_page_has_contact_form():
@@ -47,6 +169,9 @@ def test_book_demo_page_has_contact_form():
     assert 'name="company"' in response.text
     assert 'name="email"' in response.text
     assert 'name="phone"' in response.text
+    assert 'name="business_type"' in response.text
+    assert 'name="lead_source"' in response.text
+    assert 'name="current_response_time"' in response.text
     assert 'name="message"' in response.text
 
 
@@ -180,6 +305,9 @@ def test_contact_form_submission_redirects_to_success():
             "company": "Reese Plumbing",
             "email": "reese@example.com",
             "phone": "780-555-0100",
+            "business_type": "Plumbing",
+            "lead_source": "missed_calls",
+            "current_response_time": "same_day",
             "message": "Need a walkthrough.",
         },
         follow_redirects=False,
@@ -294,6 +422,148 @@ def test_settings_crud():
     assert res.status_code == 200
     assert res.json()["business_name"] == "Test Biz"
     assert res.json()["human_review"] is False
+
+
+def test_pilot_readiness_checklist_uses_live_workspace_state():
+    c, info = _auth_client()
+    first = c.get("/api/settings/readiness")
+    assert first.status_code == 200
+    items = {item["id"]: item for item in first.json()["items"]}
+    assert items["business_profile"]["status"] == "missing"
+    assert items["owner_alert_test"]["status"] == "missing"
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == info["data"]["org"]["slug"]).first()
+        org.subscription_status = "trialing"
+        org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == org.id).first()
+        org_settings.business_name = "Pilot Plumbing"
+        org_settings.business_services = "plumbing, water heaters, drain cleaning"
+        org_settings.business_area = "Edmonton"
+        org_settings.business_hours = "Mon-Fri 8am-5pm"
+        org_settings.google_oauth_email = "owner@example.com"
+        org_settings.google_oauth_access_token = "access"
+        org_settings.scheduling_enabled = True
+        org_settings.review_request_enabled = True
+        org_settings.review_url = "https://g.page/r/test-review"
+        org_settings.sms_alert_to_number = "+14035559999"
+        org_settings.human_review = True
+        org_settings.automation_paused = False
+        db.add(PhoneNumber(
+            org_id=org.id,
+            twilio_sid=f"PN_READY_{org.id}",
+            phone_number=f"+140355{org.id:06d}",
+            is_active=True,
+        ))
+        db.add(PhoneRoutingRule(
+            org_id=org.id,
+            owner_phone="+14035559999",
+            forwarding_setup_status="live",
+        ))
+        db.add(ScheduleAvailability(org_id=org.id, day_of_week=0, start_time="09:00", end_time="17:00", is_active=True))
+        db.add(SmsNotification(
+            org_id=org.id,
+            direction="outbound",
+            to_number="+14035559999",
+            body="Owner alert",
+            status="sent",
+            purpose="owner_alert",
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    ready = c.get("/api/settings/readiness")
+    assert ready.status_code == 200
+    data = ready.json()
+    assert data["ready"] is True
+    items = {item["id"]: item for item in data["items"]}
+    assert items["business_profile"]["status"] == "ready"
+    assert items["gmail"]["status"] == "ready"
+    assert items["phone_rescue"]["status"] == "ready"
+    assert items["owner_alert_test"]["status"] == "ready"
+    assert items["scheduling"]["status"] == "ready"
+    assert items["reviews"]["status"] == "ready"
+
+
+def test_outbound_webhook_test_endpoint_posts_signed_payload(monkeypatch):
+    c, _ = _auth_client()
+    captured = {}
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_urlopen(req, timeout=0):
+        captured["url"] = req.full_url
+        captured["headers"] = dict(req.header_items())
+        captured["body"] = req.data.decode("utf-8")
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(outbound_webhooks, "urlopen", fake_urlopen)
+
+    saved = c.patch("/api/settings", json={
+        "outbound_webhook_enabled": True,
+        "outbound_webhook_url": "https://hooks.example.test/relinqo",
+        "outbound_webhook_secret": "secret-123",
+        "outbound_webhook_events": "lead.created,booking.created,lead.won",
+    })
+    assert saved.status_code == 200
+
+    response = c.post("/api/settings/webhook/test")
+    assert response.status_code == 200, response.text
+    assert response.json()["ok"] is True
+    assert captured["url"] == "https://hooks.example.test/relinqo"
+    assert captured["headers"]["X-relinqo-event"] == "webhook.test"
+    assert captured["headers"]["X-relinqo-signature"].startswith("sha256=")
+    assert '"event":"webhook.test"' in captured["body"]
+
+
+def test_lead_created_outbound_webhook_fires(monkeypatch):
+    c, _ = _auth_client()
+    events = []
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_urlopen(req, timeout=0):
+        events.append({
+            "event": dict(req.header_items()).get("X-relinqo-event"),
+            "body": req.data.decode("utf-8"),
+        })
+        return FakeResponse()
+
+    monkeypatch.setattr(outbound_webhooks, "urlopen", fake_urlopen)
+    c.patch("/api/settings", json={
+        "outbound_webhook_enabled": True,
+        "outbound_webhook_url": "https://hooks.example.test/relinqo",
+        "outbound_webhook_events": "lead.created",
+    })
+
+    created = c.post("/ingest-lead", json={
+        "source": "website_form",
+        "sender_name": "Webhook Lead",
+        "sender_email": "webhook@example.com",
+        "subject": "Need plumbing help",
+        "body": "We have a leak under the sink and need someone to call us.",
+    })
+
+    assert created.status_code == 200, created.text
+    assert events
+    assert events[0]["event"] == "lead.created"
+    assert '"sender_email":"webhook@example.com"' in events[0]["body"]
 
 
 def test_billing_status_defaults_to_configured_monthly_plan():

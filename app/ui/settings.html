@@ -18,11 +18,25 @@
       .avail-row select { padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: var(--text); }
       .avail-row select option { background: #1a1a2e; color: #e0e0e0; }
       .avail-row.disabled select { opacity: 0.3; pointer-events: none; }
+      .readiness-summary { display: grid; gap: 0.85rem; }
+      .readiness-meter { height: 10px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); }
+      .readiness-meter span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #34d399); transition: width 220ms ease; }
+      .readiness-meta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+      .readiness-meta strong { font-size: 1.05rem; }
+      .readiness-list { display: grid; gap: 0.55rem; margin-top: 0.75rem; }
+      .readiness-item { display: grid; grid-template-columns: 96px 1fr; gap: 0.75rem; padding: 0.72rem 0.8rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(255,255,255,0.025); }
+      .readiness-pill { align-self: start; display: inline-flex; justify-content: center; padding: 0.25rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+      .readiness-pill.ready { color: #052e1d; background: #86efac; }
+      .readiness-pill.warning { color: #3b2503; background: #facc15; }
+      .readiness-pill.missing { color: #3f0710; background: #fda4af; }
+      .readiness-copy strong { display: block; margin-bottom: 0.18rem; }
+      .readiness-copy p { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.45; }
       @media (max-width: 600px) { .avail-row { grid-template-columns: 1fr 1fr; } }
       @media (max-width: 420px) {
         .avail-row { grid-template-columns: 1fr; gap: 0.5rem; padding: 0.5rem; }
         .avail-row .avail-day { min-width: 0; }
         .avail-row select { width: 100%; min-height: 40px; font-size: 16px; }
+        .readiness-item { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -68,6 +82,35 @@
         </aside>
 
         <form id="settingsForm" class="settings-form-grid">
+          <section id="readinessCard" class="settings-card card editorial-card">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Pilot readiness</p>
+                <h2>Launch checklist</h2>
+              </div>
+              <span id="readinessChip" class="section-chip">Loading</span>
+            </div>
+            <div class="editorial-form section-fields readiness-summary">
+              <div class="readiness-meta">
+                <div>
+                  <strong id="readinessScore">Checking workspace...</strong>
+                  <p id="readinessSummary" class="muted">We will flag anything that should be fixed before a real plumber or HVAC tech tests this.</p>
+                </div>
+                <button id="refreshReadinessBtn" type="button" class="ghost-btn">Refresh</button>
+              </div>
+              <div class="readiness-meter" aria-hidden="true"><span id="readinessMeterFill"></span></div>
+              <div id="readinessList" class="readiness-list">
+                <div class="readiness-item">
+                  <span class="readiness-pill warning">Checking</span>
+                  <div class="readiness-copy">
+                    <strong>Loading checklist</strong>
+                    <p>Pulling live setup state from this workspace.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section id="billingCard" class="settings-card card editorial-card">
             <div class="section-heading-row">
               <div>
@@ -92,6 +135,44 @@
               <div class="settings-submit-row" style="justify-content:flex-start;">
                 <button id="startCheckoutBtn" type="button" class="primary-btn primary-btn-strong">Start subscription</button>
                 <button id="manageBillingBtn" type="button" class="ghost-btn">Manage billing</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-card card editorial-card">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Outbound webhooks</p>
+                <h2>Send lead events to Zapier or Make</h2>
+              </div>
+              <span class="section-chip">Integrations</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <p class="muted" style="margin:0;font-size:0.85rem;">Paste a Catch Hook URL from Zapier or a Custom Webhook URL from Make. Relinqo will POST lead and booking events as JSON.</p>
+              <label class="form-field">
+                <span class="field-label">Enable outbound webhooks</span>
+                <label class="toggle-card toggle-card-strong">
+                  <input name="outbound_webhook_enabled" type="checkbox" />
+                  <span>Send selected events to my automation tool</span>
+                </label>
+              </label>
+              <label class="form-field">
+                <span class="field-label">Webhook URL</span>
+                <input name="outbound_webhook_url" class="filter-input" placeholder="https://hooks.zapier.com/hooks/catch/..." />
+              </label>
+              <div class="field-group field-group-double">
+                <label class="form-field">
+                  <span class="field-label">Events</span>
+                  <input name="outbound_webhook_events" class="filter-input" placeholder="lead.created,booking.created,lead.won" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Signing secret</span>
+                  <input name="outbound_webhook_secret" type="password" class="filter-input" placeholder="Optional; leave blank to keep existing" />
+                </label>
+              </div>
+              <div class="settings-submit-row" style="justify-content:flex-start;">
+                <button id="testWebhookBtn" type="button" class="ghost-btn">Send test webhook</button>
+                <p id="webhookTestStatus" class="muted" style="align-self:center;margin:0;"></p>
               </div>
             </div>
           </section>
@@ -607,7 +688,7 @@
     <script>
       const form = document.getElementById('settingsForm');
       const statusMsg = document.getElementById('statusMsg');
-      const passwordFields = ['smtp_password', 'imap_password', 'twilio_auth_token'];
+      const passwordFields = ['smtp_password', 'imap_password', 'twilio_auth_token', 'outbound_webhook_secret'];
       const saveBtn = form.querySelector('button[type="submit"]');
       let revealedApiKey = '';
 
@@ -684,6 +765,47 @@
         updateBillingUI(data);
       }
 
+      function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;',
+        })[char]);
+      }
+
+      function renderReadiness(data) {
+        const chip = document.getElementById('readinessChip');
+        const score = document.getElementById('readinessScore');
+        const summary = document.getElementById('readinessSummary');
+        const fill = document.getElementById('readinessMeterFill');
+        const list = document.getElementById('readinessList');
+
+        chip.textContent = data.ready ? 'Pilot ready' : 'Needs work';
+        score.textContent = `${data.score}% ready (${data.completed}/${data.total})`;
+        summary.textContent = data.ready
+          ? 'No hard blockers found. Warnings are useful polish, but the workspace can go into a controlled pilot.'
+          : 'Fix every missing item before putting a real customer on the pilot.';
+        fill.style.width = `${Math.max(0, Math.min(100, data.score || 0))}%`;
+
+        list.innerHTML = data.items.map((item) => `
+          <div class="readiness-item">
+            <span class="readiness-pill ${item.status}">${item.status}</span>
+            <div class="readiness-copy">
+              <strong>${escapeHtml(item.label)}</strong>
+              <p>${escapeHtml(item.detail)}${item.action ? ` Action: ${escapeHtml(item.action)}.` : ''}</p>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      async function loadReadiness() {
+        const res = await fetch('/api/settings/readiness');
+        if (!res.ok) return;
+        renderReadiness(await res.json());
+      }
+
       async function loadSettings() {
         const res = await fetch('/api/settings');
         if (res.status === 401) { window.location.href = '/login'; return; }
@@ -699,6 +821,7 @@
 
         updateGmailUI(data.google_oauth_email);
         await loadBillingStatus();
+        await loadReadiness();
 
         const meRes = await fetch('/auth/me');
         if (meRes.ok) {
@@ -759,11 +882,28 @@
         try {
           await saveSettings();
           await saveAvailability();
+          await loadReadiness();
           showMsg('Settings saved.', true);
         } catch (err) {
           showMsg(err.message || 'Failed to save settings.', false);
         } finally {
           setSaving(false);
+        }
+      });
+
+      document.getElementById('refreshReadinessBtn').addEventListener('click', loadReadiness);
+
+      document.getElementById('testWebhookBtn').addEventListener('click', async () => {
+        const status = document.getElementById('webhookTestStatus');
+        status.textContent = 'Sending...';
+        try {
+          await saveSettings();
+          const res = await fetch('/api/settings/webhook/test', { method: 'POST' });
+          const data = await res.json();
+          status.textContent = data.ok ? `Sent: ${data.message}` : `Failed: ${data.message}`;
+          await loadReadiness();
+        } catch (err) {
+          status.textContent = err.message || 'Webhook test failed.';
         }
       });
 
@@ -1064,6 +1204,7 @@
           if (!res.ok) return;
           const data = await res.json();
           updatePhoneUI(data.phone, data.routing, data.rescue, data.forwarding);
+          await loadReadiness();
         } catch { /* best effort */ }
       }
 

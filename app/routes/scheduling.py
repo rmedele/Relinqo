@@ -9,6 +9,7 @@ from app.auth import get_current_user, get_org_settings
 from app.billing import org_has_billing_access
 from app.database import get_db
 from app.models import Booking, Lead, OrgSettings, ScheduleAvailability, User
+from app.outbound_webhooks import dispatch_booking_created
 from app.routes.leads import log_activity
 from app.schemas import (
     AvailableSlotResponse,
@@ -299,6 +300,7 @@ def create_booking(
 
     # Notifications are handled in Step 9 — wired into this handler
     _send_booking_notifications(db, booking, lead, org_settings)
+    dispatch_booking_created(org_settings, booking, lead)
 
     logger.info("Booking created: lead_id=%s slot=%s", lead.id, payload.slot_start)
     return booking

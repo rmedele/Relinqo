@@ -1,6 +1,6 @@
 # PostgreSQL Migration
 
-Relinqo supports SQLite for local development and PostgreSQL for production.
+reqlinqo supports SQLite for local development and PostgreSQL for production.
 
 ## New Production Deployments
 

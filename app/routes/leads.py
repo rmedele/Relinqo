@@ -21,6 +21,7 @@ from app.followups import schedule_followups
 from app.geocoding import geocode_location, polite_geocode_delay
 from app.mailer import send_email
 from app.models import Lead, LeadActivity, LeadNote, LeadPhoto, OrgSettings, ReplyTemplate, ReviewRequest, ScheduleAvailability, User
+from app.outbound_webhooks import dispatch_lead_created, dispatch_lead_won
 from app.schemas import (
     DigestResponse,
     LeadActivityResponse,
@@ -236,6 +237,7 @@ def ingest_lead(
 
     if automation_allowed:
         schedule_followups(db, lead)
+    dispatch_lead_created(org_settings, lead)
     logger.info("Ingested lead_id=%s category=%s urgency=%s", lead.id, lead.category, lead.urgency_score)
     return lead
 
@@ -439,6 +441,7 @@ def update_lead(lead_id: int, payload: LeadUpdateRequest, db: Session = Depends(
         from app.review_requests import schedule_review_request
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
         schedule_review_request(db, lead, org_settings)
+        dispatch_lead_won(org_settings, lead)
 
     return lead
 
@@ -477,6 +480,7 @@ def set_lead_outcome(
         from app.review_requests import schedule_review_request
         org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
         schedule_review_request(db, lead, org_settings)
+        dispatch_lead_won(org_settings, lead)
 
     return lead
 

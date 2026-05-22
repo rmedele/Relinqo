@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     twilio_from_number: str = ""
     sms_alert_to_number: str = ""
 
+    # Public demo contact surface
+    demo_inbox_email: str = ""
+    demo_phone_number: str = ""
+    demo_forwarding_token: str = ""
+
     # Stripe Billing
     stripe_publishable_key: str = ""
     stripe_secret_key: str = ""

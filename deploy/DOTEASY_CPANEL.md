@@ -1,9 +1,8 @@
 # reqlinqo on Doteasy/cPanel
 
 reqlinqo is a FastAPI application, not a static website. Uploading files to
-`public_html` only serves the marketing files; login and dashboard routes need
-cPanel to run the Python application through Setup Python App or Application
-Manager.
+`public_html` only works if cPanel also runs the Python application through
+Setup Python App or Application Manager.
 
 ## Required cPanel Feature
 
@@ -13,12 +12,11 @@ In cPanel, search for one of these:
 - `Application Manager`
 
 If neither exists, Doteasy shared hosting cannot run the full app from File
-Manager alone. Use a host that can run Python/ASGI apps, or ask Doteasy support
-to enable Python App support for the account.
+Manager alone. Use Railway for hosting and point the Doteasy domain at Railway.
 
 ## Upload Folder
 
-Upload the full app into:
+Upload and extract `leadrelay-cpanel-full.zip` into:
 
 ```text
 /home/dariomed/leadrelay
@@ -35,14 +33,14 @@ Create a Python app with:
 ```text
 Python version: 3.11
 Application root: /home/dariomed/leadrelay
-Application URL: your domain root, or a dedicated subdomain such as app.yourdomain.com
+Application URL: your domain root, or /Reese if you really want the app there
 Application startup file: passenger_wsgi.py
 Application entry point: application
 ```
 
-The cleanest deployment is the domain root or a dedicated app subdomain. If you
-deploy at a subpath, absolute URLs such as `/login` and `/auth/login` may not
-resolve through the Python app.
+If you deploy at `/Reese`, some absolute URLs may still behave like root-level
+paths. The cleanest deployment is the domain root or a dedicated subdomain such
+as `app.yourdomain.com`.
 
 ## Dependencies
 
@@ -79,50 +77,19 @@ REQLINQO_RUN_MIGRATIONS_ON_STARTUP=true
 
 Make sure `/home/dariomed/leadrelay/data` is writable by the cPanel account.
 
-## Smoke Test
+## After Boot
 
-After boot, run the deployment checker from your local checkout:
-
-```bash
-python scripts/check_deployment.py https://your-domain.example
-```
-
-Then visit:
+Visit:
 
 ```text
 /health
 ```
 
-Then test:
+Then:
 
 ```text
-/login
-/auth/login
+/register
 ```
-
-`/health` should return JSON. If `/health` returns an HTML app shell or a 404
-from another backend, the domain is not routed to this FastAPI app yet.
-
-### Static Shell / Other API Mismatch
-
-The broken shape looks like this:
-
-```text
-GET /health          -> 200 text/html with a Vite/React app shell
-GET /auth/me         -> 200 text/html with the same app shell
-GET /api/health      -> 200 JSON like {"status":"ok","uptime":...}
-POST /api/auth/login -> JSON with error.code such as AUTH_INVALID
-```
-
-That means the app subdomain is serving a different frontend/backend pair.
-This repo's login/register code lives at `/auth/login` and `/auth/register`, so
-the browser will never reach it until Doteasy routes the domain to the Python
-app, or until every relevant path is reverse-proxied to this FastAPI process.
-
-For this repo, do not deploy only a static bundle to the owner portal domain.
-The domain must be handled by Passenger/FastAPI for `/`, `/login`, `/register`,
-`/auth/*`, `/api/*`, `/leads/*`, `/settings`, `/review`, `/pipeline`,
-`/templates`, `/twilio/voice/*`, and `/sms/*`.
 
 Update Google OAuth redirect URI:
 

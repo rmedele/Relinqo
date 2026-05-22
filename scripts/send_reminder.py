@@ -10,16 +10,16 @@ from app.mailer import send_email
 
 send_email(
     to_email="reesemedele@gmail.com",
-    subject="Reminder: Fill in Twilio credentials for Relinqo",
+    subject="Reminder: Fill in Twilio credentials for reqlinqo",
     body=(
         "Hey Reese,\n\n"
-        "Reminder to fill in the Twilio SMS credentials in your Relinqo .env file:\n\n"
+        "Reminder to fill in the Twilio SMS credentials in your reqlinqo .env file:\n\n"
         "  TWILIO_ACCOUNT_SID=\n"
         "  TWILIO_AUTH_TOKEN=\n"
         "  TWILIO_FROM_NUMBER=\n"
         "  SMS_ALERT_TO_NUMBER=\n\n"
         "Once set, urgent leads (score >= 4) will trigger SMS alerts to your phone.\n\n"
-        "— Relinqo"
+        "— reqlinqo"
     ),
 )
 print("Reminder sent.")

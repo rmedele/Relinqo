@@ -1,4 +1,4 @@
-# Relinqo Deployment
+# reqlinqo Deployment
 
 ## Railway (recommended for MVP)
 
@@ -8,13 +8,13 @@
 git init
 git add -A
 git commit -m "Initial commit"
-gh repo create Relinqo --private --push
+gh repo create reqlinqo --private --push
 ```
 
 ### 2. Connect Railway
 
 1. Go to [railway.app](https://railway.app), sign in with GitHub
-2. New Project → Deploy from GitHub Repo → select Relinqo
+2. New Project → Deploy from GitHub Repo → select reqlinqo
 3. Railway auto-detects the Dockerfile
 
 ### 3. Add a persistent volume
@@ -122,7 +122,6 @@ sudo systemctl enable --now leadrelay-inbox-poll.timer
 ## Post-deploy checklist
 
 - [ ] Visit `/health` to confirm the app is running
-- [ ] Run `python scripts/check_deployment.py https://your-domain.example` and confirm every line starts with `OK`
 - [ ] Register an account at `/register`
 - [ ] Connect Gmail at `/setup` or `/settings`
 - [ ] Send a test email to your connected Gmail
