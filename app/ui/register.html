@@ -85,6 +85,7 @@
       document.getElementById('registerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
+        const formData = new FormData(form);
         const errEl = document.getElementById('regError');
         const btn = form.querySelector('button[type="submit"]');
         errEl.classList.add('hidden');
@@ -96,15 +97,18 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              org_name: form.org_name.value,
-              display_name: form.display_name.value || null,
-              email: form.email.value,
-              password: form.password.value,
+              org_name: formData.get('org_name'),
+              display_name: formData.get('display_name') || null,
+              email: formData.get('email'),
+              password: formData.get('password'),
             }),
           });
           const data = await res.json();
           if (!res.ok) {
-            errEl.textContent = data.detail || 'Registration failed';
+            const detail = data.detail;
+            errEl.textContent = Array.isArray(detail)
+              ? detail.map(item => item.msg || item.detail || String(item)).join(' ')
+              : detail || 'Registration failed';
             errEl.classList.remove('hidden');
             btn.disabled = false;
             btn.textContent = 'Create workspace';
@@ -127,7 +131,7 @@
           }
           window.location.href = '/setup';
         } catch (err) {
-          errEl.textContent = 'Network error. Please try again.';
+          errEl.textContent = 'Registration failed before the request completed. Please refresh and try again.';
           errEl.classList.remove('hidden');
           btn.disabled = false;
           btn.textContent = 'Create workspace';
