@@ -15,6 +15,7 @@ from app.database import get_db
 from app.rate_limit import login_limiter, register_limiter
 from app.mailer import send_email
 from app.models import InviteToken, Organization, OrgSettings, PasswordResetToken, User, hash_api_key
+from app.schema_repair import ensure_org_settings_schema
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -150,6 +151,7 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
     db.add(org)
     db.flush()
 
+    ensure_org_settings_schema(db)
     db.add(OrgSettings(org_id=org.id))
 
     user = User(

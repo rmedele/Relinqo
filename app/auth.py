@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.billing import ACTIVE_BILLING_STATUSES, org_has_billing_access
 from app.models import Organization, OrgSettings, User, hash_api_key
+from app.schema_repair import ensure_org_settings_schema
 
 
 ACTIVE_SUBSCRIPTION_STATUSES = ACTIVE_BILLING_STATUSES
@@ -56,6 +57,7 @@ def require_owner_active(user: User = Depends(require_owner)) -> User:
 
 
 def get_org_settings(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> OrgSettings:
+    ensure_org_settings_schema(db)
     org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
     if not org_settings:
         org_settings = OrgSettings(org_id=user.org_id)
