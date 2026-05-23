@@ -5,6 +5,38 @@ from app import phone_leads
 from app.sms_intake import process_sms_lead
 
 
+def test_owner_alert_summary_stays_trial_sms_safe():
+    call = CallEvent(
+        org_id=1,
+        id=99,
+        twilio_call_sid="CA_TRIAL_SAFE",
+        from_number="+18254401178",
+        to_number="+17822121292",
+        is_after_hours=True,
+    )
+    lead = Lead(
+        id=123,
+        org_id=1,
+        source="phone",
+        sender_email="caller-18254401178@phone.relinqo.local",
+        subject="SMS reply from +18254401178",
+        body="Need emergency plumbing help ASAP in Edmonton. " * 8,
+        phone="+18254401178",
+        category="urgent_request",
+        urgency_score=5,
+        summary="Need emergency plumbing help ASAP in Edmonton. " * 8,
+        owner_alert_needed=True,
+        status="new",
+        confidence=0.9,
+    )
+
+    message = phone_leads.format_owner_summary(lead, call, None, channel_label="SMS")
+
+    assert len(message) <= phone_leads.TRIAL_SAFE_OWNER_ALERT_CHARS
+    assert message == message.encode("ascii").decode("ascii")
+    assert "URGENT SMS lead #123" in message
+
+
 def test_sms_lead_owner_alert_uses_platform_fallback(monkeypatch):
     monkeypatch.setattr(settings, "sms_alert_to_number", "+18254401394")
     monkeypatch.setattr(

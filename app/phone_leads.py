@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 URGENCY_ICON = {1: "", 2: "", 3: "!", 4: "!!", 5: "!!!"}
 SUCCESSFUL_SMS_STATUSES = {"sent", "delivered"}
+TRIAL_SAFE_OWNER_ALERT_CHARS = 150
 
 
 def synthetic_sender_email(from_number: str) -> str:
@@ -40,6 +41,18 @@ def business_context(org_settings: OrgSettings | None) -> str:
     return "\n".join(parts) if parts else "No business profile configured."
 
 
+def _sms_safe_text(value: object) -> str:
+    cleaned = re.sub(r"\s+", " ", str(value or "")).strip()
+    return cleaned.encode("ascii", "ignore").decode("ascii")
+
+
+def _clip_sms_part(value: object, limit: int) -> str:
+    cleaned = _sms_safe_text(value)
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: max(0, limit - 3)].rstrip() + "..."
+
+
 def format_owner_summary(
     lead: Lead,
     call: CallEvent,
@@ -49,23 +62,16 @@ def format_owner_summary(
 ) -> str:
     """One-SMS summary for the business owner. `channel_label` is
     'voicemail' or 'SMS' so the owner knows how the lead came in."""
-    hdr = "[AFTER HOURS] " if call.is_after_hours else ""
-    icon = URGENCY_ICON.get(lead.urgency_score, "")
+    hdr = "AH " if call.is_after_hours else ""
     callback = lead.phone or call.from_number
-    name = lead.sender_name or "Unknown caller"
-    summary = lead.summary or "No summary"
-    if len(summary) > 140:
-        summary = summary[:137] + "..."
-    base_url = (settings.public_base_url or "").rstrip("/")
-    link = f"{base_url}/review#lead-{lead.id}" if base_url else f"lead #{lead.id}"
-    prefix = f"{hdr}{icon + ' ' if icon else ''}".strip()
-    header_line = f"{prefix + ' ' if prefix else ''}New {lead.category} lead ({channel_label})"
-    return (
-        f"{header_line}\n"
-        f"{name} · {callback}\n"
-        f"{summary}\n"
-        f"{link}"
+    urgency = "URGENT " if lead.urgency_score >= 4 else ""
+    source = _clip_sms_part(channel_label, 12).upper()
+    summary = _clip_sms_part(lead.summary or lead.body or lead.subject or "No summary", 58)
+    message = (
+        f"Relinqo: {hdr}{urgency}{source} lead #{lead.id} from "
+        f"{_clip_sms_part(callback, 18)}. {summary}. Open dashboard."
     )
+    return _clip_sms_part(message, TRIAL_SAFE_OWNER_ALERT_CHARS)
 
 
 def recent_sms_exists(
