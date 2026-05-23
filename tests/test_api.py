@@ -1,6 +1,9 @@
 from fastapi.testclient import TestClient
 from datetime import timedelta
 
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.orm import sessionmaker
+
 from app import auth as auth_helpers
 from app import main as main_module
 from app import outbound_webhooks
@@ -12,6 +15,7 @@ from app.routes import billing as billing_routes
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
 from app.routes import settings as settings_routes
+from app.schema_repair import ensure_org_settings_schema
 
 client = TestClient(app)
 
@@ -503,6 +507,25 @@ def test_missing_org_settings_self_heals():
         assert db.query(OrgSettings).filter(OrgSettings.org_id == org.id).first() is not None
     finally:
         db.close()
+
+
+def test_org_settings_schema_repair_adds_missing_columns(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE org_settings (id INTEGER PRIMARY KEY, org_id INTEGER NOT NULL UNIQUE)"))
+
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    try:
+        ensure_org_settings_schema(db)
+        columns = {column["name"] for column in inspect(engine).get_columns("org_settings")}
+        assert "google_calendar_sync_enabled" in columns
+        assert "review_request_enabled" in columns
+        assert "outbound_webhook_events" in columns
+        assert "default_timezone" in columns
+    finally:
+        db.close()
+        engine.dispose()
 
 
 def test_pilot_readiness_checklist_uses_live_workspace_state():
