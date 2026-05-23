@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from datetime import timedelta
 
+from app import auth as auth_helpers
 from app import main as main_module
 from app import outbound_webhooks
 from app.main import app
@@ -472,6 +473,36 @@ def test_settings_response_coerces_legacy_nulls():
     assert response.default_timezone == "America/Edmonton"
     assert response.subscription_status == "trialing"
     assert response.plan == "beta"
+
+
+def test_missing_org_settings_self_heals():
+    import uuid
+
+    unique = uuid.uuid4().hex[:8]
+    db = SessionLocal()
+    try:
+        org = Organization(name=f"Missing Settings {unique}", slug=f"missing-settings-{unique}")
+        db.add(org)
+        db.flush()
+        user = User(
+            email=f"missing-settings-{unique}@example.com",
+            password_hash="x",
+            role="owner",
+            org_id=org.id,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        assert db.query(OrgSettings).filter(OrgSettings.org_id == org.id).first() is None
+
+        org_settings = auth_helpers.get_org_settings(user=user, db=db)
+
+        assert org_settings.org_id == org.id
+        assert org_settings.imap_host == "imap.gmail.com"
+        assert db.query(OrgSettings).filter(OrgSettings.org_id == org.id).first() is not None
+    finally:
+        db.close()
 
 
 def test_pilot_readiness_checklist_uses_live_workspace_state():

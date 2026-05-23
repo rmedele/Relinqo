@@ -1,5 +1,6 @@
 import bcrypt
 from fastapi import Depends, HTTPException, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -57,7 +58,17 @@ def require_owner_active(user: User = Depends(require_owner)) -> User:
 def get_org_settings(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> OrgSettings:
     org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
     if not org_settings:
-        raise HTTPException(status_code=500, detail="Organization settings not found")
+        org_settings = OrgSettings(org_id=user.org_id)
+        db.add(org_settings)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == user.org_id).first()
+            if not org_settings:
+                raise HTTPException(status_code=500, detail="Organization settings not found")
+        else:
+            db.refresh(org_settings)
     return org_settings
 
 
