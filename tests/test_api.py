@@ -10,6 +10,7 @@ from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, 
 from app.routes import billing as billing_routes
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
+from app.routes import settings as settings_routes
 
 client = TestClient(app)
 
@@ -443,6 +444,34 @@ def test_settings_crud():
     assert res.status_code == 200
     assert res.json()["business_name"] == "Test Biz"
     assert res.json()["human_review"] is False
+
+
+def test_settings_response_coerces_legacy_nulls():
+    org = Organization(name="Legacy Org", slug="legacy-null-org")
+    user = User(email="owner@example.com", password_hash="x", role="owner", org=org)
+    org_settings = OrgSettings(org_id=1)
+
+    response = settings_routes._build_settings_response(user, org_settings)
+
+    assert response.smtp_host == ""
+    assert response.smtp_port == 587
+    assert response.smtp_use_tls is True
+    assert response.imap_host == "imap.gmail.com"
+    assert response.imap_port == 993
+    assert response.imap_mailbox == "INBOX"
+    assert response.imap_search_criteria == "UNSEEN"
+    assert response.scheduling_slot_duration == 60
+    assert response.scheduling_buffer_minutes == 0
+    assert response.scheduling_max_days_ahead == 7
+    assert response.google_calendar_id == "primary"
+    assert response.review_delay_hours == 72
+    assert response.review_request_channel == "email"
+    assert response.human_review is True
+    assert response.automation_paused is False
+    assert response.auto_send_confidence_threshold == 0.85
+    assert response.default_timezone == "America/Edmonton"
+    assert response.subscription_status == "trialing"
+    assert response.plan == "beta"
 
 
 def test_pilot_readiness_checklist_uses_live_workspace_state():
