@@ -432,7 +432,9 @@ function renderLeadList() {
 }
 
 function fill(id, value) {
-  document.getElementById(id).textContent = value || '\u2014';
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = value || '\u2014';
 }
 
 async function loadActivities(leadId) {
