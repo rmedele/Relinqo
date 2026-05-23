@@ -121,6 +121,100 @@ class OrgSettingsUpdate(BaseModel):
     default_timezone: str | None = None
 
 
+def _as_str(value: object, default: str = "") -> str:
+    if value is None:
+        return default
+    return str(value)
+
+
+def _as_int(value: object, default: int) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_float(value: object, default: float) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _as_bool(value: object, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+        return default
+    return bool(value)
+
+
+def _build_settings_response(user: User, org_settings: OrgSettings) -> OrgSettingsResponse:
+    return OrgSettingsResponse(
+        smtp_host=_as_str(org_settings.smtp_host),
+        smtp_port=_as_int(org_settings.smtp_port, 587),
+        smtp_username=_as_str(org_settings.smtp_username),
+        smtp_from_email=_as_str(org_settings.smtp_from_email),
+        smtp_use_tls=_as_bool(org_settings.smtp_use_tls, True),
+        imap_host=_as_str(org_settings.imap_host, "imap.gmail.com"),
+        imap_port=_as_int(org_settings.imap_port, 993),
+        imap_username=_as_str(org_settings.imap_username),
+        imap_mailbox=_as_str(org_settings.imap_mailbox, "INBOX"),
+        imap_search_criteria=_as_str(org_settings.imap_search_criteria, "UNSEEN"),
+        inbox_poll_enabled=_as_bool(org_settings.inbox_poll_enabled),
+        business_name=_as_str(org_settings.business_name),
+        business_services=_as_str(org_settings.business_services),
+        business_area=_as_str(org_settings.business_area),
+        business_hours=_as_str(org_settings.business_hours, "Mon-Fri 8am-5pm"),
+        business_phone=_as_str(org_settings.business_phone),
+        business_tone=_as_str(org_settings.business_tone, "friendly and professional"),
+        business_reply_signature=_as_str(org_settings.business_reply_signature),
+        twilio_account_sid=_as_str(org_settings.twilio_account_sid),
+        twilio_from_number=_as_str(org_settings.twilio_from_number),
+        sms_alert_to_number=_as_str(org_settings.sms_alert_to_number),
+        google_oauth_email=_as_str(org_settings.google_oauth_email),
+        scheduling_enabled=_as_bool(org_settings.scheduling_enabled),
+        scheduling_slot_duration=_as_int(org_settings.scheduling_slot_duration, 60),
+        scheduling_buffer_minutes=_as_int(org_settings.scheduling_buffer_minutes, 0),
+        scheduling_max_days_ahead=_as_int(org_settings.scheduling_max_days_ahead, 7),
+        google_calendar_id=_as_str(org_settings.google_calendar_id, "primary"),
+        google_calendar_sync_enabled=_as_bool(org_settings.google_calendar_sync_enabled),
+        review_request_enabled=_as_bool(org_settings.review_request_enabled),
+        review_url=_as_str(org_settings.review_url),
+        review_delay_hours=_as_int(org_settings.review_delay_hours, 72),
+        review_request_channel=_as_str(org_settings.review_request_channel, "email"),
+        review_request_subject=_as_str(
+            org_settings.review_request_subject,
+            "Quick favor - would you mind leaving us a review?",
+        ),
+        review_request_body=_as_str(org_settings.review_request_body),
+        outbound_webhook_enabled=_as_bool(org_settings.outbound_webhook_enabled),
+        outbound_webhook_url=_as_str(org_settings.outbound_webhook_url),
+        outbound_webhook_events=_as_str(
+            org_settings.outbound_webhook_events,
+            "lead.created,booking.created,lead.won",
+        ),
+        human_review=_as_bool(org_settings.human_review, True),
+        automation_paused=_as_bool(org_settings.automation_paused),
+        auto_send_confidence_threshold=_as_float(org_settings.auto_send_confidence_threshold, 0.85),
+        forwarding_token=_as_str(org_settings.forwarding_token),
+        owner_alert_email=_as_str(org_settings.owner_alert_email),
+        digest_to_email=_as_str(org_settings.digest_to_email),
+        default_timezone=_as_str(org_settings.default_timezone, "America/Edmonton"),
+        subscription_status=_as_str(user.org.subscription_status, "trialing"),
+        plan=_as_str(user.org.plan, "beta"),
+    )
+
+
 class ReadinessItem(BaseModel):
     id: str
     label: str
@@ -147,54 +241,7 @@ def get_settings(
     user: User = Depends(require_owner),
     org_settings: OrgSettings = Depends(get_org_settings),
 ):
-    return OrgSettingsResponse(
-        smtp_host=org_settings.smtp_host,
-        smtp_port=org_settings.smtp_port,
-        smtp_username=org_settings.smtp_username,
-        smtp_from_email=org_settings.smtp_from_email,
-        smtp_use_tls=org_settings.smtp_use_tls,
-        imap_host=org_settings.imap_host,
-        imap_port=org_settings.imap_port,
-        imap_username=org_settings.imap_username,
-        imap_mailbox=org_settings.imap_mailbox,
-        imap_search_criteria=org_settings.imap_search_criteria,
-        inbox_poll_enabled=org_settings.inbox_poll_enabled,
-        business_name=org_settings.business_name,
-        business_services=org_settings.business_services,
-        business_area=org_settings.business_area,
-        business_hours=org_settings.business_hours,
-        business_phone=org_settings.business_phone,
-        business_tone=org_settings.business_tone,
-        business_reply_signature=org_settings.business_reply_signature,
-        twilio_account_sid=org_settings.twilio_account_sid,
-        twilio_from_number=org_settings.twilio_from_number,
-        sms_alert_to_number=org_settings.sms_alert_to_number,
-        google_oauth_email=org_settings.google_oauth_email,
-        scheduling_enabled=org_settings.scheduling_enabled,
-        scheduling_slot_duration=org_settings.scheduling_slot_duration,
-        scheduling_buffer_minutes=org_settings.scheduling_buffer_minutes,
-        scheduling_max_days_ahead=org_settings.scheduling_max_days_ahead,
-        google_calendar_id=org_settings.google_calendar_id,
-        google_calendar_sync_enabled=org_settings.google_calendar_sync_enabled,
-        review_request_enabled=org_settings.review_request_enabled,
-        review_url=org_settings.review_url,
-        review_delay_hours=org_settings.review_delay_hours,
-        review_request_channel=org_settings.review_request_channel,
-        review_request_subject=org_settings.review_request_subject,
-        review_request_body=org_settings.review_request_body,
-        outbound_webhook_enabled=org_settings.outbound_webhook_enabled,
-        outbound_webhook_url=org_settings.outbound_webhook_url,
-        outbound_webhook_events=org_settings.outbound_webhook_events,
-        human_review=org_settings.human_review,
-        automation_paused=org_settings.automation_paused,
-        auto_send_confidence_threshold=org_settings.auto_send_confidence_threshold,
-        forwarding_token=org_settings.forwarding_token,
-        owner_alert_email=org_settings.owner_alert_email,
-        digest_to_email=org_settings.digest_to_email,
-        default_timezone=org_settings.default_timezone,
-        subscription_status=user.org.subscription_status,
-        plan=user.org.plan,
-    )
+    return _build_settings_response(user, org_settings)
 
 
 @router.get("/readiness", response_model=ReadinessResponse)
