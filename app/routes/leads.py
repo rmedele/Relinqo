@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func as sa_func
+from sqlalchemy import func as sa_func, or_ as sa_or
 from sqlalchemy.orm import Session
 
 from app.alerts import send_owner_alert, send_sms_approval_request
@@ -296,6 +296,18 @@ def lead_map(db: Session = Depends(get_db), user: User = Depends(get_current_use
         .limit(500)
         .all()
     )
+    needs_location = (
+        db.query(Lead)
+        .filter(
+            Lead.org_id == user.org_id,
+            sa_or(Lead.location.is_(None), Lead.location == ""),
+            Lead.category != "spam",
+            Lead.status != "spam",
+        )
+        .order_by(Lead.created_at.desc())
+        .limit(5)
+        .all()
+    )
     return {
         "items": [
             {
@@ -314,7 +326,20 @@ def lead_map(db: Session = Depends(get_db), user: User = Depends(get_current_use
                 "created_at": lead.created_at,
             }
             for lead in rows
-        ]
+        ],
+        "needs_location": [
+            {
+                "id": lead.id,
+                "subject": lead.subject,
+                "sender_name": lead.sender_name,
+                "sender_email": lead.sender_email,
+                "category": lead.category,
+                "status": lead.status,
+                "urgency_score": lead.urgency_score,
+                "created_at": lead.created_at,
+            }
+            for lead in needs_location
+        ],
     }
 
 

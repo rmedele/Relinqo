@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>relinqo Review Queue</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/ui/styles.css?v=20260525-home-polish" />
+    <link rel="stylesheet" href="/ui/styles.css?v=20260525-map-address" />
   </head>
   <body>
     <div class="shell">
@@ -69,7 +69,10 @@
             <button id="backfillMapBtn" class="ghost-btn compact-link">Map Past Leads</button>
           </div>
         </div>
-        <div id="leadMap" class="lead-map"></div>
+        <div class="lead-map-wrap">
+          <div id="leadMap" class="lead-map"></div>
+          <div id="leadMapNeedsLocation" class="lead-map-needs hidden"></div>
+        </div>
       </section>
 
       <!-- Charts -->
@@ -425,7 +428,7 @@
     </nav>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="/ui/shell.js?v=20260525-home-polish"></script>
-    <script src="/ui/app.js?v=20260525-home-polish"></script>
+    <script src="/ui/shell.js?v=20260525-map-address"></script>
+    <script src="/ui/app.js?v=20260525-map-address"></script>
   </body>
 </html>
