@@ -41,6 +41,7 @@ let pollInterval = null;
 let undoTimer = null;
 let leadMap = null;
 let leadMapMarkers = null;
+let leadMapPopupBound = false;
 let currentView = 'leads'; // 'leads' or 'threads'
 let currentPage = 1;
 let totalPages = 1;
@@ -670,6 +671,16 @@ function initLeadMap() {
   }).addTo(leadMap);
   leadMapMarkers = L.layerGroup().addTo(leadMap);
   leadMap.setView([53.5461, -113.4938], 10);
+  if (!leadMapPopupBound) {
+    leadMapEl.addEventListener('click', (event) => {
+      const button = event.target.closest('.map-popup-btn');
+      if (!button) return;
+      event.preventDefault();
+      selectLeadById(Number(button.dataset.leadId));
+      leadMap.closePopup();
+    });
+    leadMapPopupBound = true;
+  }
 }
 
 async function loadLeadMap() {
@@ -689,15 +700,13 @@ async function loadLeadMap() {
       });
       const marker = L.marker([item.lat, item.lng], { icon }).addTo(leadMapMarkers);
       marker.bindPopup(`
-        <strong>${escapeHtml(item.subject) || 'Lead'}</strong><br>
-        <span>${escapeHtml(item.location) || escapeHtml(item.sender_email) || ''}</span><br>
+        <div class="map-popup-card">
+          <strong>${escapeHtml(item.subject) || 'Lead'}</strong>
+          <span>${escapeHtml(item.location) || 'Service address needed'}</span>
+          <small>${escapeHtml(item.sender_name) || escapeHtml(item.sender_email) || ''}</small>
+        </div>
         <button type="button" class="map-popup-btn" data-lead-id="${item.id}">Open inquiry</button>
       `);
-      marker.on('popupopen', () => {
-        document.querySelector(`.map-popup-btn[data-lead-id="${item.id}"]`)?.addEventListener('click', () => {
-          selectLeadById(item.id);
-        });
-      });
       bounds.push([item.lat, item.lng]);
     });
     if (leadMapCountEl) {

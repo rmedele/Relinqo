@@ -2403,3 +2403,30 @@
     background-attachment: scroll, scroll;
   }
 }
+
+/* 2026-05-25 homepage polish */
+.lr-final-cta {
+  background: linear-gradient(135deg, #0b1220 0%, #133f75 100%);
+}
+
+.lr-final-cta .lr-kicker,
+.lr-final-cta h2,
+.lr-final-cta .lr-contact-line {
+  color: #ffffff;
+}
+
+.lr-final-cta .lr-contact-line {
+  margin-top: 18px;
+  font-size: 0.96rem;
+}
+
+.lr-final-cta .lr-btn-secondary {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.lr-final-cta .lr-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.64);
+}
