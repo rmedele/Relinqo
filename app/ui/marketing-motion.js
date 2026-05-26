@@ -1,4 +1,13 @@
 (function () {
+  const contactUser = ["reese", "medele"].join("");
+  const contactDomain = ["gmail", "com"].join(".");
+  const contactSubject = encodeURIComponent("relinqo question");
+  const contactBody = encodeURIComponent("Hi, I have a question about relinqo.");
+  const contactHref = `mailto:${contactUser}@${contactDomain}?subject=${contactSubject}&body=${contactBody}`;
+  document.querySelectorAll("[data-email-link]").forEach((link) => {
+    link.setAttribute("href", contactHref);
+  });
+
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const revealItems = document.querySelectorAll(".reveal");
   const processBoards = document.querySelectorAll("[data-process-board]");
