@@ -5439,3 +5439,78 @@ code,
     margin-top: 10px;
   }
 }
+
+/* 2026-05-26: harden header card spacing against older header overrides/cache. */
+.topbar,
+.topbar-editorial,
+.analytics-header,
+.tmpl-header,
+.book-header,
+.demo-nav,
+.settings-hero,
+.kanban-header {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.topbar > div:first-child,
+.topbar-editorial > div:first-child,
+.analytics-header > div:first-child,
+.tmpl-header > div:first-child,
+.book-header > div:first-child,
+.demo-nav > div:first-child,
+.kanban-header > div:first-child,
+.settings-hero-copy {
+  padding: 22px 0 22px 24px;
+}
+
+.topbar-actions,
+.topbar-editorial .topbar-actions,
+.analytics-nav,
+.settings-hero-actions,
+.tmpl-header .analytics-nav,
+.tmpl-header .actions,
+.kanban-header .actions {
+  padding: 22px 24px 22px 0;
+}
+
+.topbar > div:first-child h1,
+.topbar-editorial > div:first-child h1,
+.analytics-header > div:first-child h1,
+.tmpl-header > div:first-child h1,
+.book-header > div:first-child h1,
+.settings-hero-copy h1 {
+  margin-top: 8px;
+}
+
+.topbar > div:first-child .subhead,
+.topbar-editorial > div:first-child .subhead,
+.analytics-header > div:first-child .subhead,
+.tmpl-header > div:first-child .subhead,
+.book-header > div:first-child .subhead,
+.settings-hero-copy .subhead {
+  margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .topbar > div:first-child,
+  .topbar-editorial > div:first-child,
+  .analytics-header > div:first-child,
+  .tmpl-header > div:first-child,
+  .book-header > div:first-child,
+  .demo-nav > div:first-child,
+  .kanban-header > div:first-child,
+  .settings-hero-copy {
+    padding: 18px 18px 8px;
+  }
+
+  .topbar-actions,
+  .topbar-editorial .topbar-actions,
+  .analytics-nav,
+  .settings-hero-actions,
+  .tmpl-header .analytics-nav,
+  .tmpl-header .actions,
+  .kanban-header .actions {
+    padding: 8px 18px 18px;
+  }
+}
