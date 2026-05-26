@@ -356,6 +356,15 @@ def test_contact_form_submission_redirects_to_success():
     assert response.headers["location"] == "/book-demo?status=success"
 
 
+def test_contact_email_redirects_to_gmail_compose():
+    response = client.get("/contact-email", follow_redirects=False)
+    assert response.status_code == 302
+    location = response.headers["location"]
+    assert location.startswith("https://mail.google.com/mail/?")
+    assert "view=cm" in location
+    assert "relinqo+question" in location
+
+
 def test_ingest_lead():
     c, _ = _auth_client()
     response = c.post(

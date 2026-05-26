@@ -8,6 +8,7 @@ import xml.sax.saxutils as xml_escape
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -804,6 +805,20 @@ def submit_contact_form(
     except Exception:  # noqa: BLE001
         logging.exception("Failed to save contact form submission")
         return RedirectResponse(url="/book-demo?status=error", status_code=303)
+
+
+@app.get("/contact-email", include_in_schema=False)
+def contact_email():
+    query = urlencode(
+        {
+            "view": "cm",
+            "fs": "1",
+            "to": "reesemedele@gmail.com",
+            "su": "relinqo question",
+            "body": "Hi, I have a question about relinqo.",
+        }
+    )
+    return RedirectResponse(url=f"https://mail.google.com/mail/?{query}", status_code=302)
 
 
 @app.post("/mailbox/poll")
