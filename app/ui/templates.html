@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reply Templates · relinqo</title>
-    <link rel="stylesheet" href="/ui/styles.css?v=20260522-color-refresh" />
+    <link rel="stylesheet" href="/ui/styles.css?v=20260525-ui-polish" />
   </head>
   <body>
     <div class="tmpl-shell">
@@ -25,10 +25,10 @@
         </nav>
       </header>
 
-      <div class="card" style="margin-bottom: 18px; padding: 18px;">
-        <h3 style="margin-top:0;">New template</h3>
-        <div style="display:flex; gap:10px; margin-bottom: 10px;">
-          <input id="newName" class="filter-input" placeholder="Template name (e.g. Quote follow-up)" style="flex:1;" />
+      <div class="card tmpl-create-card">
+        <h3>New template</h3>
+        <div class="tmpl-create-grid">
+          <input id="newName" class="filter-input" placeholder="Template name (e.g. Quote follow-up)" />
           <select id="newCategory" class="filter-select">
             <option value="">No category</option>
             <option value="urgent_request">Urgent</option>
@@ -37,11 +37,9 @@
             <option value="existing_customer">Existing customer</option>
           </select>
         </div>
-        <textarea id="newBody" placeholder="Hi {{name}}, thanks for reaching out about your project at {{business}}..." rows="5"
-          style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:var(--radius-sm);
-                 padding:12px; color:var(--text); font-family:inherit; font-size:0.92rem; resize:vertical; outline:none;"></textarea>
-        <div style="display:flex; justify-content: flex-end; margin-top: 10px;">
-          <button id="createBtn" class="primary-btn">Create template</button>
+        <textarea id="newBody" class="tmpl-body-input" placeholder="Hi {{name}}, thanks for reaching out about your project at {{business}}..." rows="5"></textarea>
+        <div class="tmpl-create-actions">
+          <button id="createBtn" class="primary-btn" type="button">Create template</button>
         </div>
       </div>
 
@@ -84,8 +82,8 @@
                 <option value="general_inquiry" ${t.category==='general_inquiry'?'selected':''}>General</option>
                 <option value="existing_customer" ${t.category==='existing_customer'?'selected':''}>Existing customer</option>
               </select>
-              <button class="ghost-btn compact-link" data-action="save">Save</button>
-              <button class="ghost-btn compact-link" data-action="delete">Delete</button>
+            <button class="ghost-btn compact-link" type="button" data-action="save">Save</button>
+            <button class="ghost-btn compact-link" type="button" data-action="delete">Delete</button>
             </div>
             <textarea data-field="body" rows="5">${LR.escapeHtml(t.body)}</textarea>
             <div class="tmpl-row-meta">
