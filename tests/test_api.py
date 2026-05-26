@@ -310,6 +310,17 @@ def test_lead_map_returns_geocoded_leads(monkeypatch):
         },
     )
     assert created.status_code == 200, created.text
+    needs_address = c.post(
+        "/ingest-lead",
+        json={
+            "source": "gmail_api",
+            "sender_name": "No Address Lead",
+            "sender_email": "missing-address@example.com",
+            "subject": "Need service but no address yet",
+            "body": "Can someone call me about a repair?",
+        },
+    )
+    assert needs_address.status_code == 200, needs_address.text
 
     response = c.get("/api/lead-map")
     assert response.status_code == 200
@@ -318,6 +329,8 @@ def test_lead_map_returns_geocoded_leads(monkeypatch):
     assert mapped
     assert mapped[0]["lat"] == 53.5461
     assert mapped[0]["lng"] == -113.4938
+    needs_location = response.json()["needs_location"]
+    assert any(item["id"] == needs_address.json()["id"] for item in needs_location)
 
 
 def test_rescue_endpoint_removed():

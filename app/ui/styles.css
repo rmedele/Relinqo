@@ -445,6 +445,9 @@ textarea { font-family: var(--font-sans); resize: vertical; min-height: 80px; }
   overflow: hidden;
   background: var(--surface-2);
 }
+.lead-map-wrap {
+  position: relative;
+}
 .lead-map-marker {
   width: 18px;
   height: 18px;
@@ -467,6 +470,69 @@ textarea { font-family: var(--font-sans); resize: vertical; min-height: 80px; }
 }
 .map-popup-btn:hover {
   background: var(--surface-2);
+}
+.lead-map-needs {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 500;
+  width: min(320px, calc(100% - 24px));
+  padding: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.lead-map-needs-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.lead-map-needs-head span {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.lead-map-needs-head strong {
+  font-size: 0.82rem;
+}
+.lead-map-needs-list {
+  display: grid;
+  gap: 7px;
+}
+.lead-map-address-card {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+  padding: 9px 10px;
+  color: var(--text);
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.lead-map-address-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.lead-map-address-card span {
+  overflow: hidden;
+  font-size: 0.84rem;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lead-map-address-card small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bar-chart, .horiz-chart, .funnel-chart, .rt-chart, .cat-trend, .weekday-chart, .perf-table {
@@ -5259,6 +5325,18 @@ code,
   border-color: var(--accent-hover) !important;
 }
 
+.lead-map-needs,
+.lead-map-address-card {
+  color: var(--text);
+  background: rgba(255, 253, 248, 0.94);
+  border-color: var(--border);
+}
+
+.lead-map-address-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
 @media (max-width: 720px) {
   .settings-hero {
     padding: 14px !important;
@@ -5270,5 +5348,11 @@ code,
 
   .bar-chart > .bar-group {
     min-width: 10px;
+  }
+
+  .lead-map-needs {
+    position: static;
+    width: auto;
+    margin-top: 10px;
   }
 }

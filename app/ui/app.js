@@ -32,6 +32,7 @@ const filterStatus = document.getElementById('filterStatus');
 const filterUrgency = document.getElementById('filterUrgency');
 const leadMapEl = document.getElementById('leadMap');
 const leadMapCountEl = document.getElementById('leadMapCount');
+const leadMapNeedsLocationEl = document.getElementById('leadMapNeedsLocation');
 const backfillMapBtn = document.getElementById('backfillMapBtn');
 
 let leads = [];
@@ -672,15 +673,42 @@ function initLeadMap() {
   leadMapMarkers = L.layerGroup().addTo(leadMap);
   leadMap.setView([53.5461, -113.4938], 10);
   if (!leadMapPopupBound) {
-    leadMapEl.addEventListener('click', (event) => {
-      const button = event.target.closest('.map-popup-btn');
+    const mapSection = leadMapEl.closest('.lead-map-section') || leadMapEl;
+    mapSection.addEventListener('click', (event) => {
+      const button = event.target.closest('.map-popup-btn, .lead-map-address-card');
       if (!button) return;
       event.preventDefault();
       selectLeadById(Number(button.dataset.leadId));
-      leadMap.closePopup();
+      leadMap?.closePopup();
     });
     leadMapPopupBound = true;
   }
+}
+
+function renderLeadMapNeedsLocation(items) {
+  if (!leadMapNeedsLocationEl) return;
+  const leadsNeedingAddress = items || [];
+  if (!leadsNeedingAddress.length) {
+    leadMapNeedsLocationEl.classList.add('hidden');
+    leadMapNeedsLocationEl.innerHTML = '';
+    return;
+  }
+
+  leadMapNeedsLocationEl.classList.remove('hidden');
+  leadMapNeedsLocationEl.innerHTML = `
+    <div class="lead-map-needs-head">
+      <span>Needs service address</span>
+      <strong>${leadsNeedingAddress.length} lead${leadsNeedingAddress.length === 1 ? '' : 's'}</strong>
+    </div>
+    <div class="lead-map-needs-list">
+      ${leadsNeedingAddress.map((item) => `
+        <button type="button" class="lead-map-address-card" data-lead-id="${item.id}">
+          <span>${escapeHtml(item.subject) || 'Untitled lead'}</span>
+          <small>${escapeHtml(item.sender_name) || escapeHtml(item.sender_email) || 'Open inquiry'}</small>
+        </button>
+      `).join('')}
+    </div>
+  `;
 }
 
 async function loadLeadMap() {
@@ -691,6 +719,7 @@ async function loadLeadMap() {
     if (!response.ok) return;
     const data = await response.json();
     leadMapMarkers.clearLayers();
+    renderLeadMapNeedsLocation(data.needs_location || []);
     const bounds = [];
     data.items.forEach((item) => {
       const icon = L.divIcon({
@@ -710,7 +739,9 @@ async function loadLeadMap() {
       bounds.push([item.lat, item.lng]);
     });
     if (leadMapCountEl) {
-      leadMapCountEl.textContent = `${data.items.length} mapped lead${data.items.length === 1 ? '' : 's'}`;
+      const needsCount = data.needs_location?.length || 0;
+      const mappedText = `${data.items.length} mapped lead${data.items.length === 1 ? '' : 's'}`;
+      leadMapCountEl.textContent = needsCount ? `${mappedText} · ${needsCount} need address` : mappedText;
     }
     if (bounds.length) {
       leadMap.fitBounds(bounds, { padding: [28, 28], maxZoom: 13 });
