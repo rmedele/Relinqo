@@ -26,6 +26,10 @@ logger = logging.getLogger(__name__)
 # --- Authenticated endpoints (business owner) ---
 
 
+def _as_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
 @router.get("/api/schedule/availability", response_model=list[ScheduleAvailabilityResponse])
 def list_availability(
     db: Session = Depends(get_db),
@@ -180,13 +184,19 @@ def _generate_available_slots(
             .filter(
                 Booking.org_id == org_id,
                 Booking.status == "confirmed",
-                Booking.slot_start >= slots[0]["slot_start"],
-                Booking.slot_end <= slots[-1]["slot_end"],
+                Booking.slot_start < slots[-1]["slot_end"],
+                Booking.slot_end > slots[0]["slot_start"],
             )
             .all()
         )
-        booked_starts = {b.slot_start for b in existing}
-        slots = [s for s in slots if s["slot_start"] not in booked_starts]
+        booked_ranges = [(_as_utc(b.slot_start), _as_utc(b.slot_end)) for b in existing]
+        slots = [
+            s for s in slots
+            if not any(
+                s["slot_start"] < booked_end and s["slot_end"] > booked_start
+                for booked_start, booked_end in booked_ranges
+            )
+        ]
 
     # Layer in Google Calendar busy windows (org's external commitments).
     # Fail-open: if FreeBusy returns nothing or errors, slots are still shown.

@@ -141,7 +141,7 @@ async function loadStats() {
     document.getElementById('statSent').textContent = data.sent_count;
     document.getElementById('statRate').textContent = `${data.response_rate}%`;
     document.getElementById('statAvgTime').textContent = data.avg_response_minutes != null
-      ? `${data.avg_response_minutes}m`
+      ? (window.LR?.formatMinutes ? window.LR.formatMinutes(data.avg_response_minutes) : `${data.avg_response_minutes}m`)
       : '\u2014';
   } catch (e) { /* stats are non-critical */ }
 }
@@ -1106,7 +1106,7 @@ function renderPriorityLeads() {
       cardClass = 'priority-pending';
     }
 
-    const age = Math.round((now - new Date(lead.created_at)) / 60000);
+    const age = Math.max(0, Math.round((now - new Date(lead.created_at)) / 60000));
     const ageText = age < 60 ? `${age}m ago` : age < 1440 ? `${Math.round(age / 60)}h ago` : `${Math.round(age / 1440)}d ago`;
 
     return `<div class="priority-card ${cardClass}" data-lead-id="${lead.id}">

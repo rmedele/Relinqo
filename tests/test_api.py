@@ -362,6 +362,7 @@ def test_contact_email_redirects_to_gmail_compose():
     location = response.headers["location"]
     assert location.startswith("https://mail.google.com/mail/?")
     assert "view=cm" in location
+    assert "to=reesemedele%40gmail.com" in location
     assert "relinqo+question" in location
 
 

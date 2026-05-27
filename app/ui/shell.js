@@ -414,10 +414,22 @@
     registerActions,
     showShortcuts,
     escapeHtml,
+    formatMinutes: (value) => {
+      if (value == null || Number.isNaN(Number(value))) return '\u2014';
+      const total = Math.max(0, Math.round(Number(value)));
+      if (total < 1) return 'just now';
+      if (total < 60) return `${total}m`;
+      const hours = Math.floor(total / 60);
+      const minutes = total % 60;
+      if (hours < 24) return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
+      const days = Math.floor(hours / 24);
+      const remHours = hours % 24;
+      return remHours ? `${days}d ${remHours}h` : `${days}d`;
+    },
     formatCurrency: (v) => v == null ? '—' : '$' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 }),
     timeSince: (iso) => {
       if (!iso) return '';
-      const ms = Date.now() - new Date(iso).getTime();
+      const ms = Math.max(0, Date.now() - new Date(iso).getTime());
       const m = Math.floor(ms / 60000);
       if (m < 1) return 'just now';
       if (m < 60) return `${m}m`;
@@ -429,7 +441,7 @@
     },
     slaTier: (iso, status) => {
       if (status === 'sent') return 'done';
-      const ms = Date.now() - new Date(iso).getTime();
+      const ms = Math.max(0, Date.now() - new Date(iso).getTime());
       const m = ms / 60000;
       if (m < 5) return 'fresh';
       if (m < 60) return 'warm';

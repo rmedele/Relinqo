@@ -11,6 +11,8 @@ os.close(fd)
 os.environ['DATABASE_URL'] = f'sqlite:///{test_db_path}'
 os.environ['APP_ENV'] = 'test'
 os.environ['SESSION_SECRET'] = 'test-session-secret'
+os.environ['LLM_PROVIDER'] = 'none'
+os.environ['LLM_API_KEY'] = ''
 
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
