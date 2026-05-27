@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>relinqo Analytics</title>
-    <link rel="stylesheet" href="/ui/styles.css?v=20260526-header-space" />
+    <link rel="stylesheet" href="/ui/styles.css?v=20260527-polish" />
     <style>
       .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
       .kpi-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; box-shadow: var(--shadow-sm); }
       .kpi-label { font-size: 0.72rem; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
-      .kpi-value { font-size: 1.5rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+      .kpi-value { font-size: 1.5rem; font-weight: 600; color: var(--text); letter-spacing: 0; }
       .kpi-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
 
       .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
@@ -17,9 +17,10 @@
       .chart-box { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
       .chart-box h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
 
-      .rt-chart { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
+      .rt-chart { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 120px; }
       .rt-bar { flex: 1; min-width: 4px; border-radius: 2px 2px 0 0; background: var(--accent); }
-      .rt-bar-empty { background: var(--surface-2); }
+      .rt-bar-empty { background: transparent; }
+      .empty-chart-note { width: 100%; align-self: center; justify-self: center; color: var(--muted); font-size: 0.82rem; text-align: center; }
 
       .hourly-chart { display: flex; align-items: flex-end; gap: 2px; height: 100px; }
       .hourly-bar { flex: 1; min-width: 4px; border-radius: 2px 2px 0 0; background: var(--accent); }
@@ -46,7 +47,7 @@
 
       .cat-trend { display: flex; align-items: flex-end; gap: 2px; height: 120px; }
       .cat-stack { flex: 1; display: flex; flex-direction: column-reverse; min-width: 4px; }
-      .cat-seg { min-height: 1px; }
+      .cat-seg { min-height: 0; }
       .cat-legend { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
       .cat-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); }
       .cat-dot { width: 10px; height: 10px; border-radius: 2px; }
@@ -198,7 +199,7 @@
       </div>
     </div>
 
-    <script src="/ui/shell.js"></script>
+    <script src="/ui/shell.js?v=20260527-polish"></script>
     <script>
       const periodSelect = document.getElementById('periodSelect');
 
@@ -230,6 +231,11 @@
         return '$' + Math.round(v).toLocaleString();
       }
 
+      function fmtMinutes(v) {
+        if (v == null) return '--';
+        return window.LR?.formatMinutes ? window.LR.formatMinutes(v) : `${Math.round(v)}m`;
+      }
+
       async function loadAnalytics() {
         const days = periodSelect.value;
         try {
@@ -258,7 +264,7 @@
       function renderKPIs(stats, data) {
         document.getElementById('kpiTotal').textContent = stats.total_leads;
         document.getElementById('kpiWinRate').textContent = stats.close_rate != null ? `${stats.close_rate}%` : '--';
-        document.getElementById('kpiAvgResponse').textContent = stats.avg_response_minutes != null ? `${stats.avg_response_minutes}m` : '--';
+        document.getElementById('kpiAvgResponse').textContent = stats.avg_response_minutes != null ? fmtMinutes(stats.avg_response_minutes) : '--';
         document.getElementById('kpiConfidence').textContent = data.avg_confidence != null ? `${Math.round(data.avg_confidence * 100)}%` : '--';
         document.getElementById('kpiWonRevenue').textContent = fmtMoney(stats.won_revenue || 0);
         document.getElementById('kpiPipelineValue').textContent = fmtMoney(stats.pipeline_value || 0);
@@ -274,13 +280,15 @@
 
       function renderRevenueChart(daily) {
         const container = document.getElementById('revenueChart');
-        if (!daily.length) { container.innerHTML = ''; return; }
+        if (!daily.length) { container.innerHTML = '<div class="empty-chart-note">No revenue data yet</div>'; return; }
+        const hasRevenue = daily.some(d => (d.won_revenue || 0) > 0 || (d.new_pipeline || 0) > 0);
+        if (!hasRevenue) { container.innerHTML = '<div class="empty-chart-note">No revenue data yet</div>'; return; }
         const maxVal = Math.max(1, ...daily.map(d => Math.max(d.won_revenue || 0, d.new_pipeline || 0)));
         container.style.gap = '3px';
         container.innerHTML = daily.map(d => {
-          const wonH = Math.max(0, Math.round(((d.won_revenue || 0) / maxVal) * 100));
-          const pipelineH = Math.max(0, Math.round(((d.new_pipeline || 0) / maxVal) * 100));
-          return `<div style="flex:1; min-width:4px; display:flex; flex-direction:column-reverse; gap:1px;" title="${d.date} — Won: ${fmtMoney(d.won_revenue)}, New pipeline: ${fmtMoney(d.new_pipeline)}">
+          const wonH = d.won_revenue ? Math.max(4, Math.round(((d.won_revenue || 0) / maxVal) * 100)) : 0;
+          const pipelineH = d.new_pipeline ? Math.max(4, Math.round(((d.new_pipeline || 0) / maxVal) * 100)) : 0;
+          return `<div style="flex:1; min-width:4px; display:flex; flex-direction:column-reverse; gap:1px;" title="${d.date} - Won: ${fmtMoney(d.won_revenue)}, New pipeline: ${fmtMoney(d.new_pipeline)}">
             <div style="height:${wonH}%; background: var(--success); border-radius:2px 2px 0 0;"></div>
             <div style="height:${pipelineH}%; background: var(--accent); border-radius:2px 2px 0 0; opacity: 0.55;"></div>
           </div>`;
@@ -290,13 +298,17 @@
       function renderResponseTimeChart(trend) {
         const container = document.getElementById('responseTimeChart');
         const values = trend.map(d => d.avg_minutes || 0);
+        if (!values.some(v => v > 0)) {
+          container.innerHTML = '<div class="empty-chart-note">No response-time data yet</div>';
+          return;
+        }
         const maxVal = Math.max(1, ...values);
 
         container.innerHTML = trend.map(d => {
           const val = d.avg_minutes || 0;
-          const h = Math.max(1, Math.round((val / maxVal) * 100));
+          const h = val ? Math.max(4, Math.round((val / maxVal) * 100)) : 0;
           const cls = val === 0 ? 'rt-bar rt-bar-empty' : 'rt-bar';
-          return `<div class="${cls}" style="height:${h}%" title="${d.date}: ${val ? val + ' min' : 'no data'}"></div>`;
+          return `<div class="${cls}" style="height:${h}%" title="${d.date}: ${val ? fmtMinutes(val) : 'no data'}"></div>`;
         }).join('');
       }
 
@@ -332,13 +344,18 @@
         const cats = new Set();
         trend.forEach(d => Object.keys(d).forEach(k => { if (k !== 'date') cats.add(k); }));
         const catList = [...cats];
+        if (!catList.length) {
+          container.innerHTML = '<div class="empty-chart-note">No category data yet</div>';
+          legendEl.innerHTML = '';
+          return;
+        }
 
         const maxVal = Math.max(1, ...trend.map(d => catList.reduce((sum, c) => sum + (d[c] || 0), 0)));
 
         container.innerHTML = trend.map(d => {
           const segments = catList.map(c => {
             const val = d[c] || 0;
-            const h = Math.round((val / maxVal) * 100);
+            const h = val ? Math.max(4, Math.round((val / maxVal) * 100)) : 0;
             const color = catColors[c] || 'var(--muted)';
             return `<div class="cat-seg" style="height:${h}%;background:${color}" title="${d.date}: ${titleCase(c)} ${val}"></div>`;
           }).join('');

@@ -2430,3 +2430,197 @@
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.64);
 }
+
+/* 2026-05-26 public-site readability and spacing pass. */
+.lr-page,
+.lr-page * {
+  letter-spacing: 0 !important;
+}
+
+.lr-process-step,
+.lr-service-card,
+.lr-faq-item,
+.lr-demo-flow article,
+.lr-logistics-grid article,
+.lr-security-grid article,
+.lr-pricing-card,
+.lr-demo-points div,
+.lr-demo-form,
+.lr-customer-bubble,
+.lr-queue-lead,
+.lr-owner-phone-card,
+.lr-live-demo-card,
+.lr-live-demo-result,
+.lr-live-demo-empty,
+.lr-live-demo-note,
+.lr-real-demo-contact,
+.lr-real-contact-card,
+.lr-live-demo-kpis div,
+.lr-live-demo-timeline div {
+  color: var(--lr-ink);
+  background: rgba(255, 253, 248, 0.97);
+  border-color: var(--lr-line);
+}
+
+.lr-process-step,
+.lr-service-card,
+.lr-faq-item,
+.lr-demo-flow article,
+.lr-logistics-grid article,
+.lr-security-grid article,
+.lr-pricing-card,
+.lr-demo-points div,
+.lr-demo-form,
+.lr-customer-bubble,
+.lr-queue-lead,
+.lr-owner-phone-card,
+.lr-live-demo-card,
+.lr-live-demo-result,
+.lr-live-demo-empty,
+.lr-live-demo-note,
+.lr-real-demo-contact,
+.lr-real-contact-card,
+.lr-live-demo-kpis div,
+.lr-live-demo-timeline div {
+  padding: clamp(16px, 1.8vw, 24px);
+}
+
+.lr-dashboard-visual,
+.lr-customer-console,
+.lr-operator-console {
+  color: var(--lr-ink);
+  background: rgba(255, 253, 248, 0.97);
+  border-color: var(--lr-line);
+}
+
+.lr-window-bar,
+.lr-dashboard-list,
+.lr-operator-queue,
+.lr-demo-stepper div {
+  color: var(--lr-ink);
+  background: var(--lr-paper-soft);
+}
+
+.lr-dashboard-detail,
+.lr-customer-console-body,
+.lr-operator-detail {
+  padding: clamp(18px, 2vw, 24px);
+}
+
+.lr-page p,
+.lr-section-heading p:not(.lr-kicker),
+.lr-section-copy-block p:not(.lr-kicker),
+.lr-process-step p,
+.lr-service-card p,
+.lr-faq-item p,
+.lr-demo-flow p,
+.lr-logistics-grid p,
+.lr-security-grid p,
+.lr-pricing-card p,
+.lr-dashboard-detail p,
+.lr-dashboard-lead p,
+.lr-demo-points span,
+.lr-demo-note,
+.lr-owner-phone-card p,
+.lr-live-demo-card p,
+.lr-live-demo-timeline p,
+.lr-real-contact-card small,
+.lr-check-list li {
+  color: var(--lr-ink-soft);
+}
+
+.lr-page h1,
+.lr-page h2,
+.lr-page h3,
+.lr-brand,
+.lr-dashboard-lead strong,
+.lr-demo-points strong,
+.lr-demo-panel-heading strong,
+.lr-real-contact-card strong,
+.lr-process-step strong,
+.lr-demo-flow strong {
+  color: var(--lr-ink);
+}
+
+.lr-kicker,
+.lr-demo-flow span,
+.lr-logistics-grid span,
+.lr-pricing-label,
+.lr-dashboard-lead span,
+.lr-dashboard-detail span,
+.lr-real-contact-card span,
+.lr-live-demo-card span,
+.lr-live-demo-kpis span,
+.lr-live-demo-timeline span,
+.lr-demo-panel-heading span {
+  color: var(--lr-blue);
+}
+
+.lr-demo-form input,
+.lr-demo-form select,
+.lr-demo-form textarea,
+.lr-customer-console input,
+.lr-customer-console select,
+.lr-customer-console textarea,
+.lr-operator-console input,
+.lr-operator-console select,
+.lr-operator-console textarea {
+  color: var(--lr-ink);
+  background: var(--lr-paper);
+  border-color: var(--lr-line);
+}
+
+.lr-demo-form input::placeholder,
+.lr-demo-form textarea::placeholder,
+.lr-customer-console input::placeholder,
+.lr-customer-console textarea::placeholder {
+  color: #7d7569;
+  opacity: 1;
+}
+
+.lr-final-cta p,
+.lr-final-cta h2,
+.lr-final-cta .lr-kicker,
+.lr-final-cta .lr-contact-line {
+  color: #ffffff;
+}
+
+.lr-final-cta {
+  background-color: #0b1220;
+}
+
+.lr-footer {
+  color: #e2e8f0;
+  background: #0b1220;
+}
+
+.lr-footer strong,
+.lr-footer span,
+.lr-footer a {
+  color: #e2e8f0;
+}
+
+@media (max-width: 640px) {
+  .lr-process-step,
+  .lr-service-card,
+  .lr-faq-item,
+  .lr-demo-flow article,
+  .lr-logistics-grid article,
+  .lr-security-grid article,
+  .lr-pricing-card,
+  .lr-demo-points div,
+  .lr-demo-form,
+  .lr-customer-bubble,
+  .lr-queue-lead,
+  .lr-owner-phone-card,
+  .lr-live-demo-card,
+  .lr-live-demo-result,
+  .lr-live-demo-empty,
+  .lr-live-demo-note,
+  .lr-real-demo-contact,
+  .lr-real-contact-card,
+  .lr-live-demo-kpis div,
+  .lr-live-demo-timeline div {
+    padding: 16px;
+  }
+}

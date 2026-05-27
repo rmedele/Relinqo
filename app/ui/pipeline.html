@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pipeline · relinqo</title>
-    <link rel="stylesheet" href="/ui/styles.css?v=20260526-header-space" />
+    <link rel="stylesheet" href="/ui/styles.css?v=20260527-polish" />
   </head>
   <body>
     <div class="kanban-shell">
@@ -31,7 +31,7 @@
       <div class="kanban-board" id="kanbanBoard"></div>
     </div>
 
-    <script src="/ui/shell.js"></script>
+    <script src="/ui/shell.js?v=20260527-polish"></script>
     <script>
       const STAGE_LABELS = {
         new: 'New',
@@ -133,9 +133,9 @@
       }
 
       function renderCard(lead) {
-        const ageMs = lead.created_at ? Date.now() - new Date(lead.created_at).getTime() : 0;
+        const ageMs = lead.created_at ? Math.max(0, Date.now() - new Date(lead.created_at).getTime()) : 0;
         const ageM = Math.floor(ageMs / 60000);
-        const ageStr = ageM < 60 ? `${ageM}m` : ageM < 1440 ? `${Math.floor(ageM/60)}h` : `${Math.floor(ageM/1440)}d`;
+        const ageStr = LR.formatMinutes ? LR.formatMinutes(ageM) : (ageM < 60 ? `${ageM}m` : ageM < 1440 ? `${Math.floor(ageM/60)}h` : `${Math.floor(ageM/1440)}d`);
         const urgC = urgencyClass(lead.urgency_score);
         const value = lead.deal_value ? LR.formatCurrency(lead.deal_value) : '';
         return `<article class="kanban-card" draggable="true" data-lead-id="${lead.id}">

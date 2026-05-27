@@ -5514,3 +5514,344 @@ code,
     padding: 8px 18px 18px;
   }
 }
+
+/* 2026-05-27: keep title cards compact and out of the scrolling content. */
+.topbar,
+.topbar-editorial,
+.analytics-header,
+.tmpl-header,
+.book-header,
+.demo-nav,
+.settings-hero,
+.kanban-header {
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  position: relative !important;
+  top: auto !important;
+  z-index: 1;
+  padding: 22px 24px !important;
+  margin-bottom: 22px;
+  overflow: visible;
+}
+
+.topbar > div:first-child,
+.topbar-editorial > div:first-child,
+.analytics-header > div:first-child,
+.tmpl-header > div:first-child,
+.book-header > div:first-child,
+.demo-nav > div:first-child,
+.kanban-header > div:first-child,
+.settings-hero-copy {
+  flex: 1 1 360px;
+  min-width: 0;
+  padding: 0 !important;
+}
+
+.topbar-actions,
+.topbar-editorial .topbar-actions,
+.analytics-header .analytics-nav,
+.settings-hero-actions,
+.tmpl-header .analytics-nav,
+.tmpl-header .actions,
+.kanban-header .analytics-nav,
+.kanban-header .actions {
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  width: auto;
+  padding: 0 !important;
+}
+
+.topbar > div:first-child h1,
+.topbar-editorial > div:first-child h1,
+.analytics-header > div:first-child h1,
+.tmpl-header > div:first-child h1,
+.book-header > div:first-child h1,
+.settings-hero-copy h1,
+.kanban-header > div:first-child h1 {
+  margin-top: 6px;
+}
+
+.topbar > div:first-child .subhead,
+.topbar-editorial > div:first-child .subhead,
+.analytics-header > div:first-child .subhead,
+.tmpl-header > div:first-child .subhead,
+.book-header > div:first-child .subhead,
+.settings-hero-copy .subhead,
+.kanban-header > div:first-child .muted {
+  margin-top: 8px;
+}
+
+@media (max-width: 820px) {
+  .topbar,
+  .topbar-editorial,
+  .analytics-header,
+  .tmpl-header,
+  .book-header,
+  .demo-nav,
+  .settings-hero,
+  .kanban-header {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 18px !important;
+  }
+
+  .topbar-actions,
+  .topbar-editorial .topbar-actions,
+  .analytics-header .analytics-nav,
+  .settings-hero-actions,
+  .tmpl-header .analytics-nav,
+  .tmpl-header .actions,
+  .kanban-header .analytics-nav,
+  .kanban-header .actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
+/* 2026-05-26 readability and spacing pass. */
+h1,
+h2,
+h3,
+h4,
+button,
+input,
+select,
+textarea,
+.eyebrow,
+.section-kicker,
+.demo-kicker,
+.proof-kicker,
+.step-label,
+.story-label,
+.stat-label,
+.kpi-label,
+.kpi-value,
+.field-label,
+.hero-badge,
+.section-chip,
+.status-chip,
+.pill,
+.sla-badge {
+  letter-spacing: 0 !important;
+}
+
+.card,
+.editorial-card,
+.settings-card,
+.auth-card,
+.book-card,
+.demo-form-card,
+.chart-card,
+.chart-box,
+.priority-section,
+.workspace-card,
+.list-panel,
+.detail-panel,
+.cmdk-panel,
+.shortcuts-panel,
+.phone-health-panel,
+.forwarding-card {
+  color: var(--text);
+  background: rgba(255, 253, 248, 0.96);
+  border-color: var(--border);
+}
+
+.card,
+.editorial-card,
+.settings-card,
+.auth-card,
+.book-card,
+.demo-form-card,
+.chart-card,
+.chart-box,
+.priority-section,
+.workspace-card,
+.cmdk-panel,
+.shortcuts-panel,
+.phone-health-panel,
+.forwarding-card {
+  padding: clamp(16px, 1.8vw, 24px);
+}
+
+.list-panel,
+.detail-panel {
+  padding: clamp(16px, 1.6vw, 22px);
+}
+
+.stat-card,
+.kpi-card,
+.kanban-total-card {
+  padding: 16px 18px;
+  color: var(--text);
+  background: rgba(255, 253, 248, 0.96);
+  border-color: var(--border);
+}
+
+.lead-item,
+.sender-row,
+.tmpl-row,
+.priority-card,
+.kanban-card,
+.note-item,
+.thread-info,
+.settings-steps li,
+.readiness-item,
+.avail-row,
+.day-slots,
+.workspace-funnel-item,
+.lead-map-address-card,
+.map-popup-card {
+  color: var(--text);
+  background: rgba(255, 253, 248, 0.94);
+  border-color: var(--border);
+}
+
+.lead-item,
+.sender-row,
+.tmpl-row,
+.priority-card,
+.kanban-card,
+.note-item,
+.thread-info,
+.settings-steps li,
+.readiness-item,
+.avail-row,
+.day-slots,
+.workspace-funnel-item,
+.lead-map-address-card {
+  padding: clamp(10px, 1.25vw, 14px);
+}
+
+.card p,
+.editorial-card p,
+.settings-card p,
+.auth-card p,
+.book-card p,
+.demo-form-card p,
+.chart-card p,
+.priority-section p,
+.workspace-card p,
+.list-panel p,
+.detail-panel p,
+.lead-item p,
+.priority-card p,
+.kanban-card p,
+.note-item p,
+.thread-info,
+.prewrap,
+.muted,
+.muted-strong,
+.subhead,
+.field-label,
+.snapshot-label,
+.sender-email,
+.sender-count,
+.lead-count,
+.note-meta,
+.tmpl-row-meta,
+.chart-legend,
+.cat-legend,
+.workspace-credentials-body {
+  color: var(--text-secondary);
+}
+
+.card h2,
+.card h3,
+.editorial-card h2,
+.editorial-card h3,
+.settings-card h2,
+.settings-card h3,
+.auth-card h1,
+.book-card h1,
+.demo-form-card h3,
+.chart-card h3,
+.chart-box h3,
+.lead-item strong,
+.priority-card strong,
+.kanban-card-title,
+.kanban-card-name,
+.note-item strong,
+.workspace-card strong {
+  color: var(--text);
+}
+
+.filter-input,
+.filter-select,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+select,
+textarea {
+  color: var(--text);
+  background: rgba(255, 253, 248, 0.98);
+  border-color: var(--border);
+}
+
+.filter-input::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: #8a7b68;
+  opacity: 1;
+}
+
+select option {
+  color: var(--text);
+  background: #fffdf8;
+}
+
+.inline-alert,
+.demo-alert,
+.api-key-panel,
+.toggle-card,
+.template-menu {
+  color: var(--text);
+  background: rgba(255, 253, 248, 0.97);
+  border-color: var(--border);
+}
+
+.inline-alert p,
+.demo-alert p,
+.api-key-panel p,
+.toggle-card span,
+.template-menu button {
+  color: var(--text-secondary);
+}
+
+.setup-step:not(.active):not(.done) .step-num,
+.setup-step:not(.active):not(.done) .step-label,
+.ktc-label {
+  color: var(--text-secondary);
+}
+
+.kc-count {
+  color: var(--text);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .card,
+  .editorial-card,
+  .settings-card,
+  .auth-card,
+  .book-card,
+  .demo-form-card,
+  .chart-card,
+  .chart-box,
+  .priority-section,
+  .workspace-card,
+  .list-panel,
+  .detail-panel,
+  .cmdk-panel,
+  .shortcuts-panel,
+  .phone-health-panel,
+  .forwarding-card {
+    padding: 16px;
+  }
+}

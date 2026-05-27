@@ -813,9 +813,10 @@ def contact_email():
         {
             "view": "cm",
             "fs": "1",
+            "tf": "1",
             "to": "reesemedele@gmail.com",
             "su": "relinqo question",
-            "body": "Hi, I have a question about relinqo.",
+            "body": "Hi Reese,\n\nI have a question about relinqo.",
         }
     )
     return RedirectResponse(url=f"https://mail.google.com/mail/?{query}", status_code=302)
