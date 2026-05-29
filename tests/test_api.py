@@ -698,7 +698,7 @@ def test_billing_status_defaults_to_configured_monthly_plan():
     res = c.get("/api/billing/status")
     assert res.status_code == 200
     data = res.json()
-    assert data["price"] == "USD 99.99/mo"
+    assert data["price"] == "USD 199/mo"
     assert data["active"] is True
 
 
@@ -761,6 +761,9 @@ def test_billing_checkout_uses_absolute_public_base_url(monkeypatch):
                     return SimpleNamespace(id="cs_test_123", url="https://checkout.stripe.test/session")
 
     monkeypatch.setattr(billing_module, "_stripe", lambda: FakeStripe)
+    monkeypatch.setattr(settings, "stripe_price_id", "")
+    monkeypatch.setattr(settings, "stripe_price_amount_cents", 19900)
+    monkeypatch.setattr(settings, "stripe_trial_period_days", 14)
     monkeypatch.setattr(
         settings,
         "public_base_url",
@@ -778,6 +781,9 @@ def test_billing_checkout_uses_absolute_public_base_url(monkeypatch):
     assert captured["cancel_url"] == (
         "https://leadrelay-production-4a37.up.railway.app/settings?checkout=cancelled"
     )
+    assert captured["line_items"][0]["price_data"]["unit_amount"] == 19900
+    assert captured["line_items"][0]["price_data"]["recurring"] == {"interval": "month"}
+    assert captured["subscription_data"]["trial_period_days"] == 14
 
 
 def test_billing_gate_blocks_incomplete_workspace(monkeypatch):

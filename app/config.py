@@ -66,9 +66,10 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_price_id: str = ""
-    stripe_price_amount_cents: int = 9999
+    stripe_price_amount_cents: int = 19900
     stripe_price_currency: str = "usd"
     stripe_product_name: str = "relinqo Full Service"
+    stripe_trial_period_days: int = 14
     billing_admin_token: str = ""
     billing_enforced: bool = True
 

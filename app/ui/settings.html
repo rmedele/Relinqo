@@ -128,7 +128,7 @@
                 </div>
                 <div>
                   <span class="field-label">Price</span>
-                  <strong id="billingPrice">$99.99/mo</strong>
+                  <strong id="billingPrice">$199/mo</strong>
                   <p id="billingStatusText" class="muted">Secure billing handled by Stripe.</p>
                 </div>
               </div>
@@ -725,7 +725,7 @@
         const checkoutBtn = document.getElementById('startCheckoutBtn');
         const portalBtn = document.getElementById('manageBillingBtn');
 
-        price.textContent = data.price || '$99.99/mo';
+        price.textContent = data.price || '$199/mo';
         plan.textContent = data.plan === 'full_service_test' ? 'Full service test' : 'Full service';
         chip.textContent = data.billing_exempt ? 'Comped' : titleCase(data.subscription_status || 'inactive');
         chip.className = 'section-chip';

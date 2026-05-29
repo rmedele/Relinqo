@@ -5,7 +5,7 @@ Use these manually, one email at a time. Personalize the first sentence from the
 ## Subject Options
 
 - Quick idea for missed quote requests
-- Free 30-day lead response pilot
+- Free 2-week lead response trial
 - Can I test this on one real lead?
 - Helping local service businesses reply faster
 
@@ -17,7 +17,7 @@ I found {{company}} while looking for local Edmonton service businesses that han
 
 It connects to Gmail and missed-call SMS, spots quote requests and urgent jobs, drafts a reply, and texts the owner when a hot lead comes in. The point is simple: reply in minutes, not hours.
 
-Would you be open to letting me run it free for 30 days on one real lead source? If it helps you win even one job, keep it for $99/mo. If not, I will shut it off and you owe nothing.
+Would you be open to letting me run it free for 2 weeks on one real lead source? If it helps you win even one job, keep it for $199/mo. If not, I will shut it off and you owe nothing.
 
 Here is the short page: https://www.relinqo.com/book-demo
 
@@ -36,7 +36,7 @@ Quick question: do quote requests or missed calls ever sit too long before someo
 
 I am building Relinqo for local trades businesses. It catches Gmail and missed-call leads, drafts the first response, and texts the owner when the job looks urgent.
 
-I am offering one free 30-day pilot in Edmonton. Can I show you what it would do with one real lead from {{company}}?
+I am offering one free 2-week trial in Edmonton. Can I show you what it would do with one real lead from {{company}}?
 
 No worries if this is not relevant, reply "no" and I will not follow up.
 
@@ -49,7 +49,7 @@ https://www.relinqo.com/book-demo
 
 Hi {{first_name_or_team}},
 
-Just bumping this once. I am looking for one local service business to test Relinqo free for 30 days.
+Just bumping this once. I am looking for one local service business to test Relinqo free for 2 weeks.
 
 The test is lightweight: connect one lead source, keep human approval on, and see whether faster replies help book more work.
 

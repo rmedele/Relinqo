@@ -36,9 +36,11 @@ def org_has_billing_access(org: Organization | None) -> bool:
 
 
 def price_display() -> str:
-    amount = settings.stripe_price_amount_cents / 100
     currency = settings.stripe_price_currency.upper()
-    return f"{currency} {amount:,.2f}/mo"
+    amount_cents = settings.stripe_price_amount_cents
+    if amount_cents % 100 == 0:
+        return f"{currency} {amount_cents // 100:,}/mo"
+    return f"{currency} {amount_cents / 100:,.2f}/mo"
 
 
 def _stripe():
@@ -99,6 +101,11 @@ def create_checkout_session(org: Organization, owner: User) -> Any:
         )
         org.stripe_customer_id = customer.id
 
+    subscription_data = {
+        "metadata": {"org_id": str(org.id), "org_slug": org.slug},
+        "trial_period_days": settings.stripe_trial_period_days,
+    }
+
     return stripe.checkout.Session.create(
         mode="subscription",
         customer=org.stripe_customer_id,
@@ -106,7 +113,7 @@ def create_checkout_session(org: Organization, owner: User) -> Any:
         line_items=[_line_item()],
         success_url=f"{base_url}/settings?checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{base_url}/settings?checkout=cancelled",
-        subscription_data={"metadata": {"org_id": str(org.id), "org_slug": org.slug}},
+        subscription_data=subscription_data,
         metadata={"org_id": str(org.id), "org_slug": org.slug},
     )
 
