@@ -46,6 +46,9 @@ def test_marketing_page_links_to_book_demo():
     assert response.status_code == 200
     assert 'href="/book-demo"' in response.text
     assert 'href="/demo"' in response.text
+    assert 'id="live-test"' in response.text
+    assert 'data-marketing-demo-contact' in response.text
+    assert "Twilio-powered demo path" in response.text
 
 
 def test_live_demo_page_has_public_form():

@@ -499,6 +499,107 @@
   font-size: 0.9rem;
 }
 
+.lr-live-test-band {
+  padding: 48px 0;
+  background: var(--lr-paper);
+  border-bottom: 1px solid var(--lr-line-soft);
+}
+
+.lr-live-test-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.72fr);
+  gap: 24px;
+  align-items: center;
+}
+
+.lr-live-test-copy h2 {
+  max-width: 680px;
+  font-size: 2rem;
+  line-height: 1.12;
+}
+
+.lr-live-test-copy p:not(.lr-kicker) {
+  max-width: 720px;
+  margin-top: 12px;
+  color: var(--lr-ink-soft);
+  line-height: 1.66;
+}
+
+.lr-live-test-panel {
+  padding: 20px;
+  color: var(--lr-ink);
+  background: var(--lr-paper);
+  border: 1px solid var(--lr-line);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.lr-live-test-panel.is-ready {
+  border-color: rgba(18, 128, 92, 0.34);
+  box-shadow: 0 14px 34px rgba(18, 128, 92, 0.12);
+}
+
+.lr-live-test-status span,
+.lr-live-test-method span {
+  display: block;
+  color: var(--lr-blue);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.lr-live-test-status strong {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  font-size: 1.35rem;
+  line-height: 1.18;
+}
+
+.lr-live-test-status p {
+  margin-top: 8px;
+  color: var(--lr-ink-soft);
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+.lr-live-test-methods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.lr-live-test-method {
+  display: block;
+  min-height: 88px;
+  padding: 13px;
+  color: var(--lr-ink);
+  background: var(--lr-paper-soft);
+  border: 1px solid var(--lr-line);
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.lr-live-test-method:hover {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: #eff6ff;
+  text-decoration: none;
+}
+
+.lr-live-test-method[aria-disabled="true"] {
+  opacity: 0.7;
+}
+
+.lr-live-test-method strong {
+  display: block;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+  color: var(--lr-ink);
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
 .lr-section {
   padding: 82px 0;
 }
@@ -1902,6 +2003,7 @@
   .lr-dashboard-grid,
   .lr-demo-run-grid,
   .lr-pricing-grid,
+  .lr-live-test-grid,
   .lr-live-demo-hero,
   .lr-live-demo-grid,
   .lr-real-demo-contact,
@@ -2068,6 +2170,7 @@
   .lr-faq-grid,
   .lr-logistics-grid,
   .lr-security-grid,
+  .lr-live-test-methods,
   .lr-demo-stepper,
   .lr-operator-workspace,
   .lr-demo-phone-and-next,
@@ -2090,6 +2193,10 @@
 
   .lr-section {
     padding: 62px 0;
+  }
+
+  .lr-live-test-band {
+    padding: 34px 0;
   }
 
   .lr-service-card,
