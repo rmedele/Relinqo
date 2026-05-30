@@ -38,6 +38,10 @@ Application startup file: passenger_wsgi.py
 Application entry point: application
 ```
 
+`passenger_wsgi.py` contains relinqo's cPanel-specific ASGI-to-WSGI adapter.
+Do not swap it for a generic adapter without testing through Passenger; cPanel
+request handling can hang with queue/thread based ASGI bridges.
+
 If you deploy at `/Reese`, some absolute URLs may still behave like root-level
 paths. The cleanest deployment is the domain root or a dedicated subdomain such
 as `app.yourdomain.com`.

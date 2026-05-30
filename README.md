@@ -96,6 +96,7 @@ python scripts\simulate_twilio_call.py --with-dial --owner-phone=+15555550100
 Production runs on Doteasy/cPanel, not Railway. Keep production secrets only in the Doteasy environment panel or an untracked local `.env`.
 
 - Runtime: FastAPI served on `APP_PORT=8081`.
+- Passenger entrypoint: `passenger_wsgi.py` uses a small in-repo ASGI-to-WSGI adapter for cPanel compatibility.
 - Database: MySQL, for example `mysql+pymysql://user:password@localhost/dariomed_relinqo?charset=utf8mb4`.
 - Migrations: keep `RELINQO_RUN_MIGRATIONS_ON_STARTUP=false` on cPanel and run `python -m alembic upgrade head` manually after schema changes.
 - Background scheduler: keep `RELINQO_BACKGROUND_SCHEDULER_ENABLED=false` for Passenger web workers and run scheduled jobs through explicit cron/service commands.
