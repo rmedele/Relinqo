@@ -25,7 +25,7 @@ if os.environ.get("RELINQO_RUN_MIGRATIONS_ON_STARTUP", "false").lower() in {"1",
 
 from app.main import app as fastapi_app  # noqa: E402
 
-fastapi_wsgi_app = ASGIMiddleware(fastapi_app)
+fastapi_wsgi_app = ASGIMiddleware(fastapi_app, wait_time=5.0)
 
 
 def application(environ, start_response):
