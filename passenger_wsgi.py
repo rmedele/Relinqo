@@ -29,9 +29,15 @@ fastapi_wsgi_app = ASGIMiddleware(fastapi_app)
 
 
 def application(environ, start_response):
+    method = environ.get("REQUEST_METHOD", "")
     path = environ.get("PATH_INFO", "")
     host = environ.get("HTTP_HOST", environ.get("SERVER_NAME", ""))
-    print(f"passenger request path={path!r} host={host!r}", file=sys.stderr, flush=True)
+    print(
+        f"passenger request method={method!r} path={path!r} host={host!r} "
+        f"content_length={environ.get('CONTENT_LENGTH')!r}",
+        file=sys.stderr,
+        flush=True,
+    )
 
     if path == "/health":
         body = b'{"ok":true,"app":"Relinqo","served_by":"passenger_wsgi"}'
@@ -43,5 +49,8 @@ def application(environ, start_response):
             ],
         )
         return [body]
+
+    if method in {"GET", "HEAD", "OPTIONS"} and not environ.get("CONTENT_LENGTH"):
+        environ["CONTENT_LENGTH"] = "0"
 
     return fastapi_wsgi_app(environ, start_response)
