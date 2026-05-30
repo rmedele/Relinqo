@@ -72,10 +72,18 @@ TWILIO_ACCOUNT_SID=replace-me
 TWILIO_AUTH_TOKEN=replace-me
 TWILIO_FROM_NUMBER=replace-me
 SMS_ALERT_TO_NUMBER=replace-me
-RELINQO_RUN_MIGRATIONS_ON_STARTUP=true
+RELINQO_RUN_MIGRATIONS_ON_STARTUP=false
 ```
 
 Make sure `/home/dariomed/leadrelay/data` is writable by the cPanel account.
+
+Passenger imports `passenger_wsgi.py` every time it boots a worker, so leave
+`RELINQO_RUN_MIGRATIONS_ON_STARTUP=false` on Doteasy. Run migrations manually
+after pulling code that changes the database:
+
+```bash
+python -m alembic upgrade head
+```
 
 ## After Boot
 

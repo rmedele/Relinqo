@@ -18,7 +18,7 @@ def _run_migrations() -> None:
     command.upgrade(config, "head")
 
 
-if os.environ.get("RELINQO_RUN_MIGRATIONS_ON_STARTUP", "true").lower() in {"1", "true", "yes"}:
+if os.environ.get("RELINQO_RUN_MIGRATIONS_ON_STARTUP", "false").lower() in {"1", "true", "yes"}:
     _run_migrations()
 
 
