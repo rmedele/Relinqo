@@ -1,3 +1,4 @@
+import json
 from fastapi.testclient import TestClient
 from datetime import timedelta
 
@@ -694,6 +695,79 @@ def test_lead_created_outbound_webhook_fires(monkeypatch):
     assert events
     assert events[0]["event"] == "lead.created"
     assert '"sender_email":"webhook@example.com"' in events[0]["body"]
+
+
+def test_widget_embed_settings_and_script():
+    c, info = _auth_client()
+
+    widget = c.get("/api/settings/widget")
+    assert widget.status_code == 200
+    data = widget.json()
+    assert data["workspace_slug"] == info["data"]["org"]["slug"]
+    assert data["token"]
+    assert 'data-relinqo-widget' in data["embed_code"]
+    assert "/api/widget/embed.js" in data["embed_code"]
+
+    script = c.get("/api/widget/embed.js")
+    assert script.status_code == 200
+    assert "application/javascript" in script.headers["content-type"]
+    assert "data-relinqo-widget" in script.text
+    assert "/api/public/widget/lead" in script.text
+
+
+def test_public_widget_lead_creates_lead():
+    c, info = _auth_client()
+    widget = c.get("/api/settings/widget").json()
+    payload = {
+        "workspace": widget["workspace_slug"],
+        "token": widget["token"],
+        "name": "Website Customer",
+        "email": "website.customer@example.com",
+        "phone": "780-555-0199",
+        "service": "plumbing",
+        "message": "Kitchen sink is leaking and we need a quote this week.",
+        "page_url": "https://example.test/contact",
+    }
+
+    created = c.post(
+        "/api/public/widget/lead",
+        content=json.dumps(payload),
+        headers={"Content-Type": "text/plain", "Origin": "https://example.test"},
+    )
+    assert created.status_code == 200, created.text
+    assert created.headers["access-control-allow-origin"] == "*"
+    data = created.json()
+    assert data["ok"] is True
+
+    db = SessionLocal()
+    try:
+        lead = db.query(Lead).filter(Lead.id == data["lead_id"]).first()
+        assert lead is not None
+        assert lead.org_id == info["data"]["org"]["id"]
+        assert lead.source == "website_widget"
+        assert lead.sender_email == "website.customer@example.com"
+        assert "780-555-0199" in lead.body
+        assert "https://example.test/contact" in lead.body
+    finally:
+        db.close()
+
+
+def test_public_widget_rejects_invalid_token_with_cors():
+    c, _ = _auth_client()
+    widget = c.get("/api/settings/widget").json()
+    payload = {
+        "workspace": widget["workspace_slug"],
+        "token": "wrong-token",
+        "email": "bad-token@example.com",
+        "message": "This should not create a lead.",
+    }
+    response = c.post(
+        "/api/public/widget/lead",
+        content=json.dumps(payload),
+        headers={"Content-Type": "text/plain", "Origin": "https://example.test"},
+    )
+    assert response.status_code == 401
+    assert response.headers["access-control-allow-origin"] == "*"
 
 
 def test_billing_status_defaults_to_configured_monthly_plan():

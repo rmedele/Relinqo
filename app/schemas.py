@@ -206,6 +206,19 @@ class ForwardedEmailIngestRequest(BaseModel):
     source: str = "forwarded_email"
 
 
+class WidgetLeadRequest(BaseModel):
+    workspace: str = Field(..., max_length=100)
+    token: str = Field(..., max_length=80)
+    name: str | None = Field(default=None, max_length=120)
+    email: EmailStr
+    phone: str | None = Field(default=None, max_length=80)
+    service: str | None = Field(default=None, max_length=120)
+    message: str = Field(..., min_length=8, max_length=4000)
+    page_url: str | None = Field(default=None, max_length=1000)
+    source: str = Field(default="website_widget", max_length=80)
+    company_website: str | None = Field(default=None, max_length=200)
+
+
 class DigestResponse(BaseModel):
     status: str
     summary: dict[str, Any]

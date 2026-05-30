@@ -1,6 +1,7 @@
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -28,6 +29,15 @@ logger = logging.getLogger(__name__)
 
 def _as_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
+def _business_timezone(org_settings: OrgSettings | None) -> ZoneInfo:
+    name = (org_settings.default_timezone if org_settings else None) or "UTC"
+    try:
+        return ZoneInfo(name)
+    except ZoneInfoNotFoundError:
+        logger.warning("Unknown scheduling timezone %r; falling back to UTC", name)
+        return ZoneInfo("UTC")
 
 
 @router.get("/api/schedule/availability", response_model=list[ScheduleAvailabilityResponse])
@@ -154,11 +164,12 @@ def _generate_available_slots(
     buffer = org_settings.scheduling_buffer_minutes if org_settings else 0
     max_days = org_settings.scheduling_max_days_ahead if org_settings else 7
 
-    now = datetime.now(timezone.utc)
+    tz = _business_timezone(org_settings)
+    local_now = datetime.now(timezone.utc).astimezone(tz)
     slots = []
 
     for day_offset in range(1, max_days + 1):
-        day = now + timedelta(days=day_offset)
+        day = local_now + timedelta(days=day_offset)
         dow = day.weekday()  # 0=Monday
 
         if dow not in by_day:
@@ -174,7 +185,10 @@ def _generate_available_slots(
             cursor = window_start
             while cursor + timedelta(minutes=slot_duration) <= window_end:
                 slot_end = cursor + timedelta(minutes=slot_duration)
-                slots.append({"slot_start": cursor, "slot_end": slot_end})
+                slots.append({
+                    "slot_start": cursor.astimezone(timezone.utc),
+                    "slot_end": slot_end.astimezone(timezone.utc),
+                })
                 cursor = slot_end + timedelta(minutes=buffer)
 
     # Remove slots that are already booked
@@ -228,6 +242,7 @@ def get_booking_info(token: str, db: Session = Depends(get_db)):
     return {
         "business_name": org_settings.business_name if org_settings else "Our Business",
         "business_phone": org_settings.business_phone if org_settings else "",
+        "timezone": _business_timezone(org_settings).key,
         "lead_subject": lead.subject,
         "lead_sender_name": lead.sender_name,
     }
@@ -255,12 +270,13 @@ def create_booking(
         raise HTTPException(400, "Scheduling not configured")
 
     slot_duration = org_settings.scheduling_slot_duration
-    slot_end = payload.slot_start + timedelta(minutes=slot_duration)
+    slot_start = _as_utc(payload.slot_start)
+    slot_end = slot_start + timedelta(minutes=slot_duration)
 
     # Validate slot is in the available set
     available = _generate_available_slots(db, lead.org_id, org_settings)
     slot_valid = any(
-        s["slot_start"] == payload.slot_start and s["slot_end"] == slot_end
+        _as_utc(s["slot_start"]) == slot_start and _as_utc(s["slot_end"]) == slot_end
         for s in available
     )
     if not slot_valid:
@@ -273,7 +289,7 @@ def create_booking(
             Booking.org_id == lead.org_id,
             Booking.status == "confirmed",
             Booking.slot_start < slot_end,
-            Booking.slot_end > payload.slot_start,
+            Booking.slot_end > slot_start,
         )
         .first()
     )
@@ -284,7 +300,7 @@ def create_booking(
         org_id=lead.org_id,
         lead_id=lead.id,
         token=secrets.token_urlsafe(32),
-        slot_start=payload.slot_start,
+        slot_start=slot_start,
         slot_end=slot_end,
         customer_name=payload.customer_name,
         customer_email=payload.customer_email,

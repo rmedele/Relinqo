@@ -1,4 +1,4 @@
-"""Smoke-test a deployed reqlinqo backend.
+"""Smoke-test a deployed relinqo backend.
 
 This intentionally avoids creating accounts or mutating production data. It
 checks that the public domain is serving this FastAPI app, not a static app
@@ -47,7 +47,7 @@ def fetch_path(base_url: str, path: str, *, method: str = "GET", payload: dict |
     data = None
     headers = {
         "Accept": "application/json",
-        "User-Agent": "reqlinqo-deployment-check/1.0",
+        "User-Agent": "relinqo-deployment-check/1.0",
     }
     if payload is not None:
         data = json.dumps(payload).encode("utf-8")
@@ -166,7 +166,7 @@ def run_checks(base_url: str) -> tuple[bool, list[str]]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check that a public URL is serving the reqlinqo FastAPI backend.")
+    parser = argparse.ArgumentParser(description="Check that a public URL is serving the relinqo FastAPI backend.")
     parser.add_argument("base_url", help="Production base URL, for example https://app.leadrelayapp.com")
     args = parser.parse_args(argv)
 

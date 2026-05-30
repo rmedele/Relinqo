@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 PHONE_ONLY_EMAIL_DOMAINS = (
     "@phone.relinqo.local",
-    "@phone.reqlinqo.local",
     "@phone.leadrelay.local",
 )
 
@@ -118,6 +117,7 @@ def run_due_review_requests(
     """Process all due ReviewRequest rows. Imports send_email/send_sms_to inside
     the function to avoid circular import at module load."""
     from app.mailer import email_configured, send_email
+    from app.phone_leads import sms_opted_out
     from app.routes.leads import log_activity
     from app.sms import send_sms_to, sms_configured
 
@@ -188,6 +188,8 @@ def run_due_review_requests(
         if wants_sms:
             if not lead.phone:
                 errors.append("sms: lead has no phone")
+            elif sms_opted_out(db, req.org_id, lead.phone):
+                errors.append("sms: recipient opted out")
             elif sms_configured(org_settings):
                 sms_body = render_review_body(DEFAULT_REVIEW_SMS, lead, org_settings)
                 sent, message, _sid = send_sms_to(sms_body, lead.phone, org_settings)

@@ -1,6 +1,6 @@
-# reqlinqo on Doteasy/cPanel
+# relinqo on Doteasy/cPanel
 
-reqlinqo is a FastAPI application, not a static website. Uploading files to
+relinqo is a FastAPI application, not a static website. Uploading files to
 `public_html` only works if cPanel also runs the Python application through
 Setup Python App or Application Manager.
 
@@ -61,7 +61,7 @@ in the Python App UI:
 
 ```env
 APP_ENV=production
-PUBLIC_BASE_URL=https://your-domain.example
+PUBLIC_BASE_URL=https://www.relinqo.com
 SESSION_SECRET=replace-with-a-long-random-secret
 DATABASE_URL=sqlite:///./data/leadrelay.db
 LLM_PROVIDER=anthropic
@@ -72,7 +72,7 @@ TWILIO_ACCOUNT_SID=replace-me
 TWILIO_AUTH_TOKEN=replace-me
 TWILIO_FROM_NUMBER=replace-me
 SMS_ALERT_TO_NUMBER=replace-me
-REQLINQO_RUN_MIGRATIONS_ON_STARTUP=true
+RELINQO_RUN_MIGRATIONS_ON_STARTUP=true
 ```
 
 Make sure `/home/dariomed/leadrelay/data` is writable by the cPanel account.
@@ -94,7 +94,7 @@ Then:
 Update Google OAuth redirect URI:
 
 ```text
-https://your-domain.example/auth/google/callback
+https://www.relinqo.com/auth/google/callback
 ```
 
 Update Twilio webhooks to the same public base URL.

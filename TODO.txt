@@ -1,4 +1,4 @@
-reqlinqo — TODO
+relinqo - TODO
 =================
 
 BEFORE LAUNCH
@@ -22,8 +22,9 @@ PRODUCT
 - [ ] Notification preferences (which alerts, how often, email vs SMS)
 
 INTEGRATIONS
-- [ ] Webhook support (notify external systems when lead is ingested/sent)
-- [ ] Zapier / Make integration guide
+- [x] Webhook support (notify external systems when lead is ingested/sent)
+- [x] Zapier / Make integration guide
+- [x] WordPress / Webflow public lead widget
 - [ ] Google Forms / Typeform / Jotform direct integration
 - [ ] QuickBooks / invoice linking for existing customer detection
 

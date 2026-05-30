@@ -180,6 +180,31 @@
           <section class="settings-card card editorial-card">
             <div class="section-heading-row">
               <div>
+                <p class="section-kicker">Website widget</p>
+                <h2>Capture leads from WordPress or Webflow</h2>
+              </div>
+              <span class="section-chip">Embed</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <p class="muted" style="margin:0;font-size:0.85rem;">Paste this snippet into a WordPress Custom HTML block or Webflow Embed element. It creates a compact quote form and sends submissions into this workspace.</p>
+              <label class="form-field">
+                <span class="field-label">Workspace</span>
+                <input id="widgetWorkspace" class="filter-input" readonly />
+              </label>
+              <label class="form-field">
+                <span class="field-label">Embed code</span>
+                <textarea id="widgetEmbedCode" class="filter-input" rows="5" readonly></textarea>
+              </label>
+              <div class="settings-submit-row" style="justify-content:flex-start;">
+                <button id="copyWidgetBtn" type="button" class="ghost-btn">Copy widget code</button>
+                <p id="widgetCopyStatus" class="muted" style="align-self:center;margin:0;"></p>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-card card editorial-card">
+            <div class="section-heading-row">
+              <div>
                 <p class="section-kicker">Business profile</p>
                 <h2>Brand, voice, and service footprint</h2>
               </div>
@@ -691,6 +716,7 @@
       const passwordFields = ['smtp_password', 'imap_password', 'twilio_auth_token', 'outbound_webhook_secret'];
       const saveBtn = form.querySelector('button[type="submit"]');
       let revealedApiKey = '';
+      let widgetEmbedCode = '';
 
       function showMsg(text, ok) {
         statusMsg.textContent = text;
@@ -806,6 +832,15 @@
         renderReadiness(await res.json());
       }
 
+      async function loadWidgetEmbed() {
+        const res = await fetch('/api/settings/widget');
+        if (!res.ok) return;
+        const data = await res.json();
+        widgetEmbedCode = data.embed_code || '';
+        document.getElementById('widgetWorkspace').value = data.workspace_slug || '';
+        document.getElementById('widgetEmbedCode').value = widgetEmbedCode;
+      }
+
       async function loadSettings() {
         const res = await fetch('/api/settings');
         if (res.status === 401) { window.location.href = '/login'; return; }
@@ -822,6 +857,7 @@
         updateGmailUI(data.google_oauth_email);
         await loadBillingStatus();
         await loadReadiness();
+        await loadWidgetEmbed();
 
         const meRes = await fetch('/auth/me');
         if (meRes.ok) {
@@ -904,6 +940,21 @@
           await loadReadiness();
         } catch (err) {
           status.textContent = err.message || 'Webhook test failed.';
+        }
+      });
+
+      document.getElementById('copyWidgetBtn').addEventListener('click', async () => {
+        const status = document.getElementById('widgetCopyStatus');
+        if (!widgetEmbedCode) {
+          status.textContent = 'Widget code is still loading.';
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(widgetEmbedCode);
+          status.textContent = 'Copied.';
+        } catch {
+          document.getElementById('widgetEmbedCode').select();
+          status.textContent = 'Select the code and copy it manually.';
         }
       });
 

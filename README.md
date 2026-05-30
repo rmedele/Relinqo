@@ -1,6 +1,6 @@
-# reqlinqo
+# relinqo
 
-reqlinqo is an AI-powered inbox and missed-call rescue system for local service businesses. It connects to the owner's Gmail, classifies new inquiries, drafts fast replies, alerts the owner by SMS for hot leads, captures phone/SMS leads through Twilio, offers booking links, tracks deals in a pipeline, and sends review requests after won jobs.
+relinqo is an AI-powered inbox and missed-call rescue system for local service businesses. It connects to the owner's Gmail, classifies new inquiries, drafts fast replies, alerts the owner by SMS for hot leads, captures phone/SMS leads through Twilio, offers booking links, tracks deals in a pipeline, and sends review requests after won jobs.
 
 Production is currently hosted on Doteasy/cPanel at `https://www.relinqo.com` with FastAPI, Passenger/WSGI-style hosting, and MySQL via `mysql+pymysql`.
 
@@ -57,6 +57,7 @@ The `/api/settings/readiness` endpoint powers the launch checklist in Settings a
 These are the mechanical processes that should keep working before any customer pilot.
 
 - Gmail: connect OAuth, send a real inquiry, poll the mailbox, review the draft, and manually send the reply.
+- Website widget: copy the snippet from `/settings`, submit a WordPress/Webflow-style test lead, and confirm the lead appears in `/review`.
 - Phone: call the configured Twilio number, miss the owner call, reply to the outreach SMS, and confirm the dashboard lead plus owner SMS alert.
 - Scheduling: enable availability, open `/book/{token}`, book a slot, and confirm the slot disappears after booking.
 - Pipeline: add deal value, tags, and notes; move the card through New, Contacted, Quoted, Scheduled, Won, and Lost.
@@ -96,11 +97,12 @@ Production runs on Doteasy/cPanel, not Railway. Keep production secrets only in 
 
 - Runtime: FastAPI served on `APP_PORT=8081`.
 - Database: MySQL, for example `mysql+pymysql://user:password@localhost/dariomed_relinqo?charset=utf8mb4`.
-- Migrations: `REQLINQO_RUN_MIGRATIONS_ON_STARTUP=true`.
+- Migrations: `RELINQO_RUN_MIGRATIONS_ON_STARTUP=true`.
 - Public host: `PUBLIC_BASE_URL=https://www.relinqo.com`.
 - Google OAuth redirect: `https://www.relinqo.com/auth/google/callback`.
 - Twilio webhooks: `/twilio/voice/incoming`, `/twilio/voice/call-status`, `/sms/webhook`, and `/sms/status`.
 - Stripe test mode is currently expected until live billing is intentionally enabled.
+- Integration setup: see `INTEGRATIONS.md` for Zapier, Make, WordPress, and Webflow widget setup.
 
 ## Project Map
 
@@ -111,6 +113,7 @@ Production runs on Doteasy/cPanel, not Railway. Keep production secrets only in 
 - `app/routes/twilio_voice.py` - Twilio Programmable Voice intake.
 - `app/routes/sms_webhook.py` - Twilio SMS replies, opt-out, status callbacks.
 - `app/routes/phone_provisioning.py` - number search, provision, adopt, routing, forwarding tests.
+- `app/routes/widget.py` - public WordPress/Webflow lead widget.
 - `app/gmail.py`, `app/mailer.py`, `app/inbox_poll.py` - Gmail OAuth and email fallback.
 - `app/calendar_sync.py` - Google Calendar event sync and FreeBusy filtering.
 - `app/review_requests.py` - post-Won review request automation.

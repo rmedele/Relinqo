@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import Lead, Organization, OrgSettings, ReviewRequest
+from app.models import Lead, Organization, OrgSettings, ReviewRequest, SmsOptOut
 from app.review_requests import (
     DEFAULT_REVIEW_BODY,
     render_review_body,
@@ -153,5 +153,33 @@ def test_run_due_processes_only_due_rows():
         # the important thing is it left 'scheduled'.
         assert due_row.status in {"sent", "failed"}
         assert future_row.status == "scheduled"
+    finally:
+        db.close()
+
+
+def test_run_due_review_request_respects_sms_opt_out():
+    db = SessionLocal()
+    try:
+        org, settings = _seed_org(db, delay=0)
+        settings.review_request_channel = "sms"
+        lead = _seed_lead(db, org)
+        lead.phone = "+17805550123"
+        db.add(SmsOptOut(org_id=org.id, phone_number="+17805550123", source="sms"))
+        req = ReviewRequest(
+            org_id=org.id,
+            lead_id=lead.id,
+            scheduled_for=datetime.now(timezone.utc) - timedelta(minutes=5),
+            channel="sms",
+            status="scheduled",
+        )
+        db.add(req)
+        db.commit()
+
+        result = run_due_review_requests(db, org_id=org.id, org_settings=settings)
+        assert result["processed"] == 1
+        assert result["failed"] == 1
+        db.refresh(req)
+        assert req.status == "failed"
+        assert "recipient opted out" in req.error_message
     finally:
         db.close()

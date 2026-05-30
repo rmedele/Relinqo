@@ -1,9 +1,12 @@
+import json
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app import outbound_webhooks
 from app.config import settings
 from app.database import SessionLocal
 from app.main import app
@@ -194,6 +197,106 @@ def test_schedule_booking_loop_blocks_booked_slot_smoke(monkeypatch):
     )
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "cancelled"
+
+
+def test_schedule_slots_use_workspace_timezone(monkeypatch):
+    client, _ = _auth_client()
+    monkeypatch.setattr(scheduling_routes, "dispatch_booking_created", lambda *args, **kwargs: None)
+
+    saved_settings = client.patch(
+        "/api/settings",
+        json={
+            "business_name": "Timezone Plumbing",
+            "default_timezone": "America/Edmonton",
+            "scheduling_enabled": True,
+            "scheduling_slot_duration": 60,
+            "scheduling_buffer_minutes": 0,
+            "scheduling_max_days_ahead": 7,
+        },
+    )
+    assert saved_settings.status_code == 200, saved_settings.text
+
+    availability = [
+        {"day_of_week": day, "start_time": "09:00", "end_time": "10:00", "is_active": True}
+        for day in range(7)
+    ]
+    assert client.put("/api/schedule/availability", json=availability).status_code == 200
+
+    lead = _create_lead(client, sender_email=f"timezone-{uuid4().hex}@example.com")
+    info = client.get(f"/api/public/book/{lead['booking_token']}/info")
+    assert info.status_code == 200
+    assert info.json()["timezone"] == "America/Edmonton"
+
+    slots = client.get(f"/api/public/book/{lead['booking_token']}/slots")
+    assert slots.status_code == 200
+    assert slots.json()
+
+    first_start = datetime.fromisoformat(slots.json()[0]["slot_start"].replace("Z", "+00:00"))
+    local_start = first_start.astimezone(ZoneInfo("America/Edmonton"))
+    assert (local_start.hour, local_start.minute) == (9, 0)
+
+
+def test_booking_created_webhook_includes_customer_notes(monkeypatch):
+    client, _ = _auth_client()
+    monkeypatch.setattr(scheduling_routes, "_send_booking_notifications", lambda *args, **kwargs: None)
+    captured = []
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_urlopen(req, timeout=0):
+        captured.append(json.loads(req.data.decode("utf-8")))
+        return FakeResponse()
+
+    monkeypatch.setattr(outbound_webhooks, "urlopen", fake_urlopen)
+
+    saved_settings = client.patch(
+        "/api/settings",
+        json={
+            "business_name": "Webhook Plumbing",
+            "scheduling_enabled": True,
+            "scheduling_slot_duration": 60,
+            "scheduling_buffer_minutes": 0,
+            "scheduling_max_days_ahead": 7,
+            "outbound_webhook_enabled": True,
+            "outbound_webhook_url": "https://hooks.example.test/relinqo",
+            "outbound_webhook_events": "booking.created",
+        },
+    )
+    assert saved_settings.status_code == 200, saved_settings.text
+
+    availability = [
+        {"day_of_week": day, "start_time": "09:00", "end_time": "11:00", "is_active": True}
+        for day in range(7)
+    ]
+    assert client.put("/api/schedule/availability", json=availability).status_code == 200
+
+    lead = _create_lead(client, sender_email=f"booking-webhook-{uuid4().hex}@example.com")
+    slots = client.get(f"/api/public/book/{lead['booking_token']}/slots")
+    assert slots.status_code == 200
+    chosen = slots.json()[0]["slot_start"]
+
+    booked = client.post(
+        f"/api/public/book/{lead['booking_token']}",
+        json={
+            "customer_name": "Taylor Customer",
+            "customer_email": "taylor.webhook@example.com",
+            "customer_phone": "780-555-0100",
+            "customer_notes": "Please knock loudly.",
+            "slot_start": chosen,
+        },
+    )
+    assert booked.status_code == 200, booked.text
+    assert captured
+    assert captured[0]["event"] == "booking.created"
+    assert captured[0]["data"]["notes"] == "Please knock loudly."
+    assert captured[0]["data"]["customer_notes"] == "Please knock loudly."
 
 
 def test_schedule_availability_rejects_invalid_window_smoke():

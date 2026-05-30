@@ -1,5 +1,5 @@
 [Unit]
-Description=reqlinqo inbox poll run
+Description=relinqo inbox poll run
 After=network.target leadrelay.service
 
 [Service]

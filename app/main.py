@@ -40,6 +40,7 @@ from app.routes.scheduling import router as scheduling_router
 from app.routes.sms_webhook import router as sms_router
 from app.routes.twilio_voice import router as twilio_voice_router
 from app.routes.phone_provisioning import router as phone_provisioning_router
+from app.routes.widget import router as widget_router
 from app.schemas import DemoInboundRequest, DemoInboundResponse, DemoLeadRequest, DemoLeadResponse, ForwardedEmailIngestRequest, HealthResponse, LeadIngestRequest
 from app.sms import send_sms_to
 from app.twilio_signature import verify_twilio_signature
@@ -281,6 +282,7 @@ app.include_router(settings_router)
 app.include_router(sms_router)
 app.include_router(twilio_voice_router)
 app.include_router(phone_provisioning_router)
+app.include_router(widget_router)
 
 UI_DIR = Path(__file__).resolve().parent / "ui"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"

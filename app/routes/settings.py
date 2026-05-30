@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_org_settings, require_owner
 from app.billing import org_has_billing_access
+from app.config import settings
 from app.database import get_db
 from app.models import OrgSettings, PhoneNumber, PhoneRoutingRule, ReplyTemplate, ScheduleAvailability, SmsNotification, User
 from app.outbound_webhooks import send_webhook_event
+from app.widget import widget_embed_code, widget_token
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -236,6 +238,14 @@ class WebhookTestResponse(BaseModel):
     message: str
 
 
+class WidgetEmbedResponse(BaseModel):
+    workspace_slug: str
+    token: str
+    script_url: str
+    submit_url: str
+    embed_code: str
+
+
 @router.get("", response_model=OrgSettingsResponse)
 def get_settings(
     user: User = Depends(require_owner),
@@ -456,6 +466,18 @@ def test_outbound_webhook(
         force=True,
     )
     return WebhookTestResponse(ok=ok, message=message)
+
+
+@router.get("/widget", response_model=WidgetEmbedResponse)
+def get_widget_embed(user: User = Depends(require_owner)):
+    base = settings.public_base_url.rstrip("/")
+    return WidgetEmbedResponse(
+        workspace_slug=user.org.slug,
+        token=widget_token(user.org),
+        script_url=f"{base}/api/widget/embed.js",
+        submit_url=f"{base}/api/public/widget/lead",
+        embed_code=widget_embed_code(user.org),
+    )
 
 
 @router.patch("", response_model=OrgSettingsResponse)

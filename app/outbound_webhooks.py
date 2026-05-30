@@ -60,7 +60,8 @@ def booking_webhook_payload(booking: Booking, lead: Lead | None = None) -> dict:
         "slot_start": booking.slot_start.isoformat() if booking.slot_start else None,
         "slot_end": booking.slot_end.isoformat() if booking.slot_end else None,
         "status": booking.status,
-        "notes": booking.notes,
+        "notes": booking.customer_notes,
+        "customer_notes": booking.customer_notes,
         "created_at": booking.created_at.isoformat() if booking.created_at else None,
     }
     if lead:

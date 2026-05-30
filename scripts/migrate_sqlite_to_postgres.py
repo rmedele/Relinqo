@@ -1,4 +1,4 @@
-"""Copy reqlinqo data from SQLite into an empty PostgreSQL database.
+"""Copy relinqo data from SQLite into an empty PostgreSQL database.
 
 Usage:
     python scripts/migrate_sqlite_to_postgres.py \

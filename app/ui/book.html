@@ -115,6 +115,7 @@
     <script>
       const token = window.location.pathname.split('/book/')[1];
       let selectedSlot = null;
+      let businessTimezone = undefined;
 
       async function init() {
         try {
@@ -131,6 +132,7 @@
 
           const info = await infoRes.json();
           const slots = await slotsRes.json();
+          businessTimezone = info.timezone || undefined;
 
           document.getElementById('businessName').textContent = `Book with ${info.business_name}`;
           if (info.lead_sender_name) {
@@ -162,14 +164,12 @@
       function renderSlots(slots) {
         // Group by date
         const byDay = {};
-        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
         for (const slot of slots) {
           const d = new Date(slot.slot_start);
-          const key = d.toISOString().slice(0, 10);
+          const key = formatDateKey(d);
           if (!byDay[key]) {
-            byDay[key] = { label: `${dayNames[d.getDay()]}, ${monthNames[d.getMonth()]} ${d.getDate()}`, slots: [] };
+            byDay[key] = { label: formatDay(d), slots: [] };
           }
           byDay[key].slots.push(slot);
         }
@@ -185,7 +185,7 @@
 
           for (const slot of group.slots) {
             const d = new Date(slot.slot_start);
-            const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+            const timeStr = formatTime(d);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'slot-btn';
@@ -231,7 +231,7 @@
             const booking = await res.json();
             const d = new Date(booking.slot_start);
             document.getElementById('successDetails').textContent =
-              `${d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} at ${d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+              `${formatLongDay(d)} at ${formatTime(d)}`;
             document.getElementById('statePicker').classList.add('hidden');
             document.getElementById('stateSuccess').classList.remove('hidden');
           } else {
@@ -248,6 +248,43 @@
         document.getElementById('statePicker').classList.add('hidden');
         document.getElementById('stateError').classList.remove('hidden');
         document.getElementById('errorMessage').textContent = msg;
+      }
+
+      function withTimezone(options) {
+        return businessTimezone ? { ...options, timeZone: businessTimezone } : options;
+      }
+
+      function formatDateKey(date) {
+        const parts = new Intl.DateTimeFormat('en-US', withTimezone({
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        })).formatToParts(date);
+        const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+        return `${values.year}-${values.month}-${values.day}`;
+      }
+
+      function formatDay(date) {
+        return date.toLocaleDateString([], withTimezone({
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+        }));
+      }
+
+      function formatLongDay(date) {
+        return date.toLocaleDateString([], withTimezone({
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        }));
+      }
+
+      function formatTime(date) {
+        return date.toLocaleTimeString([], withTimezone({
+          hour: 'numeric',
+          minute: '2-digit',
+        }));
       }
 
       init();

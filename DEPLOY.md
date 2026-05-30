@@ -1,4 +1,4 @@
-# reqlinqo Deployment
+# relinqo Deployment
 
 ## Railway (recommended for MVP)
 
@@ -8,13 +8,13 @@
 git init
 git add -A
 git commit -m "Initial commit"
-gh repo create reqlinqo --private --push
+gh repo create relinqo --private --push
 ```
 
 ### 2. Connect Railway
 
 1. Go to [railway.app](https://railway.app), sign in with GitHub
-2. New Project → Deploy from GitHub Repo → select reqlinqo
+2. New Project → Deploy from GitHub Repo → select relinqo
 3. Railway auto-detects the Dockerfile
 
 ### 3. Add a persistent volume
@@ -77,7 +77,7 @@ Railway deploys automatically on push to main. The Dockerfile runs `alembic upgr
 APP_ENV=production
 APP_HOST=127.0.0.1
 APP_PORT=8081
-PUBLIC_BASE_URL=https://your-domain.example
+PUBLIC_BASE_URL=https://www.relinqo.com
 SESSION_SECRET=<random 64-char hex>
 DATABASE_URL=postgresql+psycopg://leadrelay:<password>@localhost:5432/leadrelay
 GOOGLE_CLIENT_ID=your-google-client-id
