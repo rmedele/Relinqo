@@ -98,6 +98,7 @@ Production runs on Doteasy/cPanel, not Railway. Keep production secrets only in 
 - Runtime: FastAPI served on `APP_PORT=8081`.
 - Database: MySQL, for example `mysql+pymysql://user:password@localhost/dariomed_relinqo?charset=utf8mb4`.
 - Migrations: keep `RELINQO_RUN_MIGRATIONS_ON_STARTUP=false` on cPanel and run `python -m alembic upgrade head` manually after schema changes.
+- Background scheduler: keep `RELINQO_BACKGROUND_SCHEDULER_ENABLED=false` for Passenger web workers and run scheduled jobs through explicit cron/service commands.
 - Public host: `PUBLIC_BASE_URL=https://www.relinqo.com`.
 - Google OAuth redirect: `https://www.relinqo.com/auth/google/callback`.
 - Twilio webhooks: `/twilio/voice/incoming`, `/twilio/voice/call-status`, `/sms/webhook`, and `/sms/status`.

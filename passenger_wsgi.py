@@ -8,6 +8,7 @@ from a2wsgi import ASGIMiddleware
 ROOT = Path(__file__).resolve().parent
 os.chdir(ROOT)
 sys.path.insert(0, str(ROOT))
+os.environ.setdefault("RELINQO_BACKGROUND_SCHEDULER_ENABLED", "false")
 
 
 def _run_migrations() -> None:

@@ -61,6 +61,13 @@ FOLLOWUP_INTERVAL_SECONDS = 300
 REVIEW_REQUEST_INTERVAL_SECONDS = 600
 
 
+def _background_scheduler_enabled() -> bool:
+    value = os.environ.get("RELINQO_BACKGROUND_SCHEDULER_ENABLED")
+    if value is None:
+        return True
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _validate_startup_settings() -> None:
     if settings.app_env != "production":
         return
@@ -137,6 +144,11 @@ async def _scheduler_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not _background_scheduler_enabled():
+        logger.info("Background scheduler disabled")
+        yield
+        return
+
     task = asyncio.create_task(_scheduler_loop())
     logger.info(
         "Background scheduler started (flush=%ds, followups=%ds, reviews=%ds)",

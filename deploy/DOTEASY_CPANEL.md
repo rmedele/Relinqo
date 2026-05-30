@@ -73,6 +73,7 @@ TWILIO_AUTH_TOKEN=replace-me
 TWILIO_FROM_NUMBER=replace-me
 SMS_ALERT_TO_NUMBER=replace-me
 RELINQO_RUN_MIGRATIONS_ON_STARTUP=false
+RELINQO_BACKGROUND_SCHEDULER_ENABLED=false
 ```
 
 Make sure `/home/dariomed/leadrelay/data` is writable by the cPanel account.
@@ -84,6 +85,10 @@ after pulling code that changes the database:
 ```bash
 python -m alembic upgrade head
 ```
+
+Keep `RELINQO_BACKGROUND_SCHEDULER_ENABLED=false` for Passenger hosting. Run
+scheduled jobs from explicit cron/service commands instead of inside the web
+worker.
 
 ## After Boot
 
