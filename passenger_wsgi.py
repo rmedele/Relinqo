@@ -25,4 +25,23 @@ if os.environ.get("RELINQO_RUN_MIGRATIONS_ON_STARTUP", "false").lower() in {"1",
 
 from app.main import app as fastapi_app  # noqa: E402
 
-application = ASGIMiddleware(fastapi_app)
+fastapi_wsgi_app = ASGIMiddleware(fastapi_app)
+
+
+def application(environ, start_response):
+    path = environ.get("PATH_INFO", "")
+    host = environ.get("HTTP_HOST", environ.get("SERVER_NAME", ""))
+    print(f"passenger request path={path!r} host={host!r}", file=sys.stderr, flush=True)
+
+    if path == "/health":
+        body = b'{"ok":true,"app":"Relinqo","served_by":"passenger_wsgi"}'
+        start_response(
+            "200 OK",
+            [
+                ("content-type", "application/json"),
+                ("content-length", str(len(body))),
+            ],
+        )
+        return [body]
+
+    return fastapi_wsgi_app(environ, start_response)
