@@ -189,6 +189,7 @@ def test_local_ui_assets_referenced_by_pages_exist(path, asset):
         ("/", "AI speed-to-lead"),
         ("/demo", "liveDemoForm"),
         ("/book-demo", 'action="/contact"'),
+        ("/website-widget", 'data-workspace="reese-plumbing"'),
         ("/login", "Sign In"),
         ("/register", "Create workspace"),
         ("/forgot-password", "Send Reset Link"),

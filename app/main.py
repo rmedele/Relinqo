@@ -622,6 +622,12 @@ def live_demo_page(request: Request):
     return FileResponse(UI_DIR / "live-demo.html", headers={"Cache-Control": "no-store"})
 
 
+@app.get("/website-widget", include_in_schema=False)
+@limiter.limit("30/minute")
+def website_widget_page(request: Request):
+    return FileResponse(UI_DIR / "website-widget.html", headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/demo/lead", response_model=DemoLeadResponse)
 @limiter.limit("20/minute")
 def run_live_demo(request: Request, payload: DemoLeadRequest):
