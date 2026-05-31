@@ -122,6 +122,31 @@ def test_ui_pages_have_title_viewport_and_stylesheet(path):
 
 
 @pytest.mark.parametrize("path", HTML_FILES, ids=lambda p: p.name)
+def test_ui_pages_include_relinqo_favicons(path):
+    html = path.read_text(encoding="utf-8")
+
+    assert 'href="/ui/favicon.svg' in html, f"{path.name} is missing the SVG favicon"
+    assert 'href="/favicon.ico' in html, f"{path.name} is missing the ICO fallback favicon"
+    assert 'href="/ui/apple-touch-icon.png' in html, f"{path.name} is missing the Apple touch icon"
+
+
+@pytest.mark.parametrize(
+    "route,content_type",
+    [
+        ("/favicon.ico", "image/x-icon"),
+        ("/favicon.svg", "image/svg+xml"),
+        ("/apple-touch-icon.png", "image/png"),
+    ],
+)
+def test_root_favicon_assets_render(route, content_type):
+    response = TestClient(app).get(route)
+
+    assert response.status_code == 200
+    assert content_type in response.headers["content-type"]
+    assert response.content
+
+
+@pytest.mark.parametrize("path", HTML_FILES, ids=lambda p: p.name)
 def test_ui_pages_do_not_ship_placeholder_copy(path):
     html = path.read_text(encoding="utf-8").lower()
     banned = ["todo:", "fixme", "lorem ipsum", "click here", "coming soon"]
