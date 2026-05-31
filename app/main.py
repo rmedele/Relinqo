@@ -303,6 +303,21 @@ DEMO_LEADS_PATH = DATA_DIR / "demo_leads.jsonl"
 app.mount("/ui", StaticFiles(directory=UI_DIR), name="ui")
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico():
+    return FileResponse(UI_DIR / "favicon.ico", media_type="image/x-icon")
+
+
+@app.get("/favicon.svg", include_in_schema=False)
+def favicon_svg():
+    return FileResponse(UI_DIR / "favicon.svg", media_type="image/svg+xml")
+
+
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+def apple_touch_icon():
+    return FileResponse(UI_DIR / "apple-touch-icon.png", media_type="image/png")
+
+
 def _contact_status_markup(status: str | None) -> str:
     if status == "success":
         return '<div class="demo-alert demo-alert-success">Thanks - demo request received. We saved it and routed it for follow-up.</div>'
