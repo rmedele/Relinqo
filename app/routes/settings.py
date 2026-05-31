@@ -223,6 +223,7 @@ class ReadinessItem(BaseModel):
     status: str
     detail: str
     action: str | None = None
+    required: bool = True
 
 
 class ReadinessResponse(BaseModel):
@@ -277,8 +278,25 @@ def pilot_readiness(
 
     items: list[ReadinessItem] = []
 
-    def add(item_id: str, label: str, status: str, detail: str, action: str | None = None) -> None:
-        items.append(ReadinessItem(id=item_id, label=label, status=status, detail=detail, action=action))
+    def add(
+        item_id: str,
+        label: str,
+        status: str,
+        detail: str,
+        action: str | None = None,
+        *,
+        required: bool = True,
+    ) -> None:
+        items.append(
+            ReadinessItem(
+                id=item_id,
+                label=label,
+                status=status,
+                detail=detail,
+                action=action,
+                required=required,
+            )
+        )
 
     business_ready = all([
         org_settings.business_name,
@@ -382,6 +400,7 @@ def pilot_readiness(
         if org_settings.scheduling_enabled
         else "Turn on smart scheduling and set at least one availability window.",
         "Smart scheduling card",
+        required=False,
     )
 
     add(
@@ -392,6 +411,7 @@ def pilot_readiness(
         if org_settings.google_calendar_sync_enabled and gmail_ready
         else "Optional but valuable: reconnect Gmail with calendar scope, then enable calendar sync.",
         "Sync with Google Calendar card",
+        required=False,
     )
 
     review_ready = bool(org_settings.review_request_enabled and org_settings.review_url)
@@ -405,6 +425,7 @@ def pilot_readiness(
         if org_settings.review_request_enabled
         else "Optional but high leverage: add the Google review URL and enable review requests.",
         "Reviews on autopilot card",
+        required=False,
     )
 
     add(
@@ -415,6 +436,7 @@ def pilot_readiness(
         if template_count
         else "Add 2-3 common replies for quotes, scheduling, and thank-yous.",
         "Templates page",
+        required=False,
     )
 
     webhook_ready = bool(org_settings.outbound_webhook_enabled and org_settings.outbound_webhook_url)
@@ -426,6 +448,7 @@ def pilot_readiness(
         if webhook_ready
         else "Optional: add a Zapier or Make webhook URL to push lead events into Sheets, CRM, or Slack.",
         "Outbound webhooks card",
+        required=False,
     )
 
     add(
@@ -438,11 +461,12 @@ def pilot_readiness(
         "Automation behavior card",
     )
 
-    completed = sum(1 for item in items if item.status == "ready")
-    total = len(items)
+    required_items = [item for item in items if item.required]
+    completed = sum(1 for item in required_items if item.status == "ready")
+    total = len(required_items)
     score = round((completed / total) * 100) if total else 0
     return ReadinessResponse(
-        ready=all(item.status != "missing" for item in items),
+        ready=all(item.status != "missing" for item in required_items),
         score=score,
         completed=completed,
         total=total,

@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>relinqo — Settings</title>
+    <link rel="icon" href="/ui/favicon.svg?v=20260530" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico?v=20260530" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/ui/apple-touch-icon.png?v=20260530" />
+    <title>relinqo - Settings</title>
     <link rel="stylesheet" href="/ui/styles.css?v=20260527-polish" />
     <style>
       .availability-grid { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -18,25 +21,71 @@
       .avail-row select { padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: var(--text); }
       .avail-row select option { background: #1a1a2e; color: #e0e0e0; }
       .avail-row.disabled select { opacity: 0.3; pointer-events: none; }
-      .readiness-summary { display: grid; gap: 0.85rem; }
-      .readiness-meter { height: 10px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); }
-      .readiness-meter span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #34d399); transition: width 220ms ease; }
+      .settings-mode-nav { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 18px; }
+      .settings-mode-nav a { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-secondary); font-size: 0.84rem; font-weight: 700; text-decoration: none; }
+      .settings-mode-nav a:hover { color: var(--text); background: var(--surface-2); text-decoration: none; }
+      .settings-sidebar h3 { margin-bottom: 8px; }
+      .settings-sidebar .settings-steps { display: grid; gap: 8px; }
+      .settings-sidebar .settings-steps li { min-width: 0; padding: 9px 10px; }
+      .settings-sidebar .settings-steps li p { margin-top: 2px; }
+      .setup-list-label { margin: 14px 0 8px; color: var(--muted); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+      .sidebar-optional li > span { background: var(--surface-2); color: var(--text-secondary); border: 1px solid var(--border); }
+      .settings-group-divider { display: flex; align-items: center; gap: 12px; margin: 2px 0 -4px; color: var(--muted); font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+      .settings-group-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+      .settings-card[data-priority="required"] { border-color: rgba(18, 128, 92, 0.32); }
+      .settings-card[data-priority="optional"] { border-color: rgba(189, 66, 31, 0.28); }
+      .settings-card[data-priority="advanced"] { border-color: rgba(100, 116, 139, 0.24); }
+      .section-chip.required { color: #052e1d; background: #bbf7d0; border-color: #86efac; }
+      .section-chip.optional { color: #4a1f08; background: #fed7aa; border-color: #fdba74; }
+      .section-chip.advanced { color: #263142; background: #e2e8f0; border-color: #cbd5e1; }
+      .section-chip.missing { color: #3f0710; background: #fecdd3; border-color: #fda4af; }
+      .settings-card:target { outline: 2px solid rgba(189, 66, 31, 0.36); outline-offset: 3px; }
+      .settings-card.is-collapsed .section-fields { display: none; }
+      .settings-card.is-collapsed .section-heading-row { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+      .card-toggle { align-self: start; min-height: 30px; padding: 5px 9px; border-radius: 7px; font-size: 0.78rem; }
+      .readiness-summary { display: grid; gap: 1rem; }
+      .readiness-meter { height: 10px; overflow: hidden; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+      .readiness-meter span { display: block; height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, #e11d48, #f59e0b, #12805c); transition: width 220ms ease; }
       .readiness-meta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
       .readiness-meta strong { font-size: 1.05rem; }
-      .readiness-list { display: grid; gap: 0.55rem; margin-top: 0.75rem; }
-      .readiness-item { display: grid; grid-template-columns: 96px 1fr; gap: 0.75rem; padding: 0.72rem 0.8rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(255,255,255,0.025); }
-      .readiness-pill { align-self: start; display: inline-flex; justify-content: center; padding: 0.25rem 0.55rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+      .readiness-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 0.25rem; }
+      .setup-group { display: grid; align-content: start; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+      .setup-group-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+      .setup-group-header strong { display: block; font-size: 0.95rem; }
+      .setup-group-header span { color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+      .readiness-item { display: grid; gap: 5px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); text-decoration: none; color: inherit; }
+      .readiness-item:hover { border-color: rgba(189,66,31,0.34); text-decoration: none; }
+      .readiness-item-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .readiness-pill { flex-shrink: 0; display: inline-flex; justify-content: center; padding: 0.22rem 0.5rem; border-radius: 999px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; }
       .readiness-pill.ready { color: #052e1d; background: #86efac; }
       .readiness-pill.warning { color: #3b2503; background: #facc15; }
       .readiness-pill.missing { color: #3f0710; background: #fda4af; }
-      .readiness-copy strong { display: block; margin-bottom: 0.18rem; }
+      .readiness-copy strong { display: block; font-size: 0.9rem; }
       .readiness-copy p { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.45; }
+      .readiness-action { color: var(--accent); font-size: 0.78rem; font-weight: 800; }
+      #readinessCard { order: 0; }
+      #requiredSetupDivider { order: 5; }
+      #businessProfileCard { order: 10; }
+      #gmailCard { order: 20; }
+      #billingCard { order: 30; }
+      #phoneCard { order: 40; }
+      #alertsCard { order: 50; }
+      #automationCard { order: 60; }
+      #optionalSetupDivider { order: 100; }
+      #widgetCard { order: 110; }
+      #schedulingCard { order: 120; }
+      #reviewsCard { order: 130; }
+      #webhooksCard { order: 140; }
+      #advancedSetupDivider { order: 200; }
+      #smtpCard { order: 210; }
+      #imapCard { order: 220; }
+      #settingsSubmitRow { order: 300; }
       @media (max-width: 600px) { .avail-row { grid-template-columns: 1fr 1fr; } }
       @media (max-width: 420px) {
         .avail-row { grid-template-columns: 1fr; gap: 0.5rem; padding: 0.5rem; }
         .avail-row .avail-day { min-width: 0; }
         .avail-row select { width: 100%; min-height: 40px; font-size: 16px; }
-        .readiness-item { grid-template-columns: 1fr; }
+        .readiness-list { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -48,8 +97,8 @@
             <p class="eyebrow">relinqo</p>
             <span class="hero-badge">Owner settings</span>
           </div>
-          <h1 class="gradient-text">Set up the workspace once, then let relinqo work.</h1>
-          <p class="subhead">Connect Gmail, missed-call rescue, owner alerts, scheduling, and review requests from one place.</p>
+          <h1 class="gradient-text">Workspace setup, sorted by what matters.</h1>
+          <p class="subhead">Required setup stays open. Optional upgrades are tucked away until you need them.</p>
         </div>
         <div class="settings-hero-actions">
           <a href="/review" class="ghost-link compact-link">Back to Queue</a>
@@ -59,15 +108,30 @@
 
       <div id="statusMsg" class="inline-alert hidden"></div>
 
+      <nav class="settings-mode-nav" aria-label="Settings sections">
+        <a href="#requiredSetupDivider">Required setup</a>
+        <a href="#optionalSetupDivider">Optional upgrades</a>
+        <a href="#advancedSetupDivider">Advanced</a>
+      </nav>
+
       <div class="settings-layout">
         <aside class="settings-sidebar card">
-          <p class="section-kicker">Quick guide</p>
-          <h3>Recommended setup order</h3>
+          <p class="section-kicker">Setup map</p>
+          <h3>Get pilot-ready first</h3>
+          <p class="muted">Finish these before real customers touch the workspace.</p>
           <ol class="settings-steps">
             <li><span>1</span><div><strong>Business profile</strong><p>How the AI should talk and what the business actually does.</p></div></li>
-            <li><span>2</span><div><strong>Email channels</strong><p>Connect outbound replies and inbound lead polling.</p></div></li>
-            <li><span>3</span><div><strong>Phone rescue</strong><p>Forward missed calls, text callers back, and verify owner alerts.</p></div></li>
-            <li><span>4</span><div><strong>Alerts & behavior</strong><p>Decide what sends automatically and what needs review.</p></div></li>
+            <li><span>2</span><div><strong>Gmail and billing</strong><p>Connect the inbox and unlock live lead automation.</p></div></li>
+            <li><span>3</span><div><strong>Phone rescue</strong><p>Forward missed calls and verify owner alerts.</p></div></li>
+            <li><span>4</span><div><strong>Guardrails</strong><p>Keep human review on for the first pilot.</p></div></li>
+          </ol>
+
+          <p class="setup-list-label">Optional upgrades</p>
+          <ol class="settings-steps sidebar-optional">
+            <li><span>+</span><div><strong>Website widget</strong><p>WordPress, Webflow, or any custom site.</p></div></li>
+            <li><span>+</span><div><strong>Scheduling</strong><p>Booking links and calendar protection.</p></div></li>
+            <li><span>+</span><div><strong>Reviews</strong><p>Ask won customers for Google reviews.</p></div></li>
+            <li><span>+</span><div><strong>Zapier or Make</strong><p>Send lead events into other tools.</p></div></li>
           </ol>
 
           <div class="api-key-panel">
@@ -111,104 +175,15 @@
             </div>
           </section>
 
-          <section id="billingCard" class="settings-card card editorial-card">
-            <div class="section-heading-row">
-              <div>
-                <p class="section-kicker">Billing</p>
-                <h2>Full service subscription</h2>
-              </div>
-              <span id="billingStatusChip" class="section-chip">Loading</span>
-            </div>
-            <div class="editorial-form section-fields">
-              <div class="billing-summary-row">
-                <div>
-                  <span class="field-label">Plan</span>
-                  <strong id="billingPlanName">Full service</strong>
-                  <p id="billingPlanMeta" class="muted">Loading billing status...</p>
-                </div>
-                <div>
-                  <span class="field-label">Price</span>
-                  <strong id="billingPrice">$199/mo</strong>
-                  <p id="billingStatusText" class="muted">Secure billing handled by Stripe.</p>
-                </div>
-              </div>
-              <div class="settings-submit-row" style="justify-content:flex-start;">
-                <button id="startCheckoutBtn" type="button" class="primary-btn primary-btn-strong">Start subscription</button>
-                <button id="manageBillingBtn" type="button" class="ghost-btn">Manage billing</button>
-              </div>
-            </div>
-          </section>
+          <div id="requiredSetupDivider" class="settings-group-divider">Required setup</div>
 
-          <section class="settings-card card editorial-card">
-            <div class="section-heading-row">
-              <div>
-                <p class="section-kicker">Outbound webhooks</p>
-                <h2>Send lead events to Zapier or Make</h2>
-              </div>
-              <span class="section-chip">Integrations</span>
-            </div>
-            <div class="editorial-form section-fields">
-              <p class="muted" style="margin:0;font-size:0.85rem;">Paste a Catch Hook URL from Zapier or a Custom Webhook URL from Make. Relinqo will POST lead and booking events as JSON.</p>
-              <label class="form-field">
-                <span class="field-label">Enable outbound webhooks</span>
-                <label class="toggle-card toggle-card-strong">
-                  <input name="outbound_webhook_enabled" type="checkbox" />
-                  <span>Send selected events to my automation tool</span>
-                </label>
-              </label>
-              <label class="form-field">
-                <span class="field-label">Webhook URL</span>
-                <input name="outbound_webhook_url" class="filter-input" placeholder="https://hooks.zapier.com/hooks/catch/..." />
-              </label>
-              <div class="field-group field-group-double">
-                <label class="form-field">
-                  <span class="field-label">Events</span>
-                  <input name="outbound_webhook_events" class="filter-input" placeholder="lead.created,booking.created,lead.won" />
-                </label>
-                <label class="form-field">
-                  <span class="field-label">Signing secret</span>
-                  <input name="outbound_webhook_secret" type="password" class="filter-input" placeholder="Optional; leave blank to keep existing" />
-                </label>
-              </div>
-              <div class="settings-submit-row" style="justify-content:flex-start;">
-                <button id="testWebhookBtn" type="button" class="ghost-btn">Send test webhook</button>
-                <p id="webhookTestStatus" class="muted" style="align-self:center;margin:0;"></p>
-              </div>
-            </div>
-          </section>
-
-          <section class="settings-card card editorial-card">
-            <div class="section-heading-row">
-              <div>
-                <p class="section-kicker">Website widget</p>
-                <h2>Capture leads from WordPress or Webflow</h2>
-              </div>
-              <span class="section-chip">Embed</span>
-            </div>
-            <div class="editorial-form section-fields">
-              <p class="muted" style="margin:0;font-size:0.85rem;">Paste this snippet into a WordPress Custom HTML block or Webflow Embed element. It creates a compact quote form and sends submissions into this workspace.</p>
-              <label class="form-field">
-                <span class="field-label">Workspace</span>
-                <input id="widgetWorkspace" class="filter-input" readonly />
-              </label>
-              <label class="form-field">
-                <span class="field-label">Embed code</span>
-                <textarea id="widgetEmbedCode" class="filter-input" rows="5" readonly></textarea>
-              </label>
-              <div class="settings-submit-row" style="justify-content:flex-start;">
-                <button id="copyWidgetBtn" type="button" class="ghost-btn">Copy widget code</button>
-                <p id="widgetCopyStatus" class="muted" style="align-self:center;margin:0;"></p>
-              </div>
-            </div>
-          </section>
-
-          <section class="settings-card card editorial-card">
+          <section id="businessProfileCard" class="settings-card card editorial-card" data-priority="required">
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Business profile</p>
                 <h2>Brand, voice, and service footprint</h2>
               </div>
-              <span class="section-chip">Customer-facing</span>
+              <span class="section-chip required">Required</span>
             </div>
             <div class="editorial-form section-fields">
               <div class="field-group field-group-double">
@@ -246,13 +221,13 @@
             </div>
           </section>
 
-          <section id="gmailCard" class="settings-card card editorial-card">
+          <section id="gmailCard" class="settings-card card editorial-card" data-priority="required">
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Gmail integration</p>
                 <h2>Connect with Google</h2>
               </div>
-              <span class="section-chip">Recommended</span>
+              <span class="section-chip required">Required</span>
             </div>
             <div class="editorial-form section-fields">
               <div id="gmailNotConnected">
@@ -275,13 +250,41 @@
             </div>
           </section>
 
-          <section id="phoneCard" class="settings-card card editorial-card">
+          <section id="billingCard" class="settings-card card editorial-card" data-priority="required">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Billing</p>
+                <h2>Full service subscription</h2>
+              </div>
+              <span id="billingStatusChip" class="section-chip required">Loading</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <div class="billing-summary-row">
+                <div>
+                  <span class="field-label">Plan</span>
+                  <strong id="billingPlanName">Full service</strong>
+                  <p id="billingPlanMeta" class="muted">Loading billing status...</p>
+                </div>
+                <div>
+                  <span class="field-label">Price</span>
+                  <strong id="billingPrice">$199/mo</strong>
+                  <p id="billingStatusText" class="muted">Secure billing handled by Stripe.</p>
+                </div>
+              </div>
+              <div class="settings-submit-row" style="justify-content:flex-start;">
+                <button id="startCheckoutBtn" type="button" class="primary-btn primary-btn-strong">Start subscription</button>
+                <button id="manageBillingBtn" type="button" class="ghost-btn">Manage billing</button>
+              </div>
+            </div>
+          </section>
+
+          <section id="phoneCard" class="settings-card card editorial-card" data-priority="required">
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Phone lead capture</p>
                 <h2>Phone rescue and owner alerts</h2>
               </div>
-              <span class="section-chip">Missed-call rescue</span>
+              <span class="section-chip required">Required</span>
             </div>
             <div class="editorial-form section-fields">
               <div id="phoneNotProvisioned">
@@ -440,99 +443,13 @@
             </div>
           </section>
 
-          <section class="settings-card card editorial-card">
-            <div class="section-heading-row">
-              <div>
-                <p class="section-kicker">Outbound email</p>
-                <h2>SMTP delivery</h2>
-              </div>
-              <span class="section-chip">Replies</span>
-            </div>
-            <div class="editorial-form section-fields">
-              <div class="field-group field-group-double field-group-triple-desktop">
-                <label class="form-field">
-                  <span class="field-label">Host</span>
-                  <input name="smtp_host" class="filter-input" placeholder="smtp.mailprovider.com" />
-                </label>
-                <label class="form-field">
-                  <span class="field-label">Port</span>
-                  <input name="smtp_port" type="number" class="filter-input" placeholder="587" />
-                </label>
-                <label class="form-field">
-                  <span class="field-label">TLS</span>
-                  <label class="toggle-card">
-                    <input name="smtp_use_tls" type="checkbox" />
-                    <span>Use TLS for outbound email</span>
-                  </label>
-                </label>
-              </div>
-              <div class="field-group field-group-double">
-                <label class="form-field">
-                  <span class="field-label">Username</span>
-                  <input name="smtp_username" class="filter-input" placeholder="notifications@business.com" />
-                </label>
-                <label class="form-field">
-                  <span class="field-label">From email</span>
-                  <input name="smtp_from_email" type="email" class="filter-input" placeholder="hello@business.com" />
-                </label>
-              </div>
-              <label class="form-field">
-                <span class="field-label">Password</span>
-                <input name="smtp_password" type="password" class="filter-input" placeholder="Leave blank to keep existing secret" />
-              </label>
-            </div>
-          </section>
-
-          <section class="settings-card card editorial-card">
-            <div class="section-heading-row">
-              <div>
-                <p class="section-kicker">Inbound email</p>
-                <h2>IMAP polling</h2>
-              </div>
-              <span class="section-chip">Lead intake</span>
-            </div>
-            <div class="editorial-form section-fields">
-              <div class="field-group field-group-double field-group-triple-desktop">
-                <label class="form-field">
-                  <span class="field-label">Host</span>
-                  <input name="imap_host" class="filter-input" placeholder="imap.mailprovider.com" />
-                </label>
-                <label class="form-field">
-                  <span class="field-label">Port</span>
-                  <input name="imap_port" type="number" class="filter-input" placeholder="993" />
-                </label>
-                <label class="form-field">
-                  <span class="field-label">Inbox polling</span>
-                  <label class="toggle-card">
-                    <input name="inbox_poll_enabled" type="checkbox" />
-                    <span>Enable inbox polling</span>
-                  </label>
-                </label>
-              </div>
-              <div class="field-group field-group-double">
-                <label class="form-field">
-                  <span class="field-label">Username</span>
-                  <input name="imap_username" class="filter-input" placeholder="inbox@business.com" />
-                </label>
-                <label class="form-field">
-                  <span class="field-label">Mailbox</span>
-                  <input name="imap_mailbox" class="filter-input" placeholder="INBOX" />
-                </label>
-              </div>
-              <label class="form-field">
-                <span class="field-label">Password</span>
-                <input name="imap_password" type="password" class="filter-input" placeholder="Leave blank to keep existing secret" />
-              </label>
-            </div>
-          </section>
-
-          <section class="settings-card card editorial-card">
+          <section id="alertsCard" class="settings-card card editorial-card" data-priority="required">
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Alerts</p>
                 <h2>Twilio SMS notifications</h2>
               </div>
-              <span class="section-chip">Urgent leads</span>
+              <span class="section-chip required">Required</span>
             </div>
             <div class="editorial-form section-fields">
               <div class="field-group field-group-double">
@@ -556,13 +473,83 @@
             </div>
           </section>
 
-          <section class="settings-card card editorial-card">
+          <section id="automationCard" class="settings-card card editorial-card" data-priority="required">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Automation behavior</p>
+                <h2>Guardrails and routing</h2>
+              </div>
+              <span class="section-chip required">Required</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <label class="form-field">
+                <span class="field-label">Human review</span>
+                <label class="toggle-card toggle-card-strong">
+                  <input name="human_review" type="checkbox" />
+                  <span>Require human review before sending</span>
+                </label>
+              </label>
+              <div class="field-group field-group-double">
+                <label class="form-field">
+                  <span class="field-label">Auto-send confidence threshold</span>
+                  <input name="auto_send_confidence_threshold" type="number" step="0.01" min="0" max="1" class="filter-input" placeholder="0.85" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Timezone</span>
+                  <input name="default_timezone" class="filter-input" placeholder="America/Edmonton" />
+                </label>
+              </div>
+              <div class="field-group field-group-double">
+                <label class="form-field">
+                  <span class="field-label">Forwarding token</span>
+                  <input name="forwarding_token" class="filter-input" placeholder="Internal forwarding token" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Owner alert email</span>
+                  <input name="owner_alert_email" type="email" class="filter-input" placeholder="owner@business.com" />
+                </label>
+              </div>
+              <label class="form-field">
+                <span class="field-label">Digest email</span>
+                <input name="digest_to_email" type="email" class="filter-input" placeholder="ops@business.com" />
+              </label>
+            </div>
+          </section>
+
+          <div id="optionalSetupDivider" class="settings-group-divider">Optional upgrades</div>
+
+          <section id="widgetCard" class="settings-card card editorial-card" data-priority="optional">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Website widget</p>
+                <h2>Capture leads from WordPress or Webflow</h2>
+              </div>
+              <span class="section-chip optional">Optional</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <p class="muted" style="margin:0;font-size:0.85rem;">Paste this snippet into a WordPress Custom HTML block or Webflow Embed element. It creates a compact quote form and sends submissions into this workspace.</p>
+              <label class="form-field">
+                <span class="field-label">Workspace</span>
+                <input id="widgetWorkspace" class="filter-input" readonly />
+              </label>
+              <label class="form-field">
+                <span class="field-label">Embed code</span>
+                <textarea id="widgetEmbedCode" class="filter-input" rows="5" readonly></textarea>
+              </label>
+              <div class="settings-submit-row" style="justify-content:flex-start;">
+                <button id="copyWidgetBtn" type="button" class="ghost-btn">Copy widget code</button>
+                <p id="widgetCopyStatus" class="muted" style="align-self:center;margin:0;"></p>
+              </div>
+            </div>
+          </section>
+
+          <section id="schedulingCard" class="settings-card card editorial-card" data-priority="optional">
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Smart scheduling</p>
                 <h2>Availability & booking links</h2>
               </div>
-              <span class="section-chip">Competitive edge</span>
+              <span class="section-chip optional">Optional</span>
             </div>
             <div class="editorial-form section-fields">
               <label class="form-field">
@@ -612,13 +599,13 @@
             </div>
           </section>
 
-          <section class="settings-card card editorial-card">
+          <section id="reviewsCard" class="settings-card card editorial-card" data-priority="optional">
             <div class="section-heading-row">
               <div>
                 <p class="section-kicker">Reviews on autopilot</p>
                 <h2>Auto-ask happy customers for a Google review</h2>
               </div>
-              <span class="section-chip">Growth loop</span>
+              <span class="section-chip optional">Optional</span>
             </div>
             <div class="editorial-form section-fields">
               <p class="muted" style="margin:0;font-size:0.85rem;">When you mark a lead as <strong>Won</strong>, relinqo waits the delay below and then sends the customer a friendly review-request message with your Google review link. Skips phone-only leads when the channel is email.</p>
@@ -660,50 +647,133 @@
             </div>
           </section>
 
-          <section class="settings-card card editorial-card">
+          <section id="webhooksCard" class="settings-card card editorial-card" data-priority="optional">
             <div class="section-heading-row">
               <div>
-                <p class="section-kicker">Automation behavior</p>
-                <h2>Guardrails and routing</h2>
+                <p class="section-kicker">Outbound webhooks</p>
+                <h2>Send lead events to Zapier or Make</h2>
               </div>
-              <span class="section-chip">Operations</span>
+              <span class="section-chip optional">Optional</span>
             </div>
             <div class="editorial-form section-fields">
+              <p class="muted" style="margin:0;font-size:0.85rem;">Paste a Catch Hook URL from Zapier or a Custom Webhook URL from Make. Relinqo will POST lead and booking events as JSON.</p>
               <label class="form-field">
-                <span class="field-label">Human review</span>
+                <span class="field-label">Enable outbound webhooks</span>
                 <label class="toggle-card toggle-card-strong">
-                  <input name="human_review" type="checkbox" />
-                  <span>Require human review before sending</span>
+                  <input name="outbound_webhook_enabled" type="checkbox" />
+                  <span>Send selected events to my automation tool</span>
                 </label>
+              </label>
+              <label class="form-field">
+                <span class="field-label">Webhook URL</span>
+                <input name="outbound_webhook_url" class="filter-input" placeholder="https://hooks.zapier.com/hooks/catch/..." />
               </label>
               <div class="field-group field-group-double">
                 <label class="form-field">
-                  <span class="field-label">Auto-send confidence threshold</span>
-                  <input name="auto_send_confidence_threshold" type="number" step="0.01" min="0" max="1" class="filter-input" placeholder="0.85" />
+                  <span class="field-label">Events</span>
+                  <input name="outbound_webhook_events" class="filter-input" placeholder="lead.created,booking.created,lead.won" />
                 </label>
                 <label class="form-field">
-                  <span class="field-label">Timezone</span>
-                  <input name="default_timezone" class="filter-input" placeholder="America/Edmonton" />
+                  <span class="field-label">Signing secret</span>
+                  <input name="outbound_webhook_secret" type="password" class="filter-input" placeholder="Optional; leave blank to keep existing" />
+                </label>
+              </div>
+              <div class="settings-submit-row" style="justify-content:flex-start;">
+                <button id="testWebhookBtn" type="button" class="ghost-btn">Send test webhook</button>
+                <p id="webhookTestStatus" class="muted" style="align-self:center;margin:0;"></p>
+              </div>
+            </div>
+          </section>
+
+          <div id="advancedSetupDivider" class="settings-group-divider">Advanced delivery settings</div>
+
+          <section id="smtpCard" class="settings-card card editorial-card" data-priority="advanced">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Outbound email</p>
+                <h2>SMTP delivery</h2>
+              </div>
+              <span class="section-chip advanced">Advanced</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <div class="field-group field-group-double field-group-triple-desktop">
+                <label class="form-field">
+                  <span class="field-label">Host</span>
+                  <input name="smtp_host" class="filter-input" placeholder="smtp.mailprovider.com" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Port</span>
+                  <input name="smtp_port" type="number" class="filter-input" placeholder="587" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">TLS</span>
+                  <label class="toggle-card">
+                    <input name="smtp_use_tls" type="checkbox" />
+                    <span>Use TLS for outbound email</span>
+                  </label>
                 </label>
               </div>
               <div class="field-group field-group-double">
                 <label class="form-field">
-                  <span class="field-label">Forwarding token</span>
-                  <input name="forwarding_token" class="filter-input" placeholder="Internal forwarding token" />
+                  <span class="field-label">Username</span>
+                  <input name="smtp_username" class="filter-input" placeholder="notifications@business.com" />
                 </label>
                 <label class="form-field">
-                  <span class="field-label">Owner alert email</span>
-                  <input name="owner_alert_email" type="email" class="filter-input" placeholder="owner@business.com" />
+                  <span class="field-label">From email</span>
+                  <input name="smtp_from_email" type="email" class="filter-input" placeholder="hello@business.com" />
                 </label>
               </div>
               <label class="form-field">
-                <span class="field-label">Digest email</span>
-                <input name="digest_to_email" type="email" class="filter-input" placeholder="ops@business.com" />
+                <span class="field-label">Password</span>
+                <input name="smtp_password" type="password" class="filter-input" placeholder="Leave blank to keep existing secret" />
               </label>
             </div>
           </section>
 
-          <div class="settings-submit-row">
+          <section id="imapCard" class="settings-card card editorial-card" data-priority="advanced">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Inbound email</p>
+                <h2>IMAP polling</h2>
+              </div>
+              <span class="section-chip advanced">Advanced</span>
+            </div>
+            <div class="editorial-form section-fields">
+              <div class="field-group field-group-double field-group-triple-desktop">
+                <label class="form-field">
+                  <span class="field-label">Host</span>
+                  <input name="imap_host" class="filter-input" placeholder="imap.mailprovider.com" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Port</span>
+                  <input name="imap_port" type="number" class="filter-input" placeholder="993" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Inbox polling</span>
+                  <label class="toggle-card">
+                    <input name="inbox_poll_enabled" type="checkbox" />
+                    <span>Enable inbox polling</span>
+                  </label>
+                </label>
+              </div>
+              <div class="field-group field-group-double">
+                <label class="form-field">
+                  <span class="field-label">Username</span>
+                  <input name="imap_username" class="filter-input" placeholder="inbox@business.com" />
+                </label>
+                <label class="form-field">
+                  <span class="field-label">Mailbox</span>
+                  <input name="imap_mailbox" class="filter-input" placeholder="INBOX" />
+                </label>
+              </div>
+              <label class="form-field">
+                <span class="field-label">Password</span>
+                <input name="imap_password" type="password" class="filter-input" placeholder="Leave blank to keep existing secret" />
+              </label>
+            </div>
+          </section>
+
+          <div id="settingsSubmitRow" class="settings-submit-row">
             <button type="submit" class="primary-btn primary-btn-strong">Save settings</button>
           </div>
         </form>
@@ -717,6 +787,31 @@
       const saveBtn = form.querySelector('button[type="submit"]');
       let revealedApiKey = '';
       let widgetEmbedCode = '';
+      const REQUIRED_READINESS_IDS = new Set([
+        'business_profile',
+        'gmail',
+        'billing',
+        'owner_alert',
+        'owner_alert_test',
+        'phone_rescue',
+        'forwarding_test',
+        'pilot_guardrails',
+      ]);
+      const READINESS_TARGETS = {
+        business_profile: '#businessProfileCard',
+        gmail: '#gmailCard',
+        billing: '#billingCard',
+        owner_alert: '#alertsCard',
+        owner_alert_test: '#phoneCard',
+        phone_rescue: '#phoneCard',
+        forwarding_test: '#phoneCard',
+        scheduling: '#schedulingCard',
+        calendar_sync: '#schedulingCard',
+        reviews: '#reviewsCard',
+        templates: '/templates',
+        outbound_webhooks: '#webhooksCard',
+        pilot_guardrails: '#automationCard',
+      };
 
       function showMsg(text, ok) {
         statusMsg.textContent = text;
@@ -754,7 +849,7 @@
         price.textContent = data.price || '$199/mo';
         plan.textContent = data.plan === 'full_service_test' ? 'Full service test' : 'Full service';
         chip.textContent = data.billing_exempt ? 'Comped' : titleCase(data.subscription_status || 'inactive');
-        chip.className = 'section-chip';
+        chip.className = 'section-chip required';
 
         if (!data.billing_configured) {
           meta.textContent = 'Stripe is not configured for this deployment.';
@@ -801,29 +896,74 @@
         })[char]);
       }
 
+      function isRequiredReadinessItem(item) {
+        return item.required ?? REQUIRED_READINESS_IDS.has(item.id);
+      }
+
+      function readinessStatus(item) {
+        return ['ready', 'warning', 'missing'].includes(item.status) ? item.status : 'warning';
+      }
+
+      function readinessHref(item) {
+        return READINESS_TARGETS[item.id] || '#readinessCard';
+      }
+
+      function renderReadinessGroup(title, subtitle, items) {
+        const readyCount = items.filter((item) => readinessStatus(item) === 'ready').length;
+        return `
+          <div class="setup-group">
+            <div class="setup-group-header">
+              <div>
+                <strong>${escapeHtml(title)}</strong>
+                <span>${escapeHtml(subtitle)}</span>
+              </div>
+              <span>${readyCount}/${items.length} ready</span>
+            </div>
+            ${items.map((item) => {
+              const status = readinessStatus(item);
+              const href = readinessHref(item);
+              const actionText = href.startsWith('#') ? 'Jump to setting' : 'Open page';
+              return `
+                <a class="readiness-item ${status}" href="${href}">
+                  <div class="readiness-item-top">
+                    <strong>${escapeHtml(item.label)}</strong>
+                    <span class="readiness-pill ${status}">${status}</span>
+                  </div>
+                  <div class="readiness-copy">
+                    <p>${escapeHtml(item.detail)}</p>
+                    <span class="readiness-action">${escapeHtml(item.action || actionText)}</span>
+                  </div>
+                </a>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
       function renderReadiness(data) {
         const chip = document.getElementById('readinessChip');
         const score = document.getElementById('readinessScore');
         const summary = document.getElementById('readinessSummary');
         const fill = document.getElementById('readinessMeterFill');
         const list = document.getElementById('readinessList');
+        const items = Array.isArray(data.items) ? data.items : [];
+        const requiredItems = items.filter(isRequiredReadinessItem);
+        const optionalItems = items.filter((item) => !isRequiredReadinessItem(item));
+        const requiredMissing = requiredItems.filter((item) => readinessStatus(item) === 'missing').length;
+        const requiredWarnings = requiredItems.filter((item) => readinessStatus(item) === 'warning').length;
 
-        chip.textContent = data.ready ? 'Pilot ready' : 'Needs work';
-        score.textContent = `${data.score}% ready (${data.completed}/${data.total})`;
+        chip.textContent = data.ready ? 'Pilot ready' : `${requiredMissing} required missing`;
+        chip.className = `section-chip ${data.ready ? 'required' : 'missing'}`;
+        score.textContent = `${data.score}% required ready (${data.completed}/${data.total})`;
         summary.textContent = data.ready
-          ? 'No hard blockers found. Warnings are useful polish, but the workspace can go into a controlled pilot.'
-          : 'Fix every missing item before putting a real customer on the pilot.';
+          ? (requiredWarnings ? 'No required items are missing. Review the warnings before live volume.' : 'Required setup is complete. Optional upgrades can be added when you need them.')
+          : 'Fix the missing required items before putting a real customer on the pilot.';
         fill.style.width = `${Math.max(0, Math.min(100, data.score || 0))}%`;
 
-        list.innerHTML = data.items.map((item) => `
-          <div class="readiness-item">
-            <span class="readiness-pill ${item.status}">${item.status}</span>
-            <div class="readiness-copy">
-              <strong>${escapeHtml(item.label)}</strong>
-              <p>${escapeHtml(item.detail)}${item.action ? ` Action: ${escapeHtml(item.action)}.` : ''}</p>
-            </div>
-          </div>
-        `).join('');
+        list.innerHTML = [
+          renderReadinessGroup('Required before pilot', 'Business basics, inbox, billing, phone rescue, alerts, and guardrails.', requiredItems),
+          renderReadinessGroup('Optional upgrades', 'Helpful add-ons that should not block launch.', optionalItems),
+        ].join('');
       }
 
       async function loadReadiness() {
@@ -928,6 +1068,56 @@
       });
 
       document.getElementById('refreshReadinessBtn').addEventListener('click', loadReadiness);
+
+      function setCardExpanded(card, expanded) {
+        card.classList.toggle('is-collapsed', !expanded);
+        const toggle = card.querySelector('.card-toggle');
+        if (toggle) {
+          toggle.textContent = expanded ? 'Close' : 'Open';
+          toggle.setAttribute('aria-expanded', String(expanded));
+        }
+      }
+
+      function expandHashTarget() {
+        const id = window.location.hash ? window.location.hash.slice(1) : '';
+        if (!id) return;
+        const target = document.getElementById(id);
+        if (target?.classList.contains('settings-card')) {
+          setCardExpanded(target, true);
+        }
+      }
+
+      function setupCollapsibleSections() {
+        const cards = document.querySelectorAll('.settings-card[data-priority="optional"], .settings-card[data-priority="advanced"]');
+        cards.forEach((card) => {
+          if (card.dataset.collapseReady === 'true') return;
+          card.dataset.collapseReady = 'true';
+          card.classList.add('is-collapsed');
+          const heading = card.querySelector('.section-heading-row');
+          if (!heading) return;
+          const toggle = document.createElement('button');
+          toggle.type = 'button';
+          toggle.className = 'ghost-btn card-toggle';
+          toggle.textContent = 'Open';
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.setAttribute('aria-label', `Toggle ${card.querySelector('h2')?.textContent || 'section'}`);
+          toggle.addEventListener('click', () => setCardExpanded(card, card.classList.contains('is-collapsed')));
+          heading.appendChild(toggle);
+        });
+        expandHashTarget();
+      }
+
+      document.addEventListener('click', (event) => {
+        const link = event.target.closest('a[href^="#"]');
+        if (!link) return;
+        const id = link.getAttribute('href').slice(1);
+        const target = document.getElementById(id);
+        if (target?.classList.contains('settings-card')) {
+          setCardExpanded(target, true);
+        }
+      });
+
+      window.addEventListener('hashchange', expandHashTarget);
 
       document.getElementById('testWebhookBtn').addEventListener('click', async () => {
         const status = document.getElementById('webhookTestStatus');
@@ -1456,6 +1646,7 @@
         }
       });
 
+      setupCollapsibleSections();
       loadSettings();
       loadAvailability();
       loadPhone();

@@ -562,6 +562,7 @@ def test_pilot_readiness_checklist_uses_live_workspace_state():
     items = {item["id"]: item for item in first.json()["items"]}
     assert items["business_profile"]["status"] == "missing"
     assert items["owner_alert_test"]["status"] == "missing"
+    assert items["scheduling"]["required"] is False
 
     db = SessionLocal()
     try:
@@ -574,9 +575,6 @@ def test_pilot_readiness_checklist_uses_live_workspace_state():
         org_settings.business_hours = "Mon-Fri 8am-5pm"
         org_settings.google_oauth_email = "owner@example.com"
         org_settings.google_oauth_access_token = "access"
-        org_settings.scheduling_enabled = True
-        org_settings.review_request_enabled = True
-        org_settings.review_url = "https://g.page/r/test-review"
         org_settings.sms_alert_to_number = "+14035559999"
         org_settings.human_review = True
         org_settings.automation_paused = False
@@ -608,13 +606,16 @@ def test_pilot_readiness_checklist_uses_live_workspace_state():
     assert ready.status_code == 200
     data = ready.json()
     assert data["ready"] is True
+    assert data["completed"] == data["total"]
     items = {item["id"]: item for item in data["items"]}
     assert items["business_profile"]["status"] == "ready"
     assert items["gmail"]["status"] == "ready"
     assert items["phone_rescue"]["status"] == "ready"
     assert items["owner_alert_test"]["status"] == "ready"
-    assert items["scheduling"]["status"] == "ready"
-    assert items["reviews"]["status"] == "ready"
+    assert items["scheduling"]["status"] == "missing"
+    assert items["scheduling"]["required"] is False
+    assert items["reviews"]["status"] == "warning"
+    assert items["reviews"]["required"] is False
 
 
 def test_outbound_webhook_test_endpoint_posts_signed_payload(monkeypatch):
