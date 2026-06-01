@@ -32,6 +32,7 @@ from app.inbox_poll import poll_inbox
 from app.mailer import send_email, smtp_configured
 from app.models import Lead, Organization, OrgSettings, User
 from app.routes.auth import router as auth_router
+from app.routes.admin import router as admin_router
 from app.routes.billing import router as billing_router, webhook_router as stripe_webhook_router
 from app.routes.google_oauth import router as google_oauth_router
 from app.routes.leads import ingest_lead, router as lead_router
@@ -285,6 +286,7 @@ if settings.app_env == "production":
         return response
 
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(billing_router)
 app.include_router(stripe_webhook_router)
 app.include_router(google_oauth_router)

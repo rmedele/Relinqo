@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/leadrelay.db"
     session_secret: str = "change-me-to-random-secret"
     forwarded_allow_ips: str = "127.0.0.1"  # IPs allowed to set X-Forwarded-* headers
+    platform_admin_emails: str = "reesemedele@gmail.com"
     llm_provider: str = "none"
     llm_api_key: str = ""
 
