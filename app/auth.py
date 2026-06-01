@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.billing import ACTIVE_BILLING_STATUSES, org_has_billing_access
+from app.config import settings
 from app.models import Organization, OrgSettings, User, hash_api_key
 from app.schema_repair import ensure_org_settings_schema
 
@@ -27,6 +28,24 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
+
+
+def platform_admin_emails() -> set[str]:
+    return {
+        email.strip().lower()
+        for email in (settings.platform_admin_emails or "").split(",")
+        if email.strip()
+    }
+
+
+def is_platform_admin_email(email: str) -> bool:
+    return email.strip().lower() in platform_admin_emails()
+
+
+def require_platform_admin(user: User = Depends(get_current_user)) -> User:
+    if not is_platform_admin_email(user.email):
+        raise HTTPException(status_code=403, detail="Platform admin access required")
     return user
 
 

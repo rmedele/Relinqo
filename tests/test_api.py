@@ -1,6 +1,6 @@
 import json
 from fastapi.testclient import TestClient
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
@@ -11,7 +11,19 @@ from app import outbound_webhooks
 from app.main import app
 from app.config import settings
 from app.database import SessionLocal
-from app.models import CallEvent, Lead, Organization, OrgSettings, PhoneNumber, PhoneRoutingRule, ScheduleAvailability, SmsNotification, SmsOptOut, User
+from app.models import (
+    CallEvent,
+    InviteToken,
+    Lead,
+    Organization,
+    OrgSettings,
+    PhoneNumber,
+    PhoneRoutingRule,
+    ScheduleAvailability,
+    SmsNotification,
+    SmsOptOut,
+    User,
+)
 from app.routes import billing as billing_routes
 from app.routes import leads as lead_routes
 from app.routes import phone_provisioning as phone_routes
@@ -21,14 +33,15 @@ from app.schema_repair import ensure_org_settings_schema
 client = TestClient(app)
 
 
-def _auth_client():
+def _auth_client(email: str | None = None):
     """Register a test org+user and return an authenticated TestClient."""
     import uuid
     unique = uuid.uuid4().hex[:8]
+    user_email = email or f"test-{unique}@example.com"
     c = TestClient(app)
     res = c.post("/auth/register", json={
         "org_name": f"Test Org {unique}",
-        "email": f"test-{unique}@example.com",
+        "email": user_email,
         "password": "TestPass123",
         "display_name": "Test User",
     })
@@ -191,7 +204,7 @@ def test_leads_require_auth():
 
 
 def test_authenticated_page_shells_require_auth():
-    for path in ["/review", "/analytics", "/pipeline", "/templates", "/setup", "/settings"]:
+    for path in ["/review", "/analytics", "/pipeline", "/templates", "/setup", "/settings", "/admin"]:
         response = client.get(path)
         assert response.status_code == 401, path
 
@@ -202,6 +215,78 @@ def test_authenticated_page_shells_load_for_logged_in_user():
         response = c.get(path)
         assert response.status_code == 200, path
         assert response.headers["content-type"].startswith("text/html")
+
+
+def test_admin_page_rejects_non_admin_user():
+    c, _ = _auth_client()
+
+    page = c.get("/admin")
+    assert page.status_code == 403
+
+    overview = c.get("/api/admin/overview")
+    assert overview.status_code == 403
+
+
+def test_platform_admin_overview_sees_cross_workspace_data():
+    admin, _ = _auth_client(email="reesemedele@gmail.com")
+    other, info = _auth_client()
+
+    created = other.post(
+        "/ingest-lead",
+        json={
+            "source": "website_form",
+            "sender_name": "Cross Org Lead",
+            "sender_email": "cross-org@example.com",
+            "subject": "Need service",
+            "body": "We need help with a leak and would like a quote.",
+        },
+    )
+    assert created.status_code == 200, created.text
+
+    page = admin.get("/admin")
+    assert page.status_code == 200
+    assert "Relinqo Admin" in page.text
+
+    overview = admin.get("/api/admin/overview")
+    assert overview.status_code == 200, overview.text
+    data = overview.json()
+    assert data["admin"]["email"] == "reesemedele@gmail.com"
+    assert "reesemedele@gmail.com" in data["admin"]["allowed_emails"]
+    assert any(org["slug"] == info["data"]["org"]["slug"] for org in data["orgs"])
+    assert any(user["email"] == info["data"]["user"]["email"] for user in data["users"])
+    assert any(lead["sender_email"] == "cross-org@example.com" for lead in data["recent_leads"])
+
+
+def test_platform_admin_email_cannot_be_publicly_provisioned_in_production(monkeypatch):
+    owner, info = _auth_client()
+    monkeypatch.setattr(settings, "app_env", "production")
+
+    register = client.post("/auth/register", json={
+        "org_name": "Claim Admin",
+        "email": "reesemedele@gmail.com",
+        "password": "TestPass123",
+        "display_name": "Not Reese",
+    })
+    assert register.status_code == 403
+
+    invite = owner.post("/auth/invite", json={"email": "reesemedele@gmail.com"})
+    assert invite.status_code == 403
+
+    db = SessionLocal()
+    try:
+        token = "protected-admin-invite"
+        db.add(InviteToken(
+            org_id=info["data"]["org"]["id"],
+            email="reesemedele@gmail.com",
+            token=token,
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+    accept = client.post("/auth/accept-invite", json={"token": token, "password": "TestPass123"})
+    assert accept.status_code == 403
 
 
 def test_session_cookie_secure_only_in_production(monkeypatch):
@@ -221,6 +306,16 @@ def test_auth_login_register_flow():
     # Logout clears session
     logout = c.post("/auth/logout")
     assert logout.status_code == 200
+
+    # Login should be forgiving about email casing.
+    mixed_case_login = c.post("/auth/login", json={
+        "email": info["data"]["user"]["email"].upper(),
+        "password": "TestPass123",
+    })
+    assert mixed_case_login.status_code == 200, mixed_case_login.text
+    assert mixed_case_login.json()["user"]["email"] == info["data"]["user"]["email"]
+
+    c.post("/auth/logout")
 
     # Unauthenticated client should fail
     me2 = client.get("/auth/me")

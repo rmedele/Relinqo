@@ -6,9 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import re as _re
 
 from pydantic import BaseModel, EmailStr, field_validator
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user, get_org_settings, hash_password, require_owner, verify_password
+from app.auth import (
+    get_current_user,
+    get_org_settings,
+    hash_password,
+    is_platform_admin_email,
+    require_owner,
+    verify_password,
+)
 from app.billing import new_org_subscription_status
 from app.config import settings
 from app.database import get_db
@@ -110,10 +118,20 @@ def _as_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
+def _normalize_email(email: str) -> str:
+    return str(email or "").strip().lower()
+
+
+def _protect_platform_admin_email(email: str) -> None:
+    if settings.app_env == "production" and is_platform_admin_email(email):
+        raise HTTPException(status_code=403, detail="Platform admin email cannot be provisioned publicly")
+
+
 @router.post("/login")
 def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     login_limiter.check(request)
-    user = db.query(User).filter(User.email == payload.email, User.is_active.is_(True)).first()
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(func.lower(User.email) == email, User.is_active.is_(True)).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     request.session["user_id"] = user.id
@@ -129,7 +147,9 @@ def logout(request: Request):
 @router.post("/register")
 def register(request: Request, payload: RegisterRequest, db: Session = Depends(get_db)):
     register_limiter.check(request)
-    if db.query(User).filter(User.email == payload.email).first():
+    email = _normalize_email(payload.email)
+    _protect_platform_admin_email(email)
+    if db.query(User).filter(func.lower(User.email) == email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
     slug = payload.org_name.strip().lower().replace(" ", "-")[:100]
@@ -155,9 +175,9 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
     db.add(OrgSettings(org_id=org.id))
 
     user = User(
-        email=payload.email,
+        email=email,
         password_hash=hash_password(payload.password),
-        display_name=payload.display_name or payload.email.split("@")[0],
+        display_name=payload.display_name or email.split("@")[0],
         role="owner",
         org_id=org.id,
     )
@@ -194,13 +214,15 @@ def invite_member(
     db: Session = Depends(get_db),
     org_settings: OrgSettings = Depends(get_org_settings),
 ):
-    if db.query(User).filter(User.email == payload.email).first():
+    email = _normalize_email(payload.email)
+    _protect_platform_admin_email(email)
+    if db.query(User).filter(func.lower(User.email) == email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
     token = secrets.token_urlsafe(48)
     invite = InviteToken(
         org_id=user.org_id,
-        email=payload.email,
+        email=email,
         token=token,
         display_name=payload.display_name,
         expires_at=datetime.now(timezone.utc) + timedelta(hours=INVITE_EXPIRY_HOURS),
@@ -218,7 +240,7 @@ def invite_member(
         f"- {biz} via relinqo"
     )
     sent, msg = send_email(
-        to_email=payload.email,
+        to_email=email,
         subject=f"You're invited to join {biz} on relinqo",
         body=email_body,
         org_settings=org_settings,
@@ -228,7 +250,7 @@ def invite_member(
         "ok": True,
         "invite_sent": sent,
         "invite_url": invite_url,
-        "message": f"Invite email {'sent to' if sent else 'could not be sent to'} {payload.email}" + ("" if sent else f" ({msg})"),
+        "message": f"Invite email {'sent to' if sent else 'could not be sent to'} {email}" + ("" if sent else f" ({msg})"),
     }
 
 
@@ -242,13 +264,15 @@ def accept_invite(request: Request, payload: AcceptInviteRequest, db: Session = 
         raise HTTPException(status_code=404, detail="Invalid or already-used invite")
     if datetime.now(timezone.utc) > _as_utc(invite.expires_at):
         raise HTTPException(status_code=410, detail="Invite has expired")
-    if db.query(User).filter(User.email == invite.email).first():
+    invite_email = _normalize_email(invite.email)
+    _protect_platform_admin_email(invite_email)
+    if db.query(User).filter(func.lower(User.email) == invite_email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
     member = User(
-        email=invite.email,
+        email=invite_email,
         password_hash=hash_password(payload.password),
-        display_name=invite.display_name or invite.email.split("@")[0],
+        display_name=invite.display_name or invite_email.split("@")[0],
         role="member",
         org_id=invite.org_id,
     )
@@ -294,7 +318,8 @@ class ResetPasswordRequest(BaseModel):
 @router.post("/forgot-password")
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
     # Always return success to avoid email enumeration
-    user = db.query(User).filter(User.email == payload.email, User.is_active.is_(True)).first()
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(func.lower(User.email) == email, User.is_active.is_(True)).first()
     if not user:
         return {"ok": True, "message": "If that email exists, a reset link has been sent."}
 
