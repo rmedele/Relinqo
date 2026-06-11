@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/ui/favicon.svg?v=20260531" type="image/svg+xml" />
+    <link rel="alternate icon" href="/favicon.ico?v=20260531" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/ui/apple-touch-icon.png?v=20260531" />
+    <title>{{TITLE}}</title>
+    <meta name="description" content="{{META_DESCRIPTION}}" />
+    <link rel="stylesheet" href="/ui/styles.css?v=20260527-polish" />
+    <link rel="stylesheet" href="/ui/marketing.css?v=20260603-leak-radar" />
+  </head>
+  <body class="lr-page lr-audit-page">
+    <header class="lr-nav">
+      <div class="lr-container lr-nav-inner">
+        <a class="lr-brand" href="/" aria-label="relinqo home">
+          <span class="lr-brand-mark">rl</span>
+          <span>relinqo</span>
+        </a>
+        <div class="lr-nav-actions">
+          <a class="lr-link" href="/demo" data-analytics-event="demo_clicked">Try the demo</a>
+          <a class="lr-btn lr-btn-primary" href="/book-demo" data-analytics-event="lead_leak_audit_clicked">Book my audit</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="lr-audit-shell">
+      <section class="lr-audit-hero">
+        <div>
+          <span class="lr-audit-label">Lead Leak Audit</span>
+          <h1>{{COMPANY_NAME}} has a lead path worth protecting.</h1>
+          <p>{{LEAK_SUMMARY}}</p>
+          <div class="lr-audit-actions">
+            <a class="lr-btn lr-btn-primary" href="/book-demo" data-analytics-event="lead_leak_audit_clicked">Book my audit</a>
+            <a class="lr-btn lr-btn-secondary" href="/demo" data-analytics-event="demo_clicked">Try the simulator</a>
+          </div>
+        </div>
+        <aside class="lr-audit-score-card" aria-label="Audit focus">
+          <span>First path to review</span>
+          <strong>{{LEAD_SOURCE}}</strong>
+          <p>Start at {{LEAK_STAGE}}, then decide whether a pilot is worth it.</p>
+        </aside>
+      </section>
+
+      <section class="lr-audit-proof-grid" aria-label="Briefing summary">
+        <article>
+          <span>Lead source</span>
+          <strong>{{LEAD_SOURCE}}</strong>
+          <p>The first workflow to test before a full rollout.</p>
+        </article>
+        <article>
+          <span>Trade</span>
+          <strong>{{BUSINESS_TYPE}}</strong>
+          <p>The setup should match the business hours, service area, and job types.</p>
+        </article>
+        <article>
+          <span>Control mode</span>
+          <strong>Approval-first</strong>
+          <p>Owner review stays on while the workflow is tuned.</p>
+        </article>
+      </section>
+
+      <section class="lr-audit-grid">
+        <article class="lr-audit-panel">
+          <span>Evidence</span>
+          <h2>Why this path matters</h2>
+          <ul class="lr-audit-list">
+            {{EVIDENCE_ITEMS}}
+          </ul>
+        </article>
+
+        <article class="lr-audit-panel lr-audit-panel-strong">
+          <span>One-workflow fix</span>
+          <h2>{{ONE_SOURCE_FIX}}</h2>
+          <p>{{NEXT_CTA}}</p>
+        </article>
+      </section>
+
+      <section class="lr-audit-workflow">
+        <div>
+          <span>Relinqo workflow</span>
+          <h2>What happens when this source is live</h2>
+        </div>
+        <ol>
+          {{WORKFLOW_ITEMS}}
+        </ol>
+      </section>
+    </main>
+    <script src="/ui/marketing-motion.js?v=20260529-site-opt"></script>
+  </body>
+</html>

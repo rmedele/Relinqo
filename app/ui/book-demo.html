@@ -6,8 +6,8 @@
     <link rel="icon" href="/ui/favicon.svg?v=20260531" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico?v=20260531" type="image/x-icon" />
     <link rel="apple-touch-icon" href="/ui/apple-touch-icon.png?v=20260531" />
-    <title>Book a demo | relinqo</title>
-    <meta name="description" content="Book a relinqo walkthrough using a real lead, missed-call scenario, or inbox problem from your local service business." />
+    <title>Book a Free Lead Leak Audit | Relinqo</title>
+    <meta name="description" content="Book a free Relinqo lead leak audit using one real missed call, quote request, after-hours inquiry, slow reply, or forgotten follow-up." />
     <link rel="stylesheet" href="/ui/styles.css?v=20260527-polish" />
     <link rel="stylesheet" href="/ui/marketing.css?v=20260526-readable" />
   </head>
@@ -19,7 +19,7 @@
           <span>relinqo</span>
         </a>
         <div class="lr-nav-actions">
-          <a class="lr-link" href="/demo">Try live demo</a>
+          <a class="lr-link" href="/demo" data-analytics-event="demo_clicked">Try the demo</a>
           <a class="lr-link" href="/">Back to site</a>
         </div>
       </div>
@@ -30,22 +30,22 @@
 
       <section class="lr-demo-grid">
         <div class="lr-demo-intro">
-          <p class="lr-kicker">Book a 20-minute walkthrough</p>
-          <h1>Bring one real lead leak. We will show the fix.</h1>
-          <p>Send a quote email, missed-call story, after-hours inquiry, or slow-response problem. The request is saved as a real relinqo lead so the walkthrough can show the actual workflow, not a generic deck.</p>
+          <p class="lr-kicker">Free lead leak audit</p>
+          <h1>Bring one real lead leak. We will show how Relinqo would catch it.</h1>
+          <p>Send a missed-call story, quote request, after-hours inquiry, unanswered email, old website form, or forgotten follow-up. The audit does not require Gmail access or call routing; it shows whether one narrow workflow is worth trying.</p>
 
           <div class="lr-demo-points">
             <div>
               <strong>What you will see</strong>
-              <span>Email lead response, missed-call SMS rescue, urgent owner alerts, booking links, pipeline, revenue tracking, and review follow-up.</span>
+              <span>What Relinqo would capture, what reply it would draft, when the owner would be alerted, and how the lead would keep moving.</span>
             </div>
             <div>
               <strong>Best fit</strong>
               <span>Plumbing, HVAC, electrical, roofing, garage doors, restoration, and similar local service businesses that lose jobs when replies are slow.</span>
             </div>
             <div>
-              <strong>Pilot offer</strong>
-              <span>Founding pilots get 2 weeks free, then a month-to-month pilot plan from $199/mo if the workflow is worth keeping.</span>
+              <strong>Next step</strong>
+              <span>If the gap is real, you can test one approval-first workflow. Founding pilot pricing starts at $199/month after the audit.</span>
             </div>
           </div>
         </div>
@@ -75,43 +75,45 @@
 
           <div class="lr-demo-form-row">
             <div class="form-field">
-              <label class="field-label" for="business_type">Business type</label>
-              <input id="business_type" name="business_type" type="text" placeholder="Plumbing, HVAC, roofing..." />
+              <label class="field-label" for="business_type">Trade</label>
+              <select id="business_type" name="business_type">
+                <option value="">Select one</option>
+                <option value="plumbing">Plumbing</option>
+                <option value="hvac">HVAC</option>
+                <option value="roofing">Roofing</option>
+                <option value="electrical">Electrical</option>
+                <option value="restoration">Restoration</option>
+                <option value="garage_doors">Garage doors</option>
+                <option value="landscaping">Landscaping</option>
+                <option value="detailing">Detailing</option>
+                <option value="other_local_service">Other local service</option>
+              </select>
             </div>
             <div class="form-field">
-              <label class="field-label" for="lead_source">Biggest leak</label>
+              <label class="field-label" for="lead_source">What lead source is leaking?</label>
               <select id="lead_source" name="lead_source">
                 <option value="">Select one</option>
                 <option value="missed_calls">Missed calls</option>
-                <option value="slow_email_replies">Slow email replies</option>
-                <option value="after_hours">After-hours leads</option>
-                <option value="follow_up">Forgotten follow-up</option>
-                <option value="reviews">Not enough reviews</option>
+                <option value="email">Email</option>
+                <option value="forms">Website forms</option>
+                <option value="texts">Texts</option>
+                <option value="quote_follow_up">Quote follow-up</option>
+                <option value="after_hours">After-hours</option>
+                <option value="not_sure">Not sure</option>
               </select>
             </div>
           </div>
 
           <div class="form-field">
-            <label class="field-label" for="current_response_time">Current first-response time</label>
-            <select id="current_response_time" name="current_response_time">
-              <option value="">Select one</option>
-              <option value="under_5_minutes">Under 5 minutes</option>
-              <option value="5_to_30_minutes">5 to 30 minutes</option>
-              <option value="same_day">Same day</option>
-              <option value="next_day_or_later">Next day or later</option>
-              <option value="not_sure">Not sure</option>
-            </select>
+            <label class="field-label" for="message">Optional message</label>
+            <textarea id="message" name="message" rows="5" placeholder="Paste a sample inquiry, describe the missed-call flow, or tell us which follow-up keeps slipping."></textarea>
           </div>
 
-          <div class="form-field">
-            <label class="field-label" for="message">What should we test?</label>
-            <textarea id="message" name="message" rows="5" placeholder="Paste a sample inquiry, describe your missed-call flow, or tell us where leads slow down."></textarea>
-          </div>
-
-          <button type="submit" class="lr-demo-submit">Send test lead</button>
-          <p class="lr-demo-note">This creates a reviewable lead inside relinqo so the demo request follows the same workflow we will show you.</p>
+          <button type="submit" class="lr-demo-submit" data-analytics-event="lead_leak_audit_clicked">Book my free audit</button>
+          <p class="lr-demo-note">We use your example to prepare the same approval-first flow you would see in a pilot.</p>
         </form>
       </section>
     </main>
+    <script src="/ui/marketing-motion.js?v=20260529-site-opt"></script>
   </body>
 </html>

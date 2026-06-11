@@ -41,7 +41,7 @@ def call_wsgi(path: str, method: str = "GET", body: bytes = b"", content_type: s
 
 def test_passenger_wsgi_serves_public_routes():
     cases = [
-        ("/", b"AI speed-to-lead"),
+        ("/", b"Stop losing trade jobs to missed calls and slow replies."),
         ("/website-widget", b'data-workspace="reese-plumbing"'),
         ("/api/widget/embed.js", b"data-relinqo-widget"),
         ("/health", b'"ok":true'),

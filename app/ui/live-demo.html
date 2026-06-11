@@ -6,8 +6,8 @@
     <link rel="icon" href="/ui/favicon.svg?v=20260531" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico?v=20260531" type="image/x-icon" />
     <link rel="apple-touch-icon" href="/ui/apple-touch-icon.png?v=20260531" />
-    <title>Try the live demo | relinqo</title>
-    <meta name="description" content="Act like a homeowner, send a sample trade lead, and watch Relinqo classify it, draft a reply, alert the owner, and move the job forward." />
+    <title>Lead Leak Simulator | Relinqo</title>
+    <meta name="description" content="Try the Relinqo lead leak simulator with a missed call, quote request, form, text, or after-hours trade lead." />
     <link rel="stylesheet" href="/ui/styles.css?v=20260527-polish" />
     <link rel="stylesheet" href="/ui/marketing.css?v=20260526-readable" />
   </head>
@@ -21,7 +21,7 @@
         </a>
         <div class="lr-nav-actions">
           <a class="lr-link" href="/">Back to site</a>
-          <a class="lr-btn lr-btn-primary" href="/book-demo">Book pilot</a>
+          <a class="lr-btn lr-btn-primary" href="/book-demo" data-analytics-event="lead_leak_audit_clicked">Book my free audit</a>
         </div>
       </div>
     </header>
@@ -29,9 +29,9 @@
     <main class="lr-live-demo-shell lr-live-demo-shell-wide">
       <section class="lr-live-demo-hero lr-live-demo-hero-wide">
         <div>
-          <p class="lr-kicker">Interactive product demo</p>
-          <h1>Act like a homeowner. Watch Relinqo respond.</h1>
-          <p>Pick a realistic lead, run the demo, and watch what the business owner sees: triage, reply draft, owner alert, pipeline, booking, and review follow-up.</p>
+          <p class="lr-kicker">Lead leak simulator</p>
+          <h1>Watch Relinqo catch a missed lead.</h1>
+          <p>Pick a realistic trade lead, run the simulator, and watch what the business owner sees: capture, next step, reply draft, owner alert, booking, follow-up, and review request.</p>
         </div>
         <div class="lr-live-demo-note">
           <strong>Safe preview</strong>
@@ -42,8 +42,8 @@
       <section class="lr-real-demo-contact" id="realDemoContact">
         <div>
           <p class="lr-kicker">Two ways to try it</p>
-          <h2>Run the instant demo, or send a real email/text.</h2>
-          <p id="realDemoIntro">The form below is fastest. The demo inbox and phone number let a prospect send a real message and get a link back to this same Relinqo preview.</p>
+          <h2>Run the instant simulator, or send a real email/text when connected.</h2>
+          <p id="realDemoIntro">The form below is fastest. When the public demo inbox or phone number is connected, you can send a real message and get a link back to this same Relinqo preview.</p>
           <div class="lr-demo-choice-steps" aria-label="Demo steps">
             <span><strong>1</strong> Pick a scenario</span>
             <span><strong>2</strong> Run the lead</span>
@@ -53,16 +53,16 @@
         <div class="lr-real-contact-grid">
           <a id="demoInboxLink" class="lr-real-contact-card" href="#" aria-disabled="true">
             <span>Real email test</span>
-            <strong id="demoInboxEmail">Not configured</strong>
-            <small id="demoInboxHint">Demo email is not connected yet.</small>
+            <strong id="demoInboxEmail">Use instant simulator</strong>
+            <small id="demoInboxHint">The sample form is ready even when the public inbox is unavailable.</small>
           </a>
           <a id="demoPhoneLink" class="lr-real-contact-card" href="#" aria-disabled="true">
             <span>Real phone test</span>
-            <strong id="demoPhoneNumber">Not configured</strong>
-            <small id="demoPhoneHint">Demo phone is not connected yet.</small>
+            <strong id="demoPhoneNumber">Use instant simulator</strong>
+            <small id="demoPhoneHint">The sample form is ready even when the public phone test is unavailable.</small>
           </a>
         </div>
-        <details class="lr-demo-webhook-details">
+        <details class="lr-demo-webhook-details" data-operator-details hidden>
           <summary>Operator setup details</summary>
           <div>
             <span>Email forwarder endpoint</span>
@@ -85,7 +85,7 @@
           <div class="lr-customer-console-body">
             <div class="lr-demo-panel-heading">
               <span>Instant simulator</span>
-              <strong>Choose a sample, then run it.</strong>
+              <strong>Choose a leak, then run it.</strong>
             </div>
             <div class="lr-channel-row" aria-label="Sample leads">
               <button type="button" data-sample="urgent" class="is-active">Burst pipe</button>
@@ -126,8 +126,8 @@
               </div>
             </div>
 
-            <button type="submit" class="lr-demo-submit">Run the demo</button>
-            <p id="demoStatus" class="lr-demo-note" role="status">Ready. This acts like a new customer email, text, or website form.</p>
+            <button type="submit" class="lr-demo-submit" data-analytics-event="demo_clicked">Run the simulator</button>
+            <p id="demoStatus" class="lr-demo-note" role="status">Ready. This acts like a new customer email, text, missed call, or website form.</p>
           </div>
         </form>
 
@@ -136,10 +136,10 @@
 
           <div class="lr-demo-stepper">
             <div data-demo-step="capture"><span>1</span><strong>Capture</strong></div>
-            <div data-demo-step="triage"><span>2</span><strong>AI triage</strong></div>
-            <div data-demo-step="reply"><span>3</span><strong>Reply</strong></div>
-            <div data-demo-step="alert"><span>4</span><strong>Owner alert</strong></div>
-            <div data-demo-step="track"><span>5</span><strong>Track</strong></div>
+            <div data-demo-step="triage"><span>2</span><strong>Flag next step</strong></div>
+            <div data-demo-step="reply"><span>3</span><strong>Draft reply</strong></div>
+            <div data-demo-step="alert"><span>4</span><strong>Alert owner</strong></div>
+            <div data-demo-step="track"><span>5</span><strong>Keep moving</strong></div>
           </div>
 
           <div class="lr-operator-workspace">
@@ -148,7 +148,7 @@
               <div id="queueLead" class="lr-queue-lead is-empty">
                 <span>Waiting</span>
                 <strong>No lead yet</strong>
-                <p>Run the demo to see the lead appear here.</p>
+                <p>Run the simulator to see the lead appear here.</p>
               </div>
               <div class="lr-queue-lead muted">
                 <span>Won</span>
@@ -160,7 +160,7 @@
             <div class="lr-operator-detail">
               <div class="lr-live-demo-kpis">
                 <div>
-                  <span>Category</span>
+                  <span>Lead type</span>
                   <strong id="demoCategory">-</strong>
                 </div>
                 <div>
@@ -168,13 +168,13 @@
                   <strong id="demoUrgency">-</strong>
                 </div>
                 <div>
-                  <span>Pipeline</span>
+                  <span>Lead stage</span>
                   <strong id="demoPipeline">-</strong>
                 </div>
               </div>
 
               <article class="lr-live-demo-card is-placeholder" id="replyCard">
-                <span>AI reply draft</span>
+                <span>Reply draft for approval</span>
                 <p id="demoReply">The drafted customer response appears here.</p>
               </article>
 
@@ -198,7 +198,7 @@
               </div>
 
               <div class="lr-live-demo-actions">
-                <a class="lr-btn lr-btn-primary" href="/book-demo">Use this on my leads</a>
+                <a class="lr-btn lr-btn-primary" href="/book-demo" data-analytics-event="lead_leak_audit_clicked">Book my free audit</a>
                 <a class="lr-btn lr-btn-secondary" href="/">Back to overview</a>
               </div>
             </div>
@@ -242,6 +242,22 @@
         const queueLead = document.getElementById("queueLead");
         const stepOrder = ["capture", "triage", "reply", "alert", "track"];
         const realDemoContact = document.getElementById("realDemoContact");
+        const operatorDetails = document.querySelector("[data-operator-details]");
+
+        function trackMarketingEvent(name, label) {
+          if (!name) return;
+          const payload = { event: name, label: label || "" };
+          window.dispatchEvent(new CustomEvent("relinqo:marketing-event", { detail: payload }));
+          if (typeof window.gtag === "function") {
+            window.gtag("event", name, { event_label: payload.label });
+          }
+          if (typeof window.plausible === "function") {
+            window.plausible(name, { props: { label: payload.label } });
+          }
+          if (Array.isArray(window.dataLayer)) {
+            window.dataLayer.push(payload);
+          }
+        }
 
         function escapeHtml(value) {
           return String(value || "").replace(/[&<>"']/g, (char) => ({
@@ -274,6 +290,14 @@
             phoneLink.href = `sms:${config.demo_phone_number}`;
             phoneLink.setAttribute("aria-disabled", "false");
             document.getElementById("demoPhoneHint").textContent = "Text it for a link, or call it to hear the voice demo.";
+          }
+          if (!config.demo_inbox_email) {
+            inboxEmail.textContent = "Use instant simulator";
+            document.getElementById("demoInboxHint").textContent = "The sample form is ready even when the public inbox is unavailable.";
+          }
+          if (!config.demo_phone_number) {
+            phoneNumber.textContent = "Use instant simulator";
+            document.getElementById("demoPhoneHint").textContent = "The sample form is ready even when the public phone test is unavailable.";
           }
           realDemoContact.classList.toggle("is-muted", !config.enabled);
         }
@@ -345,7 +369,7 @@
         async function loadSharedDemoLead() {
           const leadId = new URLSearchParams(window.location.search).get("lead");
           if (!leadId) return;
-          status.textContent = "Loading real demo lead...";
+          status.textContent = "Opening shared demo lead...";
           try {
             const response = await fetch(`/api/demo/leads/${encodeURIComponent(leadId)}`);
             const record = await response.json();
@@ -394,10 +418,16 @@
           button.addEventListener("click", () => setSample(button.dataset.sample));
         });
 
+        document.querySelectorAll("[data-analytics-event]").forEach((element) => {
+          element.addEventListener("click", () => {
+            trackMarketingEvent(element.dataset.analyticsEvent, element.textContent.trim());
+          });
+        });
+
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           const payload = Object.fromEntries(new FormData(form).entries());
-          status.textContent = "Lead received. Relinqo is reading it now...";
+          status.textContent = "Lead received. Relinqo is checking the next step...";
           form.querySelector("button[type='submit']").disabled = true;
           resetDemo();
           try {
@@ -412,13 +442,17 @@
             }
             renderResult(data, payload);
             await animateWorkflow();
-            status.textContent = "Demo complete. This is the same workflow used for live leads.";
+            status.textContent = "Simulator complete. This is the same approval-first path used for live leads.";
           } catch (error) {
             status.textContent = error.message || "Demo failed. Please try again.";
           } finally {
             form.querySelector("button[type='submit']").disabled = false;
           }
         });
+
+        if (operatorDetails && new URLSearchParams(window.location.search).get("operator") === "1") {
+          operatorDetails.hidden = false;
+        }
 
         loadDemoContact();
         loadSharedDemoLead();

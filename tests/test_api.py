@@ -62,7 +62,7 @@ def test_marketing_page_links_to_book_demo():
     assert 'href="/demo"' in response.text
     assert 'id="live-test"' in response.text
     assert 'data-marketing-demo-contact' in response.text
-    assert "Twilio-powered demo path" in response.text
+    assert "Lead leak simulator" in response.text
 
 
 def test_live_demo_page_has_public_form():
@@ -194,8 +194,9 @@ def test_book_demo_page_has_contact_form():
     assert 'name="phone"' in response.text
     assert 'name="business_type"' in response.text
     assert 'name="lead_source"' in response.text
-    assert 'name="current_response_time"' in response.text
     assert 'name="message"' in response.text
+    assert "What lead source is leaking?" in response.text
+    assert "Book my free audit" in response.text
 
 
 def test_leads_require_auth():

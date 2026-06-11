@@ -153,6 +153,14 @@ def test_ui_pages_do_not_ship_placeholder_copy(path):
     assert not any(term in html for term in banned), path.name
 
 
+def test_marketing_page_focuses_on_missed_lead_recovery():
+    html = (UI_DIR / "marketing.html").read_text(encoding="utf-8")
+
+    assert "Stop losing trade jobs to missed calls and slow replies." in html
+    assert "Get a free lead leak audit" in html
+    assert "Most trade companies do not need more leads" in html
+
+
 @pytest.mark.parametrize("path,idx,control", list(_control_cases()))
 def test_buttons_and_links_have_clear_purpose(path, idx, control):
     attrs = control["attrs"]
@@ -211,7 +219,7 @@ def test_local_ui_assets_referenced_by_pages_exist(path, asset):
 @pytest.mark.parametrize(
     "route,expected",
     [
-        ("/", "AI speed-to-lead"),
+        ("/", "Stop losing trade jobs to missed calls and slow replies."),
         ("/demo", "liveDemoForm"),
         ("/book-demo", 'action="/contact"'),
         ("/website-widget", 'data-workspace="reese-plumbing"'),

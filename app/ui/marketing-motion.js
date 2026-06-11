@@ -3,6 +3,28 @@
   const revealItems = document.querySelectorAll(".reveal");
   const processBoards = document.querySelectorAll("[data-process-board]");
   const demoContact = document.querySelector("[data-marketing-demo-contact]");
+  const analyticsLinks = document.querySelectorAll("[data-analytics-event]");
+
+  function trackMarketingEvent(name, label) {
+    if (!name) return;
+    const payload = { event: name, label: label || "" };
+    window.dispatchEvent(new CustomEvent("relinqo:marketing-event", { detail: payload }));
+    if (typeof window.gtag === "function") {
+      window.gtag("event", name, { event_label: payload.label });
+    }
+    if (typeof window.plausible === "function") {
+      window.plausible(name, { props: { label: payload.label } });
+    }
+    if (Array.isArray(window.dataLayer)) {
+      window.dataLayer.push(payload);
+    }
+  }
+
+  analyticsLinks.forEach((link) => {
+    link.addEventListener("click", () => {
+      trackMarketingEvent(link.dataset.analyticsEvent, link.textContent.trim());
+    });
+  });
 
   processBoards.forEach((board) => {
     board.dataset.processStep = "0";
@@ -66,7 +88,7 @@
         demoContact.classList.add("is-ready");
       } else {
         phoneNumber.textContent = "Instant simulator ready";
-        phoneHint.textContent = "The public Twilio demo line is not connected here, but the live simulator is ready.";
+        phoneHint.textContent = "The public phone line is optional; the lead leak simulator is ready.";
       }
 
       if (config.demo_inbox_email) {
@@ -75,7 +97,7 @@
       }
     } catch {
       phoneNumber.textContent = "Instant simulator ready";
-      phoneHint.textContent = "The demo contact settings could not be loaded, but the live simulator is ready.";
+      phoneHint.textContent = "Try the instant simulator with a missed call, quote request, or after-hours lead.";
     }
   }
 
