@@ -23,7 +23,15 @@ from app.database import get_db
 from app.rate_limit import login_limiter, register_limiter
 from app.mailer import send_email
 from app.models import InviteToken, Organization, OrgSettings, PasswordResetToken, User, hash_api_key
-from app.schema_repair import ensure_org_settings_schema
+from app.schema_repair import ensure_org_settings_schema, ensure_organization_schema
+from app.trial_codes import (
+    TrialCodeError,
+    normalize_trial_code,
+    pilot_state,
+    redeem_trial_code,
+    trial_days_left,
+    validate_trial_code,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -39,6 +47,7 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     display_name: str | None = None
+    trial_code: str | None = None
 
     @field_validator("org_name")
     @classmethod
@@ -108,6 +117,11 @@ def _org_dict(org: Organization, include_api_key: bool = False) -> dict:
         "subscription_status": org.subscription_status,
         "plan": org.plan,
         "billing_exempt": bool(org.billing_exempt),
+        "pilot_code": org.pilot_code or "",
+        "trial_started_at": org.trial_started_at,
+        "trial_ends_at": org.trial_ends_at,
+        "trial_days_left": trial_days_left(org),
+        "pilot_state": pilot_state(org),
     }
     if include_api_key:
         d["api_key"] = org.api_key
@@ -151,6 +165,13 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
     _protect_platform_admin_email(email)
     if db.query(User).filter(func.lower(User.email) == email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
+    pilot_code = normalize_trial_code(payload.trial_code)
+    if pilot_code:
+        try:
+            validate_trial_code(db, pilot_code)
+        except TrialCodeError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    ensure_organization_schema(db)
 
     slug = payload.org_name.strip().lower().replace(" ", "-")[:100]
     base_slug = slug
@@ -172,7 +193,8 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
     db.flush()
 
     ensure_org_settings_schema(db)
-    db.add(OrgSettings(org_id=org.id))
+    org_settings = OrgSettings(org_id=org.id)
+    db.add(org_settings)
 
     user = User(
         email=email,
@@ -182,6 +204,17 @@ def register(request: Request, payload: RegisterRequest, db: Session = Depends(g
         org_id=org.id,
     )
     db.add(user)
+    db.flush()
+
+    if pilot_code:
+        try:
+            redeem_trial_code(db, org=org, user=user, raw_code=pilot_code)
+        except TrialCodeError as exc:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        org_settings.human_review = True
+        org_settings.automation_paused = False
+
     db.commit()
     db.refresh(user)
     db.refresh(org)

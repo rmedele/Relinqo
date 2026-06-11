@@ -42,8 +42,8 @@
       <section class="lr-real-demo-contact" id="realDemoContact">
         <div>
           <p class="lr-kicker">Two ways to try it</p>
-          <h2>Run the instant simulator, or send a real email/text when connected.</h2>
-          <p id="realDemoIntro">The form below is fastest. When the public demo inbox or phone number is connected, you can send a real message and get a link back to this same Relinqo preview.</p>
+          <h2>Run the instant simulator now.</h2>
+          <p id="realDemoIntro">Instant simulator available now. Live phone/email tests are available during a guided walkthrough.</p>
           <div class="lr-demo-choice-steps" aria-label="Demo steps">
             <span><strong>1</strong> Pick a scenario</span>
             <span><strong>2</strong> Run the lead</span>
@@ -52,29 +52,29 @@
         </div>
         <div class="lr-real-contact-grid">
           <a id="demoInboxLink" class="lr-real-contact-card" href="#" aria-disabled="true">
-            <span>Real email test</span>
+            <span>Email walkthrough</span>
             <strong id="demoInboxEmail">Use instant simulator</strong>
-            <small id="demoInboxHint">The sample form is ready even when the public inbox is unavailable.</small>
+            <small id="demoInboxHint">Live email tests are available during a guided walkthrough.</small>
           </a>
           <a id="demoPhoneLink" class="lr-real-contact-card" href="#" aria-disabled="true">
-            <span>Real phone test</span>
+            <span>Phone walkthrough</span>
             <strong id="demoPhoneNumber">Use instant simulator</strong>
-            <small id="demoPhoneHint">The sample form is ready even when the public phone test is unavailable.</small>
+            <small id="demoPhoneHint">Live phone tests are available during a guided walkthrough.</small>
           </a>
         </div>
         <details class="lr-demo-webhook-details" data-operator-details hidden>
           <summary>Operator setup details</summary>
           <div>
-            <span>Email forwarder endpoint</span>
-            <code id="demoInboundUrl">Loading...</code>
+            <span>Email intake URL</span>
+            <code id="demoInboundUrl">Operator view only</code>
           </div>
           <div>
-            <span>Twilio SMS webhook</span>
-            <code id="demoSmsWebhookUrl">Loading...</code>
+            <span>SMS test URL</span>
+            <code id="demoSmsWebhookUrl">Operator view only</code>
           </div>
           <div>
-            <span>Twilio voice webhook</span>
-            <code id="demoVoiceWebhookUrl">Loading...</code>
+            <span>Voice test URL</span>
+            <code id="demoVoiceWebhookUrl">Operator view only</code>
           </div>
         </details>
       </section>
@@ -293,11 +293,11 @@
           }
           if (!config.demo_inbox_email) {
             inboxEmail.textContent = "Use instant simulator";
-            document.getElementById("demoInboxHint").textContent = "The sample form is ready even when the public inbox is unavailable.";
+            document.getElementById("demoInboxHint").textContent = "Live email tests are available during a guided walkthrough.";
           }
           if (!config.demo_phone_number) {
             phoneNumber.textContent = "Use instant simulator";
-            document.getElementById("demoPhoneHint").textContent = "The sample form is ready even when the public phone test is unavailable.";
+            document.getElementById("demoPhoneHint").textContent = "Live phone tests are available during a guided walkthrough.";
           }
           realDemoContact.classList.toggle("is-muted", !config.enabled);
         }

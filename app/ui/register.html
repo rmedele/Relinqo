@@ -6,7 +6,7 @@
     <link rel="icon" href="/ui/favicon.svg?v=20260531" type="image/svg+xml" />
     <link rel="alternate icon" href="/favicon.ico?v=20260531" type="image/x-icon" />
     <link rel="apple-touch-icon" href="/ui/apple-touch-icon.png?v=20260531" />
-    <title>relinqo — Create Account</title>
+    <title>Create your Relinqo workspace</title>
     <link rel="stylesheet" href="/ui/styles.css?v=20260527-polish" />
   </head>
   <body class="auth-page">
@@ -15,30 +15,30 @@
         <section class="auth-hero">
           <div class="hero-badge-row">
             <p class="eyebrow">relinqo</p>
-            <span class="hero-badge">New workspace</span>
+            <span class="hero-badge">Pilot workspace</span>
           </div>
-          <h1 class="gradient-text">Set up the kind of business portal people actually trust.</h1>
-          <p class="subhead">A sharper first-run experience for serious operators: clean setup, confident branding, and enough structure to make the product feel premium.</p>
+          <h1 class="gradient-text">Create your Relinqo workspace</h1>
+          <p class="subhead">Set up your business profile, lead sources, reply style, hours, service area, and owner alerts. Most pilots start approval-first so you can review replies before anything sends.</p>
 
           <div class="hero-story-grid">
             <article class="hero-story-card accent-orange">
-              <span class="story-label">Onboarding</span>
-              <strong>Business profile, reply tone, and intake config all start from one place.</strong>
+              <span class="story-label">Catch</span>
+              <strong>Catch missed calls, emails, forms, and after-hours inquiries.</strong>
             </article>
             <article class="hero-story-card accent-blue">
-              <span class="story-label">Fast launch</span>
-              <strong>Create the owner account now. Invite teammates once the workspace is live.</strong>
+              <span class="story-label">Approve</span>
+              <strong>Draft fast replies for owner approval before anything sends.</strong>
             </article>
           </div>
 
           <div class="hero-proof-list">
             <div>
-              <span class="proof-kicker">Looks like</span>
-              <p>Linear / Notion-style product restraint with a more editorial, high-contrast edge.</p>
+              <span class="proof-kicker">Urgent jobs</span>
+              <p>Alert the owner when a job needs a fast call, quote, or booking action.</p>
             </div>
             <div>
-              <span class="proof-kicker">Built for</span>
-              <p>Service businesses that want fast response automation without looking cheap or templatey.</p>
+              <span class="proof-kicker">Follow-through</span>
+              <p>Keep leads moving until they are booked, won, or closed.</p>
             </div>
           </div>
         </section>
@@ -46,7 +46,7 @@
         <section class="auth-card">
           <div class="auth-card-header">
             <div>
-              <p class="eyebrow">Register</p>
+              <p class="eyebrow">Pilot access</p>
               <h2>Create your owner account</h2>
             </div>
             <a href="/login" class="ghost-link compact-link">Already have an account?</a>
@@ -76,10 +76,17 @@
               <input name="password" type="password" class="filter-input" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8" />
             </label>
 
+            <label class="form-field">
+              <span class="field-label">14-day pilot code</span>
+              <input name="trial_code" class="filter-input" placeholder="AUDIT14" autocomplete="off" />
+              <span class="field-help">Got a pilot code after an audit? Enter it here to activate your approval-first trial.</span>
+            </label>
+
             <div class="auth-form-footer">
-              <div class="micro-note">You'll land in the review queue after signup and can finish the rest of the business setup there.</div>
+              <div class="micro-note">Have a 14-day pilot code? Enter it above to activate your trial. Need a pilot code? Book a free lead leak audit.</div>
               <button type="submit" class="primary-btn primary-btn-strong">Create workspace</button>
             </div>
+            <a class="ghost-link compact-link" href="/book-demo">Need a pilot code? Book a free lead leak audit.</a>
           </form>
         </section>
       </div>
@@ -104,6 +111,7 @@
               display_name: formData.get('display_name') || null,
               email: formData.get('email'),
               password: formData.get('password'),
+              trial_code: formData.get('trial_code') || null,
             }),
           });
           const data = await res.json();

@@ -5,6 +5,7 @@ from typing import Any
 
 from app.config import settings
 from app.models import Organization, User
+from app.trial_codes import trial_expired
 
 
 STRIPE_API_VERSION = "2026-02-25.clover"
@@ -32,6 +33,8 @@ def org_has_billing_access(org: Organization | None) -> bool:
         return False
     if getattr(org, "billing_exempt", False):
         return True
+    if org.subscription_status == "trialing" and trial_expired(org):
+        return False
     return org.subscription_status in ACTIVE_BILLING_STATUSES
 
 

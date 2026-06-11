@@ -161,6 +161,39 @@ def test_marketing_page_focuses_on_missed_lead_recovery():
     assert "Most trade companies do not need more leads" in html
 
 
+def test_public_pages_keep_audit_first_ctas():
+    for filename in ["marketing.html", "book-demo.html", "live-demo.html"]:
+        html = (UI_DIR / filename).read_text(encoding="utf-8")
+
+        assert "Create account" not in html
+        assert "Sign up" not in html
+        assert "Start free trial" not in html
+        assert "Get a free lead leak audit" in html or "Book my free audit" in html
+
+
+def test_demo_page_hides_internal_setup_language_from_public_copy():
+    html = (UI_DIR / "live-demo.html").read_text(encoding="utf-8")
+
+    assert "Instant simulator available now. Live phone/email tests are available during a guided walkthrough." in html
+    assert "Not configured" not in html
+    assert "Email forwarder endpoint" not in html
+    assert "Twilio SMS webhook" not in html
+    assert "Twilio voice webhook" not in html
+
+
+def test_register_page_positions_pilot_codes_for_trade_owners():
+    html = (UI_DIR / "register.html").read_text(encoding="utf-8")
+
+    assert "Create your Relinqo workspace" in html
+    assert "14-day pilot code" in html
+    assert 'name="trial_code"' in html
+    assert "Need a pilot code? Book a free lead leak audit." in html
+    assert "Catch missed calls, emails, forms, and after-hours inquiries" in html
+    assert "Linear / Notion-style" not in html
+    assert "product restraint" not in html
+    assert "editorial edge" not in html
+
+
 @pytest.mark.parametrize("path,idx,control", list(_control_cases()))
 def test_buttons_and_links_have_clear_purpose(path, idx, control):
     attrs = control["attrs"]

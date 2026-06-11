@@ -845,11 +845,43 @@
         const status = document.getElementById('billingStatusText');
         const checkoutBtn = document.getElementById('startCheckoutBtn');
         const portalBtn = document.getElementById('manageBillingBtn');
+        delete checkoutBtn.dataset.reviewCta;
 
-        price.textContent = data.price || '$199/mo';
-        plan.textContent = data.plan === 'full_service_test' ? 'Full service test' : 'Full service';
+        const days = Number(data.trial_days_left || 0);
+        const trialEnd = data.trial_ends_at
+          ? new Date(data.trial_ends_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+          : '';
+
+        price.textContent = data.trial_active ? '14-day pilot' : (data.price || '$199/mo');
+        plan.textContent = data.trial_active
+          ? 'Approval-first pilot'
+          : data.plan === 'full_service_test' ? 'Full service test' : 'Full service';
         chip.textContent = data.billing_exempt ? 'Comped' : titleCase(data.subscription_status || 'inactive');
         chip.className = 'section-chip required';
+
+        if (data.trial_active) {
+          chip.textContent = 'Pilot active';
+          meta.textContent = `${days} day${days === 1 ? '' : 's'} left in your pilot${trialEnd ? ` - ends ${trialEnd}` : ''}.`;
+          status.textContent = days <= 3
+            ? 'Ready to keep Relinqo running? Upgrade to the founding pilot or book a pilot review.'
+            : 'Owner approval stays on while replies, alerts, and follow-ups are tuned.';
+          checkoutBtn.disabled = days > 3 && !data.billing_configured;
+          checkoutBtn.textContent = data.billing_configured ? (days <= 3 ? 'Upgrade to founding pilot' : 'Upgrade when ready') : 'Book a pilot review';
+          if (!data.billing_configured) checkoutBtn.dataset.reviewCta = 'true';
+          portalBtn.disabled = true;
+          return;
+        }
+
+        if (data.trial_expired || data.pilot_state === 'ended') {
+          chip.textContent = 'Pilot ended';
+          meta.textContent = trialEnd ? `Pilot ended on ${trialEnd}.` : 'Pilot access has ended.';
+          status.textContent = 'Book a pilot review or contact us to continue without losing workspace data.';
+          checkoutBtn.disabled = false;
+          checkoutBtn.textContent = data.billing_configured ? 'Upgrade to founding pilot' : 'Book a pilot review';
+          if (!data.billing_configured) checkoutBtn.dataset.reviewCta = 'true';
+          portalBtn.disabled = true;
+          return;
+        }
 
         if (!data.billing_configured) {
           meta.textContent = 'Stripe is not configured for this deployment.';
@@ -1174,6 +1206,10 @@
 
       document.getElementById('startCheckoutBtn').addEventListener('click', async () => {
         const btn = document.getElementById('startCheckoutBtn');
+        if (btn.dataset.reviewCta === 'true') {
+          window.location.href = '/book-demo';
+          return;
+        }
         btn.disabled = true;
         btn.textContent = 'Opening checkout...';
         try {

@@ -4358,6 +4358,14 @@ textarea:focus,
   color: var(--muted);
 }
 
+.field-help {
+  color: var(--muted);
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  margin-top: 6px;
+}
+
 .lr-visuals-ready .topbar,
 .lr-visuals-ready .topbar-editorial,
 .lr-visuals-ready .analytics-header,

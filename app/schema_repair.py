@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from threading import Lock
 
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -10,6 +11,15 @@ from sqlalchemy.orm import Session
 logger = logging.getLogger(__name__)
 
 _ORG_SETTINGS_REPAIRED_BINDS: set[int] = set()
+_ORGANIZATION_REPAIRED_BINDS: set[int] = set()
+_ORGANIZATION_REPAIR_LOCK = Lock()
+
+
+ORGANIZATION_COLUMNS: dict[str, str] = {
+    "trial_started_at": "DATETIME NULL",
+    "trial_ends_at": "DATETIME NULL",
+    "pilot_code": "VARCHAR(80) NOT NULL DEFAULT ''",
+}
 
 
 ORG_SETTINGS_COLUMNS: dict[str, str] = {
@@ -101,3 +111,39 @@ def ensure_org_settings_schema(db: Session) -> None:
 
     db.commit()
     _ORG_SETTINGS_REPAIRED_BINDS.add(bind_key)
+
+
+def ensure_organization_schema(db: Session) -> None:
+    """Add organization columns that can be missing on older cPanel databases."""
+    bind = db.get_bind()
+    bind_key = id(bind)
+    if bind_key in _ORGANIZATION_REPAIRED_BINDS:
+        return
+
+    with _ORGANIZATION_REPAIR_LOCK:
+        if bind_key in _ORGANIZATION_REPAIRED_BINDS:
+            return
+
+        inspector = inspect(bind)
+        if "organizations" not in inspector.get_table_names():
+            _ORGANIZATION_REPAIRED_BINDS.add(bind_key)
+            return
+
+        existing = {column["name"] for column in inspector.get_columns("organizations")}
+        missing = [(name, ddl) for name, ddl in ORGANIZATION_COLUMNS.items() if name not in existing]
+        if not missing:
+            _ORGANIZATION_REPAIRED_BINDS.add(bind_key)
+            return
+
+        for name, ddl in missing:
+            try:
+                db.execute(text(f"ALTER TABLE organizations ADD COLUMN {name} {ddl}"))
+            except (OperationalError, ProgrammingError) as exc:
+                db.rollback()
+                if not _is_duplicate_column_error(exc):
+                    raise
+            else:
+                logger.warning("Added missing organizations.%s column", name)
+
+        db.commit()
+        _ORGANIZATION_REPAIRED_BINDS.add(bind_key)

@@ -22,6 +22,7 @@ from app.billing import (
 from app.config import settings
 from app.database import get_db
 from app.models import Organization, User
+from app.trial_codes import pilot_state, trial_days_left, trial_expired, has_active_pilot
 
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
@@ -41,6 +42,13 @@ class BillingStatusResponse(BaseModel):
     stripe_subscription_linked: bool
     subscription_current_period_end: datetime | None
     subscription_cancel_at_period_end: bool
+    pilot_code: str
+    trial_started_at: datetime | None
+    trial_ends_at: datetime | None
+    trial_days_left: int | None
+    trial_active: bool
+    trial_expired: bool
+    pilot_state: str
 
 
 class BillingBypassRequest(BaseModel):
@@ -65,6 +73,13 @@ def _status_response(org: Organization) -> BillingStatusResponse:
         stripe_subscription_linked=bool(org.stripe_subscription_id),
         subscription_current_period_end=org.subscription_current_period_end,
         subscription_cancel_at_period_end=bool(org.subscription_cancel_at_period_end),
+        pilot_code=org.pilot_code or "",
+        trial_started_at=org.trial_started_at,
+        trial_ends_at=org.trial_ends_at,
+        trial_days_left=trial_days_left(org),
+        trial_active=has_active_pilot(org),
+        trial_expired=trial_expired(org),
+        pilot_state=pilot_state(org),
     )
 
 

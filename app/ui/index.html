@@ -55,6 +55,47 @@
         order: 1;
       }
 
+      .review-page .pilot-status-section {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        border-radius: 12px;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        margin-bottom: 16px;
+        order: 1;
+        padding: 16px;
+      }
+
+      .review-page .pilot-status-section[hidden] {
+        display: none;
+      }
+
+      .review-page .pilot-status-section h2 {
+        font-size: 1.05rem;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      .review-page .pilot-status-section p {
+        color: rgba(15, 23, 42, 0.68);
+        font-size: 0.9rem;
+        line-height: 1.45;
+        margin: 4px 0 0;
+      }
+
+      .review-page .pilot-status-section strong {
+        color: #0f1f1b;
+      }
+
+      .review-page .pilot-status-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
       .review-page .stat-card {
         border-color: rgba(15, 23, 42, 0.08);
         display: grid;
@@ -453,6 +494,16 @@
           <button id="logoutBtn" class="ghost-btn compact-link">Logout</button>
         </div>
       </header>
+
+      <section class="pilot-status-section" id="pilotStatusSection" aria-label="Pilot status" hidden>
+        <div>
+          <h2 id="pilotStatusTitle">14-day pilot active</h2>
+          <p id="pilotStatusText">Relinqo is checking your pilot window.</p>
+        </div>
+        <div class="pilot-status-actions">
+          <a id="pilotStatusCta" class="ghost-link compact-link" href="/settings#billingCard">View pilot details</a>
+        </div>
+      </section>
 
       <!-- Stats Bar -->
       <section id="statsBar" class="stats-bar">

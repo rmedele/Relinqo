@@ -79,6 +79,11 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
+function formatShortDate(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 function showStatus(message, kind) {
   // Hybrid: keep the inline pill so existing flows still work, plus a toast.
   if (sendStatusEl) {
@@ -144,6 +149,51 @@ async function loadStats() {
       ? (window.LR?.formatMinutes ? window.LR.formatMinutes(data.avg_response_minutes) : `${data.avg_response_minutes}m`)
       : '\u2014';
   } catch (e) { /* stats are non-critical */ }
+}
+
+function renderPilotStatus(data) {
+  const section = document.getElementById('pilotStatusSection');
+  if (!section) return;
+
+  const title = document.getElementById('pilotStatusTitle');
+  const text = document.getElementById('pilotStatusText');
+  const cta = document.getElementById('pilotStatusCta');
+  const days = Number(data.trial_days_left || 0);
+  const endDate = formatShortDate(data.trial_ends_at);
+
+  if (data.trial_active) {
+    section.hidden = false;
+    if (title) title.textContent = '14-day pilot active';
+    if (text) {
+      text.innerHTML = `<strong>${days} day${days === 1 ? '' : 's'} left in your pilot.</strong>${endDate ? ` Trial ends on ${escapeHtml(endDate)}.` : ''} Keep owner approval on while replies, alerts, and follow-ups are tuned.`;
+    }
+    if (cta) {
+      cta.textContent = days <= 3 ? 'Book a pilot review' : 'View pilot details';
+      cta.href = days <= 3 ? '/book-demo' : '/settings#billingCard';
+    }
+    return;
+  }
+
+  if (data.trial_expired || data.pilot_state === 'ended') {
+    section.hidden = false;
+    if (title) title.textContent = 'Pilot ended';
+    if (text) text.textContent = 'Ready to keep Relinqo running? Book a pilot review or contact us to continue.';
+    if (cta) {
+      cta.textContent = 'Book a pilot review';
+      cta.href = '/book-demo';
+    }
+    return;
+  }
+
+  section.hidden = true;
+}
+
+async function loadPilotStatus() {
+  try {
+    const response = await fetch('/api/billing/status');
+    if (!response.ok) return;
+    renderPilotStatus(await response.json());
+  } catch (e) { /* pilot status is non-critical */ }
 }
 
 // --- Undo Send ---
@@ -1564,6 +1614,7 @@ checkAuth();
 loadLeads().catch((error) => {
   showStatus(error.message || 'Failed to load leads', 'error');
 });
+loadPilotStatus();
 loadCharts();
 loadLeadMap();
 startPolling();

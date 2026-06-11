@@ -8,6 +8,7 @@ from app.config import settings
 from app.database import get_db
 from app.models import OrgSettings, PhoneNumber, PhoneRoutingRule, ReplyTemplate, ScheduleAvailability, SmsNotification, User
 from app.outbound_webhooks import send_webhook_event
+from app.trial_codes import pilot_state, trial_days_left
 from app.widget import widget_embed_code, widget_token
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -328,13 +329,21 @@ def pilot_readiness(
         "Gmail integration card",
     )
 
+    current_pilot_state = pilot_state(user.org)
+    current_trial_days_left = trial_days_left(user.org)
+    billing_detail = "Workspace has billing access."
+    if current_pilot_state in {"active", "ending_soon"}:
+        billing_detail = f"14-day approval-first pilot is active with {current_trial_days_left} day(s) left."
+    elif current_pilot_state == "ended":
+        billing_detail = "Pilot ended. Book a pilot review or upgrade to keep Relinqo running."
+
     add(
         "billing",
-        "Billing or pilot comp",
+        "Billing or workspace access",
         "ready" if org_has_billing_access(user.org) else "missing",
-        "Workspace has billing access."
-        if org_has_billing_access(user.org)
-        else "Start Stripe checkout or use the admin billing bypass for a comped pilot.",
+        billing_detail
+        if org_has_billing_access(user.org) or current_pilot_state == "ended"
+        else "Use a pilot code, start Stripe checkout, or use the admin billing bypass for a comped workspace.",
         "Billing card",
     )
 

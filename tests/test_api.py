@@ -22,6 +22,8 @@ from app.models import (
     ScheduleAvailability,
     SmsNotification,
     SmsOptOut,
+    TrialCode,
+    TrialCodeRedemption,
     User,
 )
 from app.routes import billing as billing_routes
@@ -874,6 +876,139 @@ def test_billing_status_defaults_to_configured_monthly_plan():
     data = res.json()
     assert data["price"] == "USD 199/mo"
     assert data["active"] is True
+
+
+def _create_trial_code(code: str, **overrides) -> None:
+    db = SessionLocal()
+    try:
+        values = {
+            "code": code,
+            "description": "Audit qualified pilot",
+            "max_redemptions": 1,
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+            "trial_days": 14,
+            "active": True,
+            "source": "audit",
+        }
+        values.update(overrides)
+        db.add(TrialCode(**values))
+        db.commit()
+    finally:
+        db.close()
+
+
+def test_register_with_valid_trial_code_starts_approval_first_pilot(monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
+    monkeypatch.setattr(settings, "billing_enforced", True)
+    _create_trial_code("AUDIT14", max_redemptions=3)
+
+    c = TestClient(app)
+    response = c.post("/auth/register", json={
+        "org_name": "Pilot Plumbing",
+        "email": "pilot-code@example.com",
+        "password": "TestPass123",
+        "display_name": "Pilot Owner",
+        "trial_code": " audit14 ",
+    })
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["org"]["subscription_status"] == "trialing"
+    assert data["org"]["pilot_code"] == "AUDIT14"
+    assert data["org"]["trial_days_left"] in {13, 14}
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == data["org"]["slug"]).one()
+        user = db.query(User).filter(User.email == "pilot-code@example.com").one()
+        org_settings = db.query(OrgSettings).filter(OrgSettings.org_id == org.id).one()
+        code = db.query(TrialCode).filter(TrialCode.code == "AUDIT14").one()
+        redemption = db.query(TrialCodeRedemption).filter(
+            TrialCodeRedemption.trial_code_id == code.id,
+            TrialCodeRedemption.org_id == org.id,
+            TrialCodeRedemption.user_id == user.id,
+        ).one()
+
+        assert org.subscription_status == "trialing"
+        assert org.plan == "founding_pilot"
+        assert org.pilot_code == "AUDIT14"
+        assert org.trial_started_at is not None
+        assert org.trial_ends_at is not None
+        assert 13 <= (org.trial_ends_at - org.trial_started_at).days <= 14
+        assert org_settings.human_review is True
+        assert code.redemption_count == 1
+        assert redemption.redeemed_at is not None
+    finally:
+        db.close()
+
+
+def test_register_rejects_invalid_expired_and_used_trial_codes(monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
+    monkeypatch.setattr(settings, "billing_enforced", True)
+    _create_trial_code("OLD14", expires_at=datetime.now(timezone.utc) - timedelta(minutes=1))
+    _create_trial_code("USED14", redemption_count=1, redeemed_at=datetime.now(timezone.utc))
+
+    cases = [
+        ("NOPE14", "This code does not exist."),
+        ("OLD14", "This code has expired."),
+        ("USED14", "This code has already been used."),
+    ]
+
+    for index, (code, message) in enumerate(cases):
+        response = client.post("/auth/register", json={
+            "org_name": f"Rejected Code {index}",
+            "email": f"rejected-code-{index}@example.com",
+            "password": "TestPass123",
+            "display_name": "Rejected Owner",
+            "trial_code": code,
+        })
+        assert response.status_code == 400
+        assert response.json()["detail"] == message
+
+
+def test_billing_status_reports_trial_window_and_blocks_expired_pilot(monkeypatch):
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
+    monkeypatch.setattr(settings, "billing_enforced", True)
+    _create_trial_code("HVAC14")
+
+    c = TestClient(app)
+    created = c.post("/auth/register", json={
+        "org_name": "HVAC Pilot",
+        "email": "hvac-pilot@example.com",
+        "password": "TestPass123",
+        "display_name": "HVAC Owner",
+        "trial_code": "hvac14",
+    })
+    assert created.status_code == 200, created.text
+
+    status = c.get("/api/billing/status")
+    assert status.status_code == 200
+    active = status.json()
+    assert active["trial_active"] is True
+    assert active["trial_expired"] is False
+    assert active["trial_days_left"] in {13, 14}
+    assert active["trial_ends_at"] is not None
+
+    db = SessionLocal()
+    try:
+        org = db.query(Organization).filter(Organization.slug == created.json()["org"]["slug"]).one()
+        org.trial_ends_at = datetime.now(timezone.utc) - timedelta(hours=1)
+        org.subscription_status = "trialing"
+        db.commit()
+    finally:
+        db.close()
+
+    expired = c.get("/api/billing/status")
+    assert expired.status_code == 200
+    expired_data = expired.json()
+    assert expired_data["active"] is False
+    assert expired_data["trial_active"] is False
+    assert expired_data["trial_expired"] is True
+    assert expired_data["pilot_state"] == "ended"
+
+    blocked = c.get("/leads", headers={"accept": "application/json"})
+    assert blocked.status_code == 402
+    assert blocked.json()["billing_required"] is True
 
 
 def test_billing_checkout_creates_stripe_session(monkeypatch):

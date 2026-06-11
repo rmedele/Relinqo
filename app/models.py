@@ -1,7 +1,7 @@
 import secrets
 import hashlib
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -33,11 +33,15 @@ class Organization(Base):
     subscription_cancel_at_period_end = Column(Boolean, nullable=False, default=False)
     billing_exempt = Column(Boolean, nullable=False, default=False, index=True)
     billing_exempt_reason = Column(String(255), nullable=False, default="")
+    trial_started_at = Column(DateTime(timezone=True), nullable=True)
+    trial_ends_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    pilot_code = Column(String(80), nullable=False, default="", index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     users = relationship("User", back_populates="org", cascade="all, delete-orphan")
     settings = relationship("OrgSettings", back_populates="org", uselist=False, cascade="all, delete-orphan")
     leads = relationship("Lead", back_populates="org")
+    trial_code_redemptions = relationship("TrialCodeRedemption", back_populates="org")
 
 
 class User(Base):
@@ -53,6 +57,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     org = relationship("Organization", back_populates="users")
+    trial_code_redemptions = relationship("TrialCodeRedemption", back_populates="user")
 
 
 class OrgSettings(Base):
@@ -257,6 +262,46 @@ class InviteToken(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     accepted_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class TrialCode(Base):
+    __tablename__ = "trial_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(80), nullable=False, unique=True, index=True)
+    description = Column(String(255), nullable=False, default="")
+    max_redemptions = Column(Integer, nullable=False, default=1)
+    redemption_count = Column(Integer, nullable=False, default=0)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    trial_days = Column(Integer, nullable=False, default=14)
+    active = Column(Boolean, nullable=False, default=True, index=True)
+    source = Column(String(80), nullable=False, default="manual")
+    redeemed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    redeemed_by_workspace_id = Column(Integer, ForeignKey("organizations.id"), nullable=True, index=True)
+    redeemed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    redemptions = relationship("TrialCodeRedemption", back_populates="trial_code", cascade="all, delete-orphan")
+
+
+class TrialCodeRedemption(Base):
+    __tablename__ = "trial_code_redemptions"
+    __table_args__ = (
+        UniqueConstraint("trial_code_id", "org_id", name="uq_trial_code_redemptions_code_org"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    trial_code_id = Column(Integer, ForeignKey("trial_codes.id"), nullable=False, index=True)
+    code = Column(String(80), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    trial_days = Column(Integer, nullable=False, default=14)
+    redeemed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    trial_code = relationship("TrialCode", back_populates="redemptions")
+    user = relationship("User", back_populates="trial_code_redemptions")
+    org = relationship("Organization", back_populates="trial_code_redemptions")
 
 
 class InboxMessage(Base):
