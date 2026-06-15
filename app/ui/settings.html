@@ -66,6 +66,7 @@
       #readinessCard { order: 0; }
       #requiredSetupDivider { order: 5; }
       #businessProfileCard { order: 10; }
+      #knowledgeCard { order: 15; }
       #gmailCard { order: 20; }
       #billingCard { order: 30; }
       #phoneCard { order: 40; }
@@ -80,6 +81,36 @@
       #smtpCard { order: 210; }
       #imapCard { order: 220; }
       #settingsSubmitRow { order: 300; }
+
+      #knowledgeCard {
+        border-color: rgba(15, 23, 42, 0.12);
+        box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.04), 0 18px 50px rgba(15, 23, 42, 0.08);
+      }
+      .knowledge-pro-shell { display: grid; gap: 18px; }
+      .knowledge-pro-intro { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(220px, .55fr); gap: 16px; align-items: stretch; }
+      .knowledge-pro-copy { padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.38)); }
+      .knowledge-pro-copy p { margin: 8px 0 0; max-width: 62ch; }
+      .knowledge-pro-metrics { display: grid; gap: 10px; }
+      .knowledge-metric { padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+      .knowledge-metric span { display: block; color: var(--muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+      .knowledge-metric strong { display: block; margin-top: 4px; font-size: 1.05rem; letter-spacing: -0.02em; }
+      .knowledge-pro-grid { display: grid; grid-template-columns: minmax(0, .78fr) minmax(0, 1fr); gap: 16px; }
+      .knowledge-panel { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }
+      .knowledge-panel-header { display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+      .knowledge-panel-header strong { font-size: .94rem; }
+      .knowledge-panel-header span { color: var(--muted); font-size: .78rem; }
+      .knowledge-panel-body { display: grid; gap: 13px; padding: 16px; }
+      .knowledge-action-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+      .knowledge-action-row .filter-input { flex: 1 1 230px; }
+      .knowledge-source-list { display: grid; gap: 8px; }
+      .knowledge-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 13px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,.58); }
+      .knowledge-row h4 { margin: 0 0 4px; font-size: .92rem; letter-spacing: -0.01em; }
+      .knowledge-row p { margin: 0; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+      .knowledge-tag { display:inline-flex; align-items:center; padding: .25rem .5rem; border-radius: 999px; background: #eef2ff; color: #3730a3; font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+      .knowledge-archive { color: var(--text-secondary); font-size: .78rem; font-weight: 800; }
+      #knowledgeSearchPreview { border-radius: 12px; padding: 14px 16px; line-height: 1.5; }
+      @media (max-width: 900px) { .knowledge-pro-intro, .knowledge-pro-grid { grid-template-columns: 1fr; } }
+
       @media (max-width: 600px) { .avail-row { grid-template-columns: 1fr 1fr; } }
       @media (max-width: 420px) {
         .avail-row { grid-template-columns: 1fr; gap: 0.5rem; padding: 0.5rem; }
@@ -218,6 +249,73 @@
                 <span class="field-label">Reply signature</span>
                 <textarea name="business_reply_signature" class="filter-input" rows="3" placeholder="— Northstar Plumbing team"></textarea>
               </label>
+            </div>
+          </section>
+
+          <section id="knowledgeCard" class="settings-card card editorial-card" data-priority="required">
+            <div class="section-heading-row">
+              <div>
+                <p class="section-kicker">Knowledge base</p>
+                <h2>Business rules and service guidance</h2>
+              </div>
+              <span class="section-chip required">RAG source</span>
+            </div>
+            <div class="editorial-form section-fields knowledge-pro-shell">
+              <div class="knowledge-pro-intro">
+                <div class="knowledge-pro-copy">
+                  <strong>Use this as the source of truth for lead replies.</strong>
+                  <p class="muted">Store the details a dispatcher would normally know: service policies, FAQs, service areas, warranty language, price ranges, emergency triage rules, and booking instructions.</p>
+                </div>
+                <div class="knowledge-pro-metrics" aria-label="Knowledge base status">
+                  <div class="knowledge-metric"><span>Used by</span><strong>Lead replies</strong></div>
+                  <div class="knowledge-metric"><span>Mode</span><strong>Retrieved context</strong></div>
+                </div>
+              </div>
+
+              <div class="knowledge-pro-grid">
+                <div class="knowledge-panel">
+                  <div class="knowledge-panel-header">
+                    <div><strong>Add source</strong><br><span>Manual entry for the business knowledge base</span></div>
+                  </div>
+                  <div class="knowledge-panel-body">
+                    <label class="form-field">
+                      <span class="field-label">Title</span>
+                      <input id="knowledgeTitle" class="filter-input" placeholder="Water heater replacement policy" />
+                    </label>
+                    <label class="form-field">
+                      <span class="field-label">Category</span>
+                      <input id="knowledgeCategory" class="filter-input" placeholder="water_heater, emergency, pricing" />
+                    </label>
+                    <label class="form-field">
+                      <span class="field-label">Guidance</span>
+                      <textarea id="knowledgeContent" class="filter-input" rows="6" placeholder="For leaking water heaters, ask for tank age, tank size, photos, address, and whether water is actively leaking. Offer the booking link if scheduling is enabled."></textarea>
+                    </label>
+                    <div class="knowledge-action-row">
+                      <button id="knowledgeSaveBtn" type="button" class="primary-btn primary-btn-strong">Add source</button>
+                      <span id="knowledgeStatus" class="muted"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="knowledge-panel">
+                  <div class="knowledge-panel-header">
+                    <div><strong>Retrieval test</strong><br><span>Preview what Relinqo will pull into an answer</span></div>
+                  </div>
+                  <div class="knowledge-panel-body">
+                    <div class="knowledge-action-row">
+                      <input id="knowledgeSearch" class="filter-input" placeholder="Example: water heater leaking" />
+                      <button id="knowledgeSearchBtn" type="button" class="ghost-btn">Run test</button>
+                    </div>
+                    <div id="knowledgeSearchPreview" class="inline-alert hidden"></div>
+                    <div id="knowledgeList" class="knowledge-source-list">
+                      <div class="knowledge-row">
+                        <span class="knowledge-tag">Loading</span>
+                        <div><h4>Knowledge sources</h4><p>Loading saved instructions.</p></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -972,6 +1070,80 @@
         renderReadiness(await res.json());
       }
 
+
+
+      function renderKnowledgeList(items) {
+        const list = document.getElementById('knowledgeList');
+        if (!list) return;
+        if (!items.length) {
+          list.innerHTML = `
+            <div class="knowledge-row">
+              <span class="knowledge-tag">Empty</span>
+              <div><h4>No sources yet</h4><p>Add service rules, FAQs, pricing guidance, and booking instructions so Relinqo can answer leads with better context.</p></div>
+            </div>`;
+          return;
+        }
+        list.innerHTML = items.map((item) => `
+          <div class="knowledge-row">
+            <span class="knowledge-tag">${escapeHtml(item.category || 'general')}</span>
+            <div>
+              <h4>${escapeHtml(item.title)}</h4>
+              <p>${escapeHtml((item.content || '').slice(0, 190))}${(item.content || '').length > 190 ? '…' : ''}</p>
+            </div>
+            <button type="button" class="ghost-btn knowledge-archive knowledge-delete" data-id="${item.id}">Archive</button>
+          </div>`).join('');
+      }
+
+      async function loadKnowledge() {
+        const res = await fetch('/api/knowledge');
+        if (!res.ok) return;
+        renderKnowledgeList(await res.json());
+      }
+
+      async function saveKnowledge() {
+        const title = document.getElementById('knowledgeTitle').value.trim();
+        const category = document.getElementById('knowledgeCategory').value.trim() || 'general';
+        const content = document.getElementById('knowledgeContent').value.trim();
+        const status = document.getElementById('knowledgeStatus');
+        if (!title || !content) {
+          status.textContent = 'Add a title and details first.';
+          return;
+        }
+        status.textContent = 'Saving...';
+        const res = await fetch('/api/knowledge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, category, content, source: 'manual' }),
+        });
+        if (!res.ok) {
+          status.textContent = 'Could not save knowledge.';
+          return;
+        }
+        document.getElementById('knowledgeTitle').value = '';
+        document.getElementById('knowledgeCategory').value = '';
+        document.getElementById('knowledgeContent').value = '';
+        status.textContent = 'Saved.';
+        await loadKnowledge();
+      }
+
+      async function searchKnowledge() {
+        const query = document.getElementById('knowledgeSearch').value.trim();
+        const preview = document.getElementById('knowledgeSearchPreview');
+        if (!query) return;
+        preview.classList.remove('hidden');
+        preview.className = 'inline-alert';
+        preview.textContent = 'Testing retrieval...';
+        const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(query)}`);
+        if (!res.ok) {
+          preview.className = 'inline-alert error';
+          preview.textContent = 'Could not test retrieval.';
+          return;
+        }
+        const data = await res.json();
+        preview.className = 'inline-alert success';
+        preview.innerHTML = `<strong>Retrieved context for “${escapeHtml(query)}”</strong><br>${escapeHtml(data.context || 'No matching knowledge yet.')}`;
+      }
+
       async function loadWidgetEmbed() {
         const res = await fetch('/api/settings/widget');
         if (!res.ok) return;
@@ -1065,6 +1237,16 @@
         } finally {
           setSaving(false);
         }
+      });
+
+
+      document.getElementById('knowledgeSaveBtn')?.addEventListener('click', saveKnowledge);
+      document.getElementById('knowledgeSearchBtn')?.addEventListener('click', searchKnowledge);
+      document.getElementById('knowledgeList')?.addEventListener('click', async (event) => {
+        const btn = event.target.closest('.knowledge-delete');
+        if (!btn) return;
+        const res = await fetch(`/api/knowledge/${btn.dataset.id}`, { method: 'DELETE' });
+        if (res.ok) await loadKnowledge();
       });
 
       document.getElementById('refreshReadinessBtn').addEventListener('click', loadReadiness);
