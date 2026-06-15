@@ -316,3 +316,38 @@ class BookingResponse(BaseModel):
     status: str
     created_at: datetime
     cancelled_at: datetime | None
+
+
+class BusinessKnowledgeCreate(BaseModel):
+    title: str = Field(..., max_length=255)
+    content: str = Field(..., min_length=1)
+    source: str = Field(default="manual", max_length=100)
+    category: str = Field(default="general", max_length=80)
+    is_active: bool = True
+
+
+class BusinessKnowledgeUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=255)
+    content: str | None = None
+    source: str | None = Field(default=None, max_length=100)
+    category: str | None = Field(default=None, max_length=80)
+    is_active: bool | None = None
+
+
+class BusinessKnowledgeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    content: str
+    source: str
+    category: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class BusinessKnowledgeSearchResponse(BaseModel):
+    query: str
+    context: str
+    hits: list[dict[str, Any]]
