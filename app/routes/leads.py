@@ -22,6 +22,7 @@ from app.geocoding import geocode_location, polite_geocode_delay
 from app.mailer import send_email
 from app.models import Lead, LeadActivity, LeadNote, LeadPhoto, OrgSettings, ReplyTemplate, ReviewRequest, ScheduleAvailability, User
 from app.outbound_webhooks import dispatch_lead_created, dispatch_lead_won
+from app.rag import format_knowledge_context, retrieve_business_knowledge
 from app.schemas import (
     DigestResponse,
     LeadActivityResponse,
@@ -134,6 +135,14 @@ def ingest_lead(
     images = None
     if attachments:
         images = [{"data": a["data"], "mime_type": a["mime_type"]} for a in attachments]
+
+    lead_query = f"{payload.subject or ''}\n{payload.body}"
+    knowledge_hits = retrieve_business_knowledge(
+        db, org_id or 1, lead_query, org_settings=org_settings
+    )
+    retrieved_context = format_knowledge_context(knowledge_hits)
+    if retrieved_context:
+        enriched["retrieved_business_context"] = retrieved_context
 
     classification = classify_lead(
         enriched, org_settings=org_settings, images=images, booking_url=booking_url,
