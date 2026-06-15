@@ -135,6 +135,20 @@ class OrgSettings(Base):
     org = relationship("Organization", back_populates="settings")
 
 
+class BusinessKnowledgeDocument(Base):
+    __tablename__ = "business_knowledge_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    org_id = Column(Integer, ForeignKey("organizations.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    source = Column(String(100), nullable=False, default="manual")
+    category = Column(String(80), nullable=False, default="general")
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
 class Lead(Base):
     __tablename__ = "leads"
 
