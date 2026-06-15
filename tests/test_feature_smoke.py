@@ -488,3 +488,45 @@ def test_cancel_send_clears_pending_reply_smoke():
     assert reloaded.status_code == 200
     assert reloaded.json()["status"] == "drafted"
     assert reloaded.json()["send_at"] is None
+
+
+def test_business_knowledge_crud_search_and_lead_rag_context_smoke():
+    client, _ = _auth_client()
+    settings = client.patch(
+        "/api/settings",
+        json={
+            "business_name": "Smoke Plumbing",
+            "business_services": "Drain cleaning, water heaters, emergency leaks",
+            "business_area": "Edmonton",
+        },
+    )
+    assert settings.status_code == 200, settings.text
+
+    created = client.post(
+        "/api/knowledge",
+        json={
+            "title": "Water heater policy",
+            "category": "water_heater",
+            "content": "We repair and replace tank water heaters in Edmonton. Ask for tank size, age, leak location, and photos before booking.",
+            "source": "manual",
+        },
+    )
+    assert created.status_code == 200, created.text
+    doc_id = created.json()["id"]
+
+    search = client.get("/api/knowledge/search", params={"q": "water heater leaking"})
+    assert search.status_code == 200, search.text
+    assert "Water heater policy" in search.json()["context"]
+
+    lead = _create_lead(
+        client,
+        subject="Water heater leaking",
+        body="My water heater is leaking from the bottom in Edmonton. Can you help?",
+    )
+    assert lead["id"]
+    assert lead["category"] in {"general_inquiry", "quote_request", "urgent_request"}
+
+    deleted = client.delete(f"/api/knowledge/{doc_id}")
+    assert deleted.status_code == 200
+    listed = client.get("/api/knowledge")
+    assert all(item["id"] != doc_id for item in listed.json())
